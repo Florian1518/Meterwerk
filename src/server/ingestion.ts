@@ -1,0 +1,84 @@
+import "server-only";
+import { z } from "zod";
+import { db } from "./db";
+import { AccessError } from "./policy";
+import type { Device } from "@/generated/prisma/client";
+export const readingPayload = z
+  .object({
+    messageId: z.string().trim().min(1).max(160),
+    timestamp: z.iso.datetime({ offset: true }),
+    value: z.number().finite().nonnegative(),
+    consumption: z.number().finite().nonnegative().optional(),
+    unit: z.enum(["kWh", "m³"]),
+    quality: z
+      .enum(["VALID", "ESTIMATED", "INVALID", "SUSPECT"])
+      .default("VALID"),
+    source: z.enum(["REST"]).default("REST"),
+  })
+  .strict();
+const futureLimit = 5 * 60_000;
+export async function ingestReading(
+  device: Device & { meter: { measurementUnit: string } },
+  raw: unknown,
+) {
+  const value = readingPayload.parse(raw);
+  const timestamp = new Date(value.timestamp);
+  if (timestamp.getTime() > Date.now() + futureLimit)
+    throw new AccessError(400, "Zeitstempel liegt zu weit in der Zukunft.");
+  if (value.unit !== device.meter.measurementUnit)
+    throw new AccessError(
+      409,
+      "Einheit passt nicht zum konfigurierten Zähler.",
+    );
+  const existing = await db.reading.findFirst({
+    where: {
+      tenantId: device.tenantId,
+      deviceId: device.id,
+      messageId: value.messageId,
+    },
+    select: { id: true },
+  });
+  if (existing) return { duplicate: true, id: existing.id };
+  const previous = await db.reading.findFirst({
+    where: {
+      tenantId: device.tenantId,
+      meterId: device.meterId,
+      timestamp: { lt: timestamp },
+    },
+    orderBy: { timestamp: "desc" },
+    select: { registerValue: true },
+  });
+  if (previous && value.value < Number(previous.registerValue))
+    throw new AccessError(
+      400,
+      "Zählerstand darf nicht kleiner als der vorherige Stand sein.",
+    );
+  const row = await db.$transaction(async (tx) => {
+    const created = await tx.reading.create({
+      data: {
+        tenantId: device.tenantId,
+        meterId: device.meterId,
+        deviceId: device.id,
+        messageId: value.messageId,
+        timestamp,
+        registerValue: value.value,
+        meterValue: value.value,
+        consumption: value.consumption ?? 0,
+        measurementUnit: value.unit,
+        quality: value.quality,
+        source: "REST",
+        receivedAt: new Date(),
+      },
+    });
+    await tx.device.update({
+      where: { id: device.id },
+      data: { lastSeenAt: new Date(), status: "ONLINE" },
+    });
+    await tx.meter.update({
+      where: { id: device.meterId },
+      data: { lastContact: new Date() },
+    });
+    return created;
+  });
+  return { duplicate: false, id: row.id };
+}

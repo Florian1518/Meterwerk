@@ -1,0 +1,236 @@
+import "server-only";
+import { z } from "zod";
+import { db } from "./db";
+import { Prisma } from "../generated/prisma/client";
+import {
+  envelopeSchema,
+  verifyMessage,
+} from "../../apps/edge-gateway/src/wire";
+
+const decimal = z.string().regex(/^\d{1,14}(\.\d{1,6})?$/);
+const reading = z
+  .object({
+    messageId: z.string().min(1).max(160),
+    deviceId: z.string().min(1),
+    timestamp: z.iso.datetime(),
+    value: decimal,
+    consumption: decimal,
+    unit: z.literal("kWh"),
+    source: z.literal("MQTT"),
+    quality: z.literal("VALID"),
+  })
+  .strict();
+const heartbeat = z
+  .object({
+    gatewayId: z.string(),
+    timestamp: z.iso.datetime(),
+    agentVersion: z.string().max(80),
+    uptime: z.number().int().nonnegative(),
+    connectedDevices: z.number().int().nonnegative(),
+    queueSize: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export async function ingestGatewayMessage(topic: string, payload: Buffer) {
+  if (payload.length > 16384) throw new Error("Payload too large");
+  const match =
+    /^meterwerk\/v1\/gateways\/([A-Za-z0-9_-]+)\/(readings|heartbeat)$/.exec(
+      topic,
+    );
+  if (!match) throw new Error("Invalid topic");
+  const envelope = envelopeSchema.parse(JSON.parse(payload.toString()));
+  return db.$transaction(async (tx) => {
+    const topicGatewayId = match[1];
+    await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${topicGatewayId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "GatewayCredential" WHERE "id"=${envelope.credentialId} FOR SHARE`;
+    const credential = await tx.gatewayCredential.findUnique({
+      where: { id: envelope.credentialId },
+      include: { gateway: true },
+    });
+    if (
+      !credential ||
+      credential.status !== "ACTIVE" ||
+      credential.gatewayId !== match[1] ||
+      ["DISABLED", "MAINTENANCE"].includes(credential.gateway.status) ||
+      !verifyMessage(topic, envelope, credential.publicKey)
+    )
+      throw new Error("Invalid gateway credential or topic");
+    const { tenantId, gatewayId } = credential;
+    const raw: unknown = JSON.parse(envelope.body);
+    if (match[2] === "heartbeat") {
+      const value = heartbeat.parse(raw);
+      if (
+        value.gatewayId !== gatewayId ||
+        Math.abs(Date.now() - Date.parse(value.timestamp)) > 30000
+      )
+        throw new Error("Invalid heartbeat identity or time");
+      if (
+        credential.gateway.lastSeenAt &&
+        Date.parse(value.timestamp) <= credential.gateway.lastSeenAt.getTime()
+      )
+        return null;
+      await tx.gateway.update({
+        where: { id: gatewayId },
+        data: {
+          lastSeenAt: new Date(value.timestamp),
+          status: "ONLINE",
+          firmwareVersion: value.agentVersion,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: gatewayId,
+          action: "gateway.heartbeat",
+          entityId: gatewayId,
+        },
+      });
+      return null;
+    }
+    const value = reading.parse(raw);
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${value.deviceId} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const device = await tx.device.findFirst({
+      where: { id: value.deviceId, gatewayId, tenantId },
+      include: { meter: true },
+    });
+    if (
+      !device ||
+      ["DISABLED", "MAINTENANCE"].includes(device.status) ||
+      device.meter.measurementUnit !== value.unit
+    )
+      throw new Error("Invalid device or unit");
+    const duplicate = await tx.reading.findUnique({
+      where: {
+        tenantId_deviceId_messageId: {
+          tenantId,
+          deviceId: device.id,
+          messageId: value.messageId,
+        },
+      },
+      select: { id: true },
+    });
+    if (duplicate)
+      return { gatewayId, messageId: value.messageId, duplicate: true };
+    const timestamp = new Date(value.timestamp);
+    if (timestamp.getTime() > Date.now() + 30000)
+      throw new Error("Future timestamp");
+    const before = await tx.reading.findFirst({
+      where: {
+        tenantId,
+        meterId: device.meterId,
+        timestamp: { lt: timestamp },
+      },
+      orderBy: { timestamp: "desc" },
+      select: { registerValue: true },
+    });
+    const after = await tx.reading.findFirst({
+      where: {
+        tenantId,
+        meterId: device.meterId,
+        timestamp: { gt: timestamp },
+      },
+      orderBy: { timestamp: "asc" },
+      select: { registerValue: true },
+    });
+    const register = new Prisma.Decimal(value.value);
+    if (
+      (before && register.lt(before.registerValue)) ||
+      (after && register.gt(after.registerValue))
+    )
+      throw new Error("Nonmonotonic register");
+    await tx.reading.create({
+      data: {
+        tenantId,
+        meterId: device.meterId,
+        deviceId: device.id,
+        messageId: value.messageId,
+        timestamp,
+        registerValue: register,
+        meterValue: register,
+        consumption: value.consumption,
+        measurementUnit: value.unit,
+        source: "MQTT",
+        quality: "VALID",
+      },
+    });
+    // Historical queue replay must not make a currently disconnected device ONLINE.
+    if (!device.lastSeenAt || timestamp > device.lastSeenAt) {
+      const online = Date.now() - timestamp.getTime() < 15000;
+      await tx.device.update({
+        where: { id: device.id },
+        data: { lastSeenAt: timestamp, status: online ? "ONLINE" : "OFFLINE" },
+      });
+      await tx.meter.update({
+        where: { id: device.meterId },
+        data: { lastContact: timestamp, status: online ? "ACTIVE" : "OFFLINE" },
+      });
+    }
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: gatewayId,
+        action: "gateway.reading",
+        entityId: device.id,
+      },
+    });
+    return { gatewayId, messageId: value.messageId, duplicate: false };
+  });
+}
+
+export async function detectOffline() {
+  const cutoff = new Date(Date.now() - 15000);
+  await db.$transaction(async (tx) => {
+    const gateways = await tx.gateway.findMany({
+      where: { status: "ONLINE", lastSeenAt: { lt: cutoff } },
+      select: { id: true, tenantId: true },
+    });
+    for (const g of gateways) {
+      const changed = await tx.gateway.updateMany({
+        where: { ...g, status: "ONLINE", lastSeenAt: { lt: cutoff } },
+        data: { status: "OFFLINE" },
+      });
+      if (changed.count)
+        await tx.auditEvent.create({
+          data: {
+            tenantId: g.tenantId,
+            actorId: "offline-worker",
+            action: "gateway.offline",
+            entityId: g.id,
+          },
+        });
+    }
+    const devices = await tx.device.findMany({
+      where: {
+        gatewayId: { not: null },
+        status: "ONLINE",
+        lastSeenAt: { lt: cutoff },
+      },
+      select: { id: true, tenantId: true, meterId: true },
+    });
+    for (const d of devices) {
+      const changed = await tx.device.updateMany({
+        where: {
+          id: d.id,
+          tenantId: d.tenantId,
+          status: "ONLINE",
+          lastSeenAt: { lt: cutoff },
+        },
+        data: { status: "OFFLINE" },
+      });
+      if (changed.count) {
+        await tx.meter.updateMany({
+          where: { id: d.meterId, tenantId: d.tenantId },
+          data: { status: "OFFLINE" },
+        });
+        await tx.auditEvent.create({
+          data: {
+            tenantId: d.tenantId,
+            actorId: "offline-worker",
+            action: "device.offline",
+            entityId: d.id,
+          },
+        });
+      }
+    }
+  });
+}

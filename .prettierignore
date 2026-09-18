@@ -1,0 +1,10 @@
+node_modules
+.pnpm-store
+.next
+.local
+src/generated
+pnpm-lock.yaml
+prisma/migrations
+next-env.d.ts
+.test-edge-queue.json
+.meterwerk-queue.json
