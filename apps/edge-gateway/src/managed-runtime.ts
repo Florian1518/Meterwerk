@@ -126,12 +126,13 @@ export class ManagedRuntime {
     else this.lastContact.delete(device.deviceId);
     return sample;
   }
-  async tick() {
+  async tick(shouldStop: () => boolean = () => false) {
     const snapshot = this.state;
     if (!snapshot) return;
     // Previously authorized polling continues offline into the durable queue.
     // Commands still require their own fresh expiry and a signed control response.
     for (const command of this.commands.values()) {
+      if (shouldStop()) break;
       if (
         this.results.some((r) => r.id === command.id) ||
         Date.parse(command.expiresAt) < Date.now()
@@ -162,6 +163,7 @@ export class ManagedRuntime {
       await this.save();
     }
     for (const device of snapshot.devices) {
+      if (shouldStop()) break;
       if (
         device.enabled &&
         !device.disabled &&

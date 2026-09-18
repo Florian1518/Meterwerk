@@ -103,6 +103,20 @@ Der Worker unterscheidet Gateway-Heartbeat und Gerätepoll. Einzelfehler führen
 
 Live-Daten werden alle fünf Sekunden über authentifizierte API-Zugriffe aktualisiert; inaktive Tabs pausieren. CSV begrenzt Zeitraum auf 31 Tage und Zeilen auf 10.000, verwendet UTC und Einheiten und entschärft Tabellenformeln. Keine Browser- oder Hardwareabnahme wird durch HTTP-/Simulatorprüfungen ersetzt. Betriebsgrenzen und Servicevorlagen stehen in `docs/EDGE-GATEWAY-OPERATIONS.md`.
 
+## ADR 009: Pilotbetrieb ohne neue Dienstarchitektur
+
+Phase 4b behält die signierte Phase-3-Kette und die Phase-4a-Profile unverändert bei. Pilot-MQTT nutzt gegenseitiges TLS, mindestens TLS 1.2, geprüften Servernamen und kontrollierte CA. Der Broker bindet ACLs an den zertifizierten CN, nicht an eine frei gewählte Client-ID. Gateway-CN entspricht der internen Gateway-ID; `meterwerk-ingestion` ist ausschließlich für den Worker reserviert. Die lokale anonyme Demo bleibt isoliert verfügbar. TLS-/Brokeridentität und Ed25519-Nachrichtensignatur sind getrennte Sicherheitsgrenzen.
+
+Gateway-Credentials bleiben asymmetrisch: nur öffentlicher Schlüssel und SHA-256-Fingerprint in PostgreSQL, private Schlüssel ausschließlich in einmaligen, nicht cachebaren Erstellungs-/Rotationsantworten. Rotation/Widerruf sperren das alte Credential mit atomarem Audit. Ablauf und lastUsedAt werden bei Ingestion berücksichtigt. TLS-Clientzertifikate benötigen zusätzlich CA-/CRL-Verwaltung und Verbindungsabbruch bei Widerruf. Diese Verwaltungsmaßnahmen werden nicht durch eine zusätzliche Passwortdatenbank ersetzt.
+
+Die bestehende Dateiqueue bleibt erhalten und lesbar für Phase-3-Werkzeuge. Ein Sidecar speichert Retry-Zeitpunkte, Altersmetadaten und begrenzte Quarantäne. Kapazität/Alter sind begrenzt, Backoff übersteht Neustarts. Zu große neue Einträge, abgelaufene Daten und ausgeschöpfte Sendeversuche werden quarantänisiert. Quarantäneverlust ist explizit gezählt und sichtbar; unbegrenzte Offline-Verlustfreiheit wird nicht behauptet. Der Agent öffnet MQTT erst nach Laden des lokalen Zustands und Registrierung seiner Listener, um ein verlorenes Connect-Ereignis zu verhindern.
+
+WorkerHealth und TechnicalAlert sind mandantengebunden mit Tenant-Fremdschlüssel; Alarmobjekte sind serverseitig abgeleitete polymorphe Referenzen, keine clientseitig wählbaren Fremd-IDs. Der bestehende Worker beobachtet Verbindung und Geräte, während die authentifizierte Statusabfrage einen ausgefallenen Worker ebenfalls erkennt. Eindeutigkeit je Tenant/Typ/Objekt und eine Tenant-Sperre deduplizieren Übergänge; Erholung löst Alarme. MQTT-Unterbrechungsbeginn liegt in PostgreSQL, sodass mehrere Beobachter denselben Schwellenwert nutzen. Vollständiger Hostausfall erfordert einen externen Überwacher.
+
+Strukturierte Logs verwenden eine Feldfreigabeliste und keine Payload-/Error-Serialisierung. Health-/Credential-Zugriffe authentifizieren jeden Einstieg und verlangen Administratorrechte. Backup bleibt ein explizites lokales Werkzeug: Custom-Archiv, Prüfsumme, Lesbarkeitsprüfung und transaktionaler Restore ausschließlich in eine neue Datenbank. Es gibt keine automatische Löschung oder Überschreibung der aktiven Datenbank.
+
+Diese ADR ersetzt die früheren Hinweise auf fehlende TLS-/ACL-, Credential-, Queue- und Monitoring-Funktionen. Die standortspezifische Bereitstellung und reale Hardware-/Dauerbetriebsabnahme bleiben erforderlich; siehe `docs/PILOT-INSTALLATION.md`.
+
 ## Referenzen
 
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)

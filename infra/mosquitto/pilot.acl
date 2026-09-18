@@ -1,0 +1,17 @@
+# %u is the CA-verified certificate CN, never a client-supplied username.
+pattern write meterwerk/v1/gateways/%u/readings
+pattern write meterwerk/v1/gateways/%u/heartbeat
+pattern write meterwerk/v1/gateways/%u/telemetry
+pattern write meterwerk/v1/gateways/%u/control
+pattern write meterwerk/v1/gateways/%u/status
+pattern write meterwerk/v1/gateways/%u/events
+pattern read meterwerk/v1/gateways/%u/ack
+pattern read meterwerk/v1/gateways/%u/configuration
+
+user meterwerk-ingestion
+topic read meterwerk/v1/gateways/+/readings
+topic read meterwerk/v1/gateways/+/heartbeat
+topic read meterwerk/v1/gateways/+/telemetry
+topic read meterwerk/v1/gateways/+/control
+topic write meterwerk/v1/gateways/+/ack
+topic write meterwerk/v1/gateways/+/configuration

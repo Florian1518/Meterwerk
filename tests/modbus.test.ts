@@ -56,6 +56,8 @@ describe("gateway restart and offline configuration", () => {
       const restarted = create();
       await restarted.load();
       expect(restarted.hasDevice("test")).toBe(true);
+      await restarted.tick(() => true);
+      expect(samples).toHaveLength(0);
       const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 120000);
       try {
         await restarted.tick();

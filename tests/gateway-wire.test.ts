@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -55,7 +55,12 @@ describe("gateway delivery", () => {
       const restored = new PersistentQueue(file);
       await restored.load();
       expect(restored.size).toBe(1);
-      await restored.drain(async () => undefined);
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 2000);
+      try {
+        await restored.drain(async () => undefined);
+      } finally {
+        clock.mockRestore();
+      }
       expect(JSON.parse(await readFile(file, "utf8"))).toEqual([]);
       await writeFile(file, "corrupt");
       await expect(new PersistentQueue(file).load()).rejects.toThrow();

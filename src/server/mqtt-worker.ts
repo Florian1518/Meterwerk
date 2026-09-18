@@ -4,13 +4,23 @@ import { readFile } from "node:fs/promises";
 import { connect } from "mqtt";
 import { ingestGatewayMessage, detectOffline } from "./gateway-ingestion";
 import { signedMessage } from "../../apps/edge-gateway/src/wire";
-const receiptKey = await readFile(".local/receipt-private.pem", "utf8");
-const client = connect(process.env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883", {
-  clientId: "meterwerk-ingestion-local",
-  reconnectPeriod: 1000,
-  connectTimeout: 3000,
+import { mqttConnection } from "../lib/mqtt-connection";
+import { log } from "../lib/logger";
+import { recordWorkerHealth } from "./system-status";
+const receiptKey = await readFile(
+  process.env.MQTT_RECEIPT_KEY_PATH ?? ".local/receipt-private.pem",
+  "utf8",
+);
+const mqttConfig = await mqttConnection("meterwerk-ingestion");
+const client = connect(mqttConfig.url, mqttConfig.options);
+let subscribed = false,
+  errorStreak = 0;
+let lastErrorAt = 0;
+let lastIngestionAt: Date | null = null;
+client.on("error", () => log("ERROR", "ingestion", "mqtt.connection.error"));
+client.on("offline", () => {
+  subscribed = false;
 });
-client.on("error", () => console.error("MQTT worker connection unavailable"));
 client.on("connect", () => {
   client.subscribe(
     [
@@ -21,8 +31,12 @@ client.on("connect", () => {
     ],
     { qos: 1 },
     (error) => {
-      if (error) console.error("MQTT subscription failed");
-      else console.log("MQTT ingestion subscribed");
+      subscribed = !error;
+      log(
+        error ? "ERROR" : "INFO",
+        "ingestion",
+        error ? "mqtt.subscription.failed" : "mqtt.subscribed",
+      );
     },
   );
 });
@@ -31,7 +45,12 @@ client.on("message", (topic, payload) => {
   pending = pending
     .then(async () => {
       const result = await ingestGatewayMessage(topic, payload);
+      lastIngestionAt = new Date();
       if (result) {
+        log("DEBUG", "ingestion", "message.accepted", {
+          gatewayId: result.gatewayId,
+          ...("messageId" in result ? { messageId: result.messageId } : {}),
+        });
         const ackTopic = `meterwerk/v1/gateways/${result.gatewayId}/${"control" in result ? "configuration" : "ack"}`;
         await client.publishAsync(
           ackTopic,
@@ -45,17 +64,43 @@ client.on("message", (topic, payload) => {
         );
       }
     })
-    .catch(() =>
-      console.error("MQTT message rejected or database unavailable"),
-    );
+    .catch(() => {
+      if (Date.now() - lastErrorAt > 60000) errorStreak = 0;
+      errorStreak++;
+      lastErrorAt = Date.now();
+      log("WARN", "ingestion", "message.rejected");
+    });
 });
 let detecting = false;
-setInterval(() => {
+const timer = setInterval(() => {
   if (detecting) return;
   detecting = true;
+  if (Date.now() - lastErrorAt > 60000) errorStreak = 0;
   void detectOffline()
-    .catch(() => console.error("Offline detection failed"))
+    .then(() =>
+      recordWorkerHealth(
+        client.connected,
+        subscribed,
+        errorStreak,
+        lastIngestionAt,
+      ),
+    )
+    .catch(() => log("ERROR", "ingestion", "monitor.failed"))
     .finally(() => {
       detecting = false;
     });
 }, 2000);
+for (const signal of ["SIGINT", "SIGTERM"] as const)
+  process.on(signal, () => {
+    clearInterval(timer);
+    void pending.finally(async () => {
+      await recordWorkerHealth(
+        false,
+        false,
+        errorStreak,
+        lastIngestionAt,
+      ).catch(() => undefined);
+      client.end(true);
+      process.exit(0);
+    });
+  });

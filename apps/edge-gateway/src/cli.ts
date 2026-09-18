@@ -4,6 +4,13 @@ import { readFile, mkdir, open, unlink } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { connect } from "mqtt";
 import { z } from "zod";
+import { mqttConnection } from "../../../src/lib/mqtt-connection";
+import { log } from "../../../src/lib/logger";
+const agentVersion = "0.4.1";
+if (process.argv.includes("--version")) {
+  console.log(agentVersion);
+  process.exit(0);
+}
 import { PersistentQueue } from "./queue";
 import { topic } from "./mqtt";
 import { signedMessage, envelopeSchema, verifyMessage } from "./wire";
@@ -28,6 +35,17 @@ const config = z
     receiptPublicKeyPath: z.string().optional(),
     allowedTcpEndpoints: z.array(z.string()).optional(),
     allowedSerialPorts: z.array(z.string()).optional(),
+    queueLimits: z
+      .object({
+        maxItems: z.number().int().positive(),
+        maxBytes: z.number().int().positive(),
+        maxAgeMs: z.number().int().positive(),
+        warningItems: z.number().int().positive(),
+        maxAttempts: z.number().int().positive(),
+        quarantineItems: z.number().int().positive(),
+      })
+      .strict()
+      .optional(),
   })
   .parse(JSON.parse(await readFile(configPath, "utf8")));
 const dataDirectory = resolve(config.dataDirectory ?? dirname(configPath));
@@ -68,13 +86,14 @@ const receiptPublicKey = await readFile(
 );
 const queue = new PersistentQueue<ReadingMessage | Telemetry>(
   resolve(dataDirectory, "edge-queue.json"),
+  config.queueLimits,
 );
 await queue.load();
-const client = connect(process.env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883", {
-  clientId: `edge-${config.gatewayId}`,
-  reconnectPeriod: 1000,
-  connectTimeout: 3000,
-  queueQoSZero: false,
+const mqttConfig = await mqttConnection(config.gatewayId);
+// Load durable state and register listeners before opening the connection.
+const client = connect(mqttConfig.url, {
+  ...mqttConfig.options,
+  manualConnect: true,
 });
 const ackTopic = `meterwerk/v1/gateways/${config.gatewayId}/ack`;
 const configurationTopic = `meterwerk/v1/gateways/${config.gatewayId}/configuration`;
@@ -87,7 +106,9 @@ await runtime.load();
 const requests = new Map<string, number>();
 let configurationPending: unknown;
 const waiting = new Map<string, () => void>();
-client.on("error", () => undefined);
+client.on("error", () =>
+  log("WARN", "edge", "mqtt.connection.error", { gatewayId: config.gatewayId }),
+);
 let ready = false;
 client.on("offline", () => {
   ready = false;
@@ -134,6 +155,7 @@ client.on("message", (receivedTopic, payload) => {
 async function flush() {
   if (!ready) return;
   await queue.drain(async (item) => {
+    if (stopping) throw new Error("Agent stopping");
     if (!ready) throw new Error("MQTT offline");
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -162,8 +184,9 @@ async function flush() {
   });
 }
 let previous: bigint | undefined;
+client.connect();
 const started = Date.now();
-console.log(`Edge gateway ${config.gatewayId} started`);
+log("INFO", "edge", "agent.started", { gatewayId: config.gatewayId });
 let connected = false;
 const controlTimer = setInterval(() => {
   if (!ready) return;
@@ -195,10 +218,10 @@ const controlTimer = setInterval(() => {
       {
         gatewayId: config.gatewayId,
         timestamp: new Date().toISOString(),
-        agentVersion: "0.4.0",
+        agentVersion,
         uptime: Math.floor((Date.now() - started) / 1000),
         connectedDevices: runtime.connectedDevices() + (connected ? 1 : 0),
-        queueSize: queue.size,
+        ...queue.status,
       },
       privateKey,
     ),
@@ -211,10 +234,14 @@ while (!stopping) {
     configurationPending = undefined;
     await runtime.configure(pending);
   }
-  await runtime.tick();
+  await runtime.tick(() => stopping);
   connected = false;
   try {
-    if (!runtime.hasDevice(config.deviceId)) {
+    if (
+      !runtime.hasDevice(config.deviceId) &&
+      process.env.METERWERK_ENV !== "pilot" &&
+      process.env.NODE_ENV !== "production"
+    ) {
       const total = await readModbusEnergy();
       connected = true;
       const delta = previous === undefined ? 0n : total - previous;
@@ -232,15 +259,23 @@ while (!stopping) {
       previous = total;
     }
   } catch {
-    console.log("Modbus device unavailable");
+    log("WARN", "edge", "modbus.unavailable", {
+      gatewayId: config.gatewayId,
+      deviceId: config.deviceId,
+    });
   }
   try {
     await flush();
   } catch {
     /* Keep the durable queue for the next attempt. */
   }
-  console.log(
-    `Edge poll: connectedDevices=${runtime.connectedDevices() + (connected ? 1 : 0)}, queue=${queue.size}`,
+  log(
+    queue.status.queueWarning || queue.status.quarantineSize > 0
+      ? "WARN"
+      : "DEBUG",
+    "edge",
+    "queue.status",
+    { gatewayId: config.gatewayId, ...queue.status },
   );
   await new Promise((resolve) => setTimeout(resolve, 2000));
 }

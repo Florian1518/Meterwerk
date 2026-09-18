@@ -32,6 +32,12 @@ const navigation = [
     manage: true,
   },
   { href: "/users", label: "Benutzer", icon: Users, manage: true },
+  {
+    href: "/system-status",
+    label: "Systemstatus",
+    icon: Activity,
+    manage: true,
+  },
   { href: "/alarms", label: "Alarme", icon: Bell },
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];

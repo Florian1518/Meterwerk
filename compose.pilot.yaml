@@ -1,0 +1,14 @@
+# Standalone: docker compose -f compose.pilot.yaml up -d
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./infra/mosquitto/pilot.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/pilot.acl:/mosquitto/config/pilot.acl:ro
+      - ./.local/pilot-mqtt:/mosquitto/secrets:ro
+      - pilot_mqtt_data:/mosquitto/data
+volumes:
+  pilot_mqtt_data:

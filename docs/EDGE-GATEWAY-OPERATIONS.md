@@ -1,5 +1,7 @@
 # Edge-Gateway als dauerhafter Prozess
 
+Phase 4b ergänzt begrenzte Queue, JSON-Logs, Versionsanzeige (`pnpm edge-gateway --version`) und TLS/mTLS. Die folgenden Dienstvorlagen bleiben gültig; im Pilot zusätzlich `METERWERK_ENV=pilot`, eine `mqtts://`-Brokeradresse sowie `MQTT_CA_PATH`, `MQTT_CERT_PATH`, `MQTT_KEY_PATH` als geschützte Dienstumgebung konfigurieren. Details: [Pilot-Installation](PILOT-INSTALLATION.md). Die Loopback-URLs der Vorlagen sind reine Entwicklungsbeispiele.
+
 Der Agent bleibt ein separater Prozess. Node.js ≥22.12, die gesperrten pnpm-Abhängigkeiten und die nativen SerialPort-Bindings müssen auf dem Zielsystem installiert sein. Start aus dem Releaseverzeichnis mit `node --import tsx apps/edge-gateway/src/cli.ts`. Der Prozess braucht keinen Datenbankzugang und keine Benutzer-Cookies.
 
 ## Konfiguration, Daten und Logs
@@ -23,7 +25,7 @@ Der Agent bleibt ein separater Prozess. Node.js ≥22.12, die gesperrten pnpm-Ab
 
 Im Datenverzeichnis liegen `edge-queue.json`, `hardware-results.json`, der Konfigurationscache `hardware-results.json.configuration` und `edge.lock`. Queue und Cache bleiben beim Update erhalten. Autorisiertes Polling läuft bei MQTT-Ausfall weiter und wird nach Neustart aus dem Cache fortgesetzt. Abgelaufene Steuerbefehle werden nicht erneut ausgeführt. Eine Prozesssperre verhindert zwei Agenten im selben Datenverzeichnis. SIGINT/SIGTERM beenden den Agenten nach dem laufenden Arbeitszyklus; ausreichend Zeit zum Stoppen einplanen.
 
-Logs gehen auf stdout/stderr und enthalten Betriebszustände/Zähler, keine privaten Schlüssel. Dienstmanager übernimmt Dateiumleitung/Rotation. Für Linux dienen Journal und optional die unten genannten Logdateien; Aufbewahrung und Plattenalarme konfigurieren. Die Queue hat noch keine Kapazitätsgrenze und keine Quarantäne für dauerhaft abgewiesene Nachrichten: Füllstand, Alter und freien Speicher überwachen. Nicht unkontrolliert löschen.
+Logs gehen strukturiert auf stdout/stderr und enthalten Betriebszustände/Zähler, keine privaten Schlüssel. Dienstmanager übernimmt Dateiumleitung/Rotation. Für Linux dienen Journal und optional die unten genannten Logdateien; Aufbewahrung und Plattenalarme konfigurieren. Queue und Quarantäne sind begrenzt; Retry-Metadaten und Quarantäne liegen in `edge-queue.json.state`. Füllstand, Alter und freien Speicher überwachen. Nicht unkontrolliert löschen.
 
 ## Windows: WinSW
 
@@ -41,7 +43,7 @@ Eine geprüfte WinSW-Version lokal bereitstellen. Wrapper und XML gleich benenne
   <env name="MQTT_BROKER_URL" value="mqtt://127.0.0.1:1883" />
   <startmode>Automatic</startmode>
   <delayedAutoStart>true</delayedAutoStart>
-  <stoptimeout>120 sec</stoptimeout>
+  <stoptimeout>600 sec</stoptimeout>
   <onfailure action="restart" delay="10 sec" />
   <logpath>C:\ProgramData\Meterwerk\logs</logpath>
   <log mode="roll" />
@@ -70,7 +72,7 @@ Environment=MQTT_BROKER_URL=mqtt://127.0.0.1:1883
 ExecStart=/usr/bin/node --import tsx apps/edge-gateway/src/cli.ts
 Restart=on-failure
 RestartSec=10
-TimeoutStopSec=120
+TimeoutStopSec=600
 NoNewPrivileges=true
 StandardOutput=journal
 StandardError=journal
@@ -89,4 +91,4 @@ Als `/etc/systemd/system/meterwerk-edge.service` installieren, danach `systemctl
 3. Dienst stoppen, Ende des Prozesses abwarten, Releasepfad umstellen, Dienst starten.
 4. ONLINE, aktuelle Messung, Queue-Abbau und fehlerfreie Diagnose kontrollieren. Bei Fehler auf das kompatible vorherige Release zurückwechseln; keine Queue-Dateien löschen.
 
-Keine automatische Update-Infrastruktur enthalten. Vor Produktionsfreigabe fehlen insbesondere Broker-TLS/ACLs samt Credential-Lebenszyklus, überwachte Queue-Grenzen/Quarantäne, Backup/Wiederherstellung, Last-/Langzeittests und ein Abnahmetest auf realem RS485-Adapter/Zähler. Lokales anonymes MQTT nur für die isolierte Demo verwenden.
+Keine automatische Update-Infrastruktur enthalten. Vor Pilotfreigabe müssen die vorbereiteten TLS/ACLs und Credentials auf dem Zielsystem eingerichtet und Backup/Restore, Last-/Langzeitverhalten sowie realer RS485-Adapter/Zähler abgenommen werden. Lokales anonymes MQTT nur für die isolierte Demo verwenden.

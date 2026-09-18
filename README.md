@@ -185,7 +185,7 @@ pnpm test:phase3
 
 `test:phase3` startet diese drei Prozesse, stoppt/startet Simulator und MQTT gezielt und lässt die drei Prozesse bei Erfolg laufen. Ergebnisse und Prozess-IDs stehen in `.local/phase3-results.json` und `.local/phase3-processes.json`. Vor einem erneuten Lauf die vom Test gestarteten Prozesse unter Windows mit `node scripts/stop-phase3.mjs` beenden. Das Stoppskript prüft die Prozessidentitäten; Docker und Web laufen weiter. Es benötigt keine Änderung der PowerShell-Skriptrichtlinie. Ein weiterer Testlauf wird abgewiesen, solange die gespeicherten Prozesse noch laufen. Logs: `.local/{mqtt-worker,modbus-simulator,edge-gateway}.log`.
 
-Grenzen: lokale Entwicklungsumgebung, kein Produktionsbetrieb. Mosquitto ist nur an Loopback veröffentlicht, intern aber anonym; TLS, Broker-ACLs, Credential-Verwaltungsoberfläche, Queue-Kapazitätsgrenzen, Quarantäne dauerhaft ungültiger Nachrichten und Worker-Skalierung sind noch nicht implementiert. Die automatische Browserdarstellung muss zusätzlich mit einem verbundenen Browser geprüft werden; der E2E-Test prüft die authentifiziert ausgelieferten Dashboard-Daten per HTTP.
+Grenzen der Entwicklungsumgebung: Mosquitto ist nur an Loopback veröffentlicht, intern aber anonym. Für Pilotbetrieb die separate Phase-4b-Konfiguration unten verwenden. Verteilter Worker-Betrieb ist nicht vorgesehen. Die automatische Browserdarstellung muss zusätzlich mit einem verbundenen Browser geprüft werden; der E2E-Test prüft die authentifiziert ausgelieferten Dashboard-Daten per HTTP.
 
 ### Phase 4a: Hardware-Readiness
 
@@ -204,3 +204,17 @@ pnpm test:modbus
 Der Modbus-E2E-Test konfiguriert ausschließlich den lokalen Demo-Zähler, prüft Rechte, Inbetriebnahme, Live-Daten, CSV und simulierte Fehler/Wiederkehr. Er stellt am Ende NONE und aktives Polling wieder her; Ergebnisse: `.local/phase4a-results.json`. Weitere Fehlercodes: WRONG_SLAVE, DISCONNECTED, INVALID_REGISTER, UNREALISTIC, COMMUNICATION. Der Simulator liefert 14 Werte; ein TCP-Formatfehler abstrahiert Kommunikationsfehler, echte RTU-CRC-Prüfung findet im seriellen Transport statt.
 
 Vollständige Arbeitsanleitung: [Hardware-Inbetriebnahme](docs/HARDWARE-COMMISSIONING.md). Autostart, Windows-Service, systemd, Pfade, Queue, Logs und manuelle Updates: [Gateway-Betrieb](docs/EDGE-GATEWAY-OPERATIONS.md). Noch offen: reale Register-/Verdrahtungsabnahme, physischer RTU-Test, Dienst-/Langzeittest auf dem Zielgerät und die genannten Produktionsmaßnahmen. Pro Gateway maximal 32 konfigurierte Geräte; Abfragen laufen seriell. Die tatsächliche Pollfrequenz hängt zusätzlich von Antwortzeiten, Gerätezahl und dem Agent-Arbeitszyklus ab.
+
+### Phase 4b: Pilotbetrieb
+
+Nach `pnpm db:migrate` und `pnpm db:generate` Web, Worker und Agent neu starten. Unter `/system-status` stehen Gateway-Anlage, einmalige Credential-Erstellung/Rotation/Widerruf, technische Health-Daten und deduplizierte Alarme bereit. Die bestehende Modbus-Inbetriebnahme bleibt unter `/commissioning` erhalten.
+
+Pilot verwendet mTLS mit Zertifikatsprüfung und Gateway-ACLs; `compose.pilot.yaml` wird eigenständig mit eigenem Projektnamen gestartet. **Nicht** mit dem anonymen Entwicklungslistener kombinieren. Der Agent puffert maximal 10.000 Einträge/32 MiB/sieben Tage, mit Backoff, Warnungen und begrenzter Quarantäne. Bei erschöpfter Quarantäne werden Verluste gezählt und alarmiert.
+
+- [Pilot-Installation, TLS/ACL, Credentials und Queue](docs/PILOT-INSTALLATION.md)
+- [Backup und Wiederherstellung](docs/BACKUP-RESTORE.md)
+- [Windows-/Linux-Dienstbetrieb](docs/EDGE-GATEWAY-OPERATIONS.md)
+
+Neue Prüfungen: `pnpm test:pilot` auf laufender lokaler Demo sowie `pnpm test:mqtt-tls` auf einem getrennten Testbroker. Für TLS-Tests einmalig `scripts/test-mqtt-certificates.py` mit Python und cryptography ausführen, dann `docker compose -p meterwerk-pilot-test -f compose.pilot.yaml up -d`. Die Testzertifikate sind kurzlebig, lokal ignoriert und nicht für Pilotstandorte geeignet. Backup-Beispiel: `pnpm db:backup backup .local/backups/pilot.dump`, danach `verify` und `restore` gemäß Dokumentation.
+
+Noch standortspezifisch abzunehmen: reale Register/RS485, Zertifikats-/CRL-Verteilung, Dienstkonto und Neustart, Firewall, Überwachung durch einen zuständigen Betreiber, externe verschlüsselte Sicherung, Restore, Last-/Langzeittest und Browser-Bedienung. Keine automatische Cloud-, Update- oder Nachrichteninfrastruktur ist hinzugekommen.

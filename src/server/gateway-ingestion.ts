@@ -30,6 +30,9 @@ const heartbeat = z
     uptime: z.number().int().nonnegative(),
     connectedDevices: z.number().int().nonnegative(),
     queueSize: z.number().int().nonnegative(),
+    queueWarning: z.boolean().optional(),
+    quarantineSize: z.number().int().nonnegative().optional(),
+    queueDropped: z.number().int().nonnegative().optional(),
   })
   .strict();
 
@@ -52,12 +55,17 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
     if (
       !credential ||
       credential.status !== "ACTIVE" ||
+      (credential.expiresAt !== null && credential.expiresAt <= new Date()) ||
       credential.gatewayId !== match[1] ||
       ["DISABLED", "MAINTENANCE"].includes(credential.gateway.status) ||
       !verifyMessage(topic, envelope, credential.publicKey)
     )
       throw new Error("Invalid gateway credential or topic");
     const { tenantId, gatewayId } = credential;
+    await tx.gatewayCredential.update({
+      where: { id: credential.id },
+      data: { lastUsedAt: new Date() },
+    });
     const raw: unknown = JSON.parse(envelope.body);
     if (match[2] === "telemetry")
       return acceptTelemetry(tx, tenantId, gatewayId, raw);
@@ -81,6 +89,10 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
           lastSeenAt: new Date(value.timestamp),
           status: "ONLINE",
           firmwareVersion: value.agentVersion,
+          queueSize: value.queueSize,
+          queueWarning: value.queueWarning ?? value.queueSize >= 1000,
+          quarantineSize: value.quarantineSize ?? 0,
+          queueDropped: value.queueDropped ?? 0,
         },
       });
       await tx.auditEvent.create({

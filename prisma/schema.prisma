@@ -70,6 +70,8 @@ model Tenant {
   properties Property[]
   gateways Gateway[]
   devices Device[]
+  workerHealth WorkerHealth[]
+  technicalAlerts TechnicalAlert[]
 }
 model User {
   id String @id @default(cuid())
@@ -181,6 +183,10 @@ model Gateway {
   manufacturer String
   model String
   firmwareVersion String?
+  queueSize Int @default(0)
+  queueWarning Boolean @default(false)
+  quarantineSize Int @default(0)
+  queueDropped Int @default(0)
   status DeviceStatus @default(MAINTENANCE)
   lastSeenAt DateTime?
   installedAt DateTime
@@ -198,10 +204,37 @@ model GatewayCredential {
   tenantId String
   gatewayId String
   publicKey String
+  keyFingerprint String?
+  expiresAt DateTime?
+  lastUsedAt DateTime?
+  revokedAt DateTime?
   status DeviceTokenStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   gateway Gateway @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
   @@index([tenantId, gatewayId])
+}
+model WorkerHealth {
+  tenantId String @id
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  heartbeatAt DateTime
+  mqttConnected Boolean
+  mqttDisconnectedAt DateTime?
+  subscribed Boolean
+  errorStreak Int @default(0)
+  lastIngestionAt DateTime?
+}
+model TechnicalAlert {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind String
+  entityId String
+  active Boolean @default(true)
+  openedAt DateTime @default(now())
+  resolvedAt DateTime?
+  occurrences Int @default(1)
+  @@unique([tenantId, kind, entityId])
+  @@index([tenantId, active])
 }
 model Device {
   id String @id @default(cuid())

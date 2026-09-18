@@ -175,8 +175,11 @@ export async function writeModbus(
   const { actor, tenantId, meter } = await access(meterId, requested, true);
   const value = operationSchema.parse(raw);
   return db.$transaction(async (tx) => {
-    // Ingestion locks Device before updating Meter. Keep the same order here
-    // so a configuration change cannot deadlock with a concurrent poll.
+    // Match ingestion order Gateway -> Device -> Meter. GatewayCommand inserts
+    // also acquire a Gateway FK lock, including for STOP/READ commands.
+    const targetGateway =
+      value.operation === "CONFIGURE" ? value.gatewayId : "";
+    await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "tenantId"=${tenantId} AND ("id"=${targetGateway} OR "id" IN (SELECT "gatewayId" FROM "Device" WHERE "meterId"=${meterId} AND "tenantId"=${tenantId})) ORDER BY "id" FOR UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "meterId"=${meterId} AND "tenantId"=${tenantId} ORDER BY "id" FOR UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "Meter" WHERE "id"=${meterId} AND "tenantId"=${tenantId} FOR UPDATE`;
     let device = await tx.device.findFirst({

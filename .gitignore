@@ -15,5 +15,7 @@ test-results/
 *.pfx
 *.keystore
 *.log
+*.dump
+*.dump.sha256
 .meterwerk-queue.json*
 .test-edge-queue.json*
