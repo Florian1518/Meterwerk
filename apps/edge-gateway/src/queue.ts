@@ -2,16 +2,14 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ReadingMessage } from "./types";
 
-export class PersistentQueue {
-  private items: ReadingMessage[] = [];
+export class PersistentQueue<T extends { messageId: string } = ReadingMessage> {
+  private items: T[] = [];
   private loaded = false;
   constructor(private readonly file = ".meterwerk-queue.json") {}
   async load() {
     if (this.loaded) return;
     try {
-      this.items = JSON.parse(
-        await readFile(this.file, "utf8"),
-      ) as ReadingMessage[];
+      this.items = JSON.parse(await readFile(this.file, "utf8")) as T[];
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       this.items = [];
@@ -21,7 +19,7 @@ export class PersistentQueue {
   get size() {
     return this.items.length;
   }
-  async enqueue(item: ReadingMessage) {
+  async enqueue(item: T) {
     await this.load();
     if (!this.items.some((x) => x.messageId === item.messageId))
       this.items.push(item);
@@ -36,7 +34,7 @@ export class PersistentQueue {
     this.items = this.items.filter((x) => x.messageId !== messageId);
     await this.persist();
   }
-  async drain(send: (item: ReadingMessage) => Promise<void>) {
+  async drain(send: (item: T) => Promise<void>) {
     await this.load();
     for (const item of [...this.items]) {
       await send(item);

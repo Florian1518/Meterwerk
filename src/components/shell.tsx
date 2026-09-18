@@ -25,6 +25,12 @@ const navigation = [
   { href: "/buildings", label: "Gebäude", icon: Home },
   { href: "/units", label: "Nutzungseinheiten", icon: Building2 },
   { href: "/meters", label: "Zähler", icon: Gauge },
+  {
+    href: "/commissioning",
+    label: "Inbetriebnahme",
+    icon: Activity,
+    manage: true,
+  },
   { href: "/users", label: "Benutzer", icon: Users, manage: true },
   { href: "/alarms", label: "Alarme", icon: Bell },
   { href: "/settings", label: "Einstellungen", icon: Settings },

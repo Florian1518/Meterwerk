@@ -5,6 +5,8 @@ import { pageContext } from "@/server/page-context";
 import { AccessError } from "@/server/policy";
 import { DataTable } from "@/components/data-table";
 import { typeLabels } from "@/server/dashboard";
+import { readModbus } from "@/server/modbus";
+import { ModbusConsole, type ModbusView } from "@/components/modbus-console";
 export default async function MeterPage({
   params,
   searchParams,
@@ -56,6 +58,15 @@ export default async function MeterPage({
         </dl>
       </section>
       <h2 className="section-title">Letzte 48 Messwerte</h2>
+      <ModbusConsole
+        initial={
+          JSON.parse(
+            JSON.stringify(
+              await readModbus(meter.id, (await searchParams).tenantId),
+            ),
+          ) as ModbusView
+        }
+      />
       <DataTable
         headers={[
           "Zeitpunkt (UTC)",

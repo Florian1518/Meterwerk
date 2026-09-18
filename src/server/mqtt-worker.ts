@@ -13,7 +13,12 @@ const client = connect(process.env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883", {
 client.on("error", () => console.error("MQTT worker connection unavailable"));
 client.on("connect", () => {
   client.subscribe(
-    ["meterwerk/v1/gateways/+/readings", "meterwerk/v1/gateways/+/heartbeat"],
+    [
+      "meterwerk/v1/gateways/+/readings",
+      "meterwerk/v1/gateways/+/heartbeat",
+      "meterwerk/v1/gateways/+/telemetry",
+      "meterwerk/v1/gateways/+/control",
+    ],
     { qos: 1 },
     (error) => {
       if (error) console.error("MQTT subscription failed");
@@ -27,10 +32,15 @@ client.on("message", (topic, payload) => {
     .then(async () => {
       const result = await ingestGatewayMessage(topic, payload);
       if (result) {
-        const ackTopic = `meterwerk/v1/gateways/${result.gatewayId}/ack`;
+        const ackTopic = `meterwerk/v1/gateways/${result.gatewayId}/${"control" in result ? "configuration" : "ack"}`;
         await client.publishAsync(
           ackTopic,
-          signedMessage(ackTopic, "meterwerk-receipt", result, receiptKey),
+          signedMessage(
+            ackTopic,
+            "meterwerk-receipt",
+            "control" in result ? result.control : result,
+            receiptKey,
+          ),
           { qos: 1 },
         );
       }

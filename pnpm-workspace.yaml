@@ -5,3 +5,4 @@ allowBuilds:
   unrs-resolver: true
   embedded-postgres: true
   "@embedded-postgres/windows-x64": true
+  "@serialport/bindings-cpp": true

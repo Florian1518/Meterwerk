@@ -4,7 +4,7 @@ import { z } from "zod";
 export const envelopeSchema = z
   .object({
     credentialId: z.string().min(1).max(160),
-    body: z.string().max(12000),
+    body: z.string().max(262144),
     signature: z.string().max(128),
   })
   .strict();

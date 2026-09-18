@@ -2,6 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { db } from "./db";
 import { Prisma } from "../generated/prisma/client";
+import { acceptTelemetry, gatewayControl } from "./modbus-ingestion";
+import { modbusConfigSchema, offlineAfter } from "../lib/modbus/contracts";
 import {
   envelopeSchema,
   verifyMessage,
@@ -34,7 +36,7 @@ const heartbeat = z
 export async function ingestGatewayMessage(topic: string, payload: Buffer) {
   if (payload.length > 16384) throw new Error("Payload too large");
   const match =
-    /^meterwerk\/v1\/gateways\/([A-Za-z0-9_-]+)\/(readings|heartbeat)$/.exec(
+    /^meterwerk\/v1\/gateways\/([A-Za-z0-9_-]+)\/(readings|heartbeat|telemetry|control)$/.exec(
       topic,
     );
   if (!match) throw new Error("Invalid topic");
@@ -57,6 +59,10 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
       throw new Error("Invalid gateway credential or topic");
     const { tenantId, gatewayId } = credential;
     const raw: unknown = JSON.parse(envelope.body);
+    if (match[2] === "telemetry")
+      return acceptTelemetry(tx, tenantId, gatewayId, raw);
+    if (match[2] === "control")
+      return gatewayControl(tx, tenantId, gatewayId, raw);
     if (match[2] === "heartbeat") {
       const value = heartbeat.parse(raw);
       if (
@@ -202,6 +208,7 @@ export async function detectOffline() {
     const devices = await tx.device.findMany({
       where: {
         gatewayId: { not: null },
+        modbusConfig: { is: null },
         status: "ONLINE",
         lastSeenAt: { lt: cutoff },
       },
@@ -230,6 +237,42 @@ export async function detectOffline() {
             entityId: d.id,
           },
         });
+      }
+    }
+    const managed = await tx.device.findMany({
+      where: {
+        status: { in: ["ONLINE", "WARNING"] },
+        modbusConfig: { isNot: null },
+      },
+      include: { modbusConfig: true, diagnostic: true },
+    });
+    for (const d of managed) {
+      const config = modbusConfigSchema.parse(d.modbusConfig!.configuration);
+      const last = d.diagnostic?.lastPollAt ?? d.lastSeenAt;
+      if (last && Date.now() - last.getTime() > offlineAfter(config)) {
+        const changed = await tx.device.updateMany({
+          where: {
+            id: d.id,
+            tenantId: d.tenantId,
+            status: { in: ["ONLINE", "WARNING"] },
+            lastSeenAt: d.lastSeenAt,
+          },
+          data: { status: "OFFLINE" },
+        });
+        if (changed.count) {
+          await tx.meter.update({
+            where: { id: d.meterId },
+            data: { status: "OFFLINE" },
+          });
+          await tx.auditEvent.create({
+            data: {
+              tenantId: d.tenantId,
+              actorId: "offline-worker",
+              action: "modbus.offline",
+              entityId: d.id,
+            },
+          });
+        }
       }
     }
   });

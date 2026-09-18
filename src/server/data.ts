@@ -108,7 +108,7 @@ export async function listResource(
     }
     case "devices":
       return db.device.findMany({
-        where: { tenantId, ...(id ? { id } : {}) },
+        where: { tenantId, meter, ...(id ? { id } : {}) },
         include: {
           meter: { select: { serialNumber: true, type: true } },
           gateway: { select: { name: true } },
@@ -118,8 +118,16 @@ export async function listResource(
       });
     case "gateways":
       return db.gateway.findMany({
-        where: { tenantId, ...(id ? { id } : {}) },
-        include: { _count: { select: { devices: true } } },
+        where: {
+          tenantId,
+          ...(actor.role === "USER"
+            ? { devices: { some: { tenantId, meter } } }
+            : {}),
+          ...(id ? { id } : {}),
+        },
+        include: {
+          _count: { select: { devices: { where: { tenantId, meter } } } },
+        },
         orderBy: { name: "asc" },
         take: 200,
       });

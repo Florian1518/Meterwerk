@@ -1,22 +1,74 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir, open, unlink } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
 import { connect } from "mqtt";
 import { z } from "zod";
 import { PersistentQueue } from "./queue";
 import { topic } from "./mqtt";
 import { signedMessage, envelopeSchema, verifyMessage } from "./wire";
 import { energyDecimal, readModbusEnergy } from "./tcp-modbus";
+import type { ReadingMessage } from "./types";
+import type { Telemetry } from "../../../src/lib/modbus/contracts";
+import {
+  ManagedRuntime,
+  endpointPolicy,
+  controlResponseSchema,
+} from "./managed-runtime";
+const configPath = resolve(
+  process.env.EDGE_CONFIG_PATH ?? ".local/edge-config.json",
+);
 const config = z
   .object({
     gatewayId: z.string(),
     deviceId: z.string(),
     credentialId: z.string(),
+    dataDirectory: z.string().optional(),
+    privateKeyPath: z.string().optional(),
+    receiptPublicKeyPath: z.string().optional(),
+    allowedTcpEndpoints: z.array(z.string()).optional(),
+    allowedSerialPorts: z.array(z.string()).optional(),
   })
-  .parse(JSON.parse(await readFile(".local/edge-config.json", "utf8")));
-const privateKey = await readFile(".local/gateway-private.pem", "utf8");
-const receiptPublicKey = await readFile(".local/receipt-public.pem", "utf8");
-const queue = new PersistentQueue(".local/edge-queue.json");
+  .parse(JSON.parse(await readFile(configPath, "utf8")));
+const dataDirectory = resolve(config.dataDirectory ?? dirname(configPath));
+await mkdir(dataDirectory, { recursive: true });
+const lockPath = resolve(dataDirectory, "edge.lock");
+try {
+  const lock = await open(lockPath, "wx");
+  await lock.writeFile(String(process.pid));
+  await lock.close();
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  const pid = Number(await readFile(lockPath, "utf8"));
+  let alive = true;
+  try {
+    process.kill(pid, 0);
+  } catch {
+    alive = false;
+  }
+  if (alive) throw new Error("Edge instance already running");
+  await unlink(lockPath);
+  const lock = await open(lockPath, "wx");
+  await lock.writeFile(String(process.pid));
+  await lock.close();
+}
+let stopping = false;
+for (const signal of ["SIGINT", "SIGTERM"] as const)
+  process.on(signal, () => {
+    stopping = true;
+  });
+const privateKey = await readFile(
+  config.privateKeyPath ?? resolve(dirname(configPath), "gateway-private.pem"),
+  "utf8",
+);
+const receiptPublicKey = await readFile(
+  config.receiptPublicKeyPath ??
+    resolve(dirname(configPath), "receipt-public.pem"),
+  "utf8",
+);
+const queue = new PersistentQueue<ReadingMessage | Telemetry>(
+  resolve(dataDirectory, "edge-queue.json"),
+);
 await queue.load();
 const client = connect(process.env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883", {
   clientId: `edge-${config.gatewayId}`,
@@ -25,6 +77,15 @@ const client = connect(process.env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883", {
   queueQoSZero: false,
 });
 const ackTopic = `meterwerk/v1/gateways/${config.gatewayId}/ack`;
+const configurationTopic = `meterwerk/v1/gateways/${config.gatewayId}/configuration`;
+const runtime = new ManagedRuntime(
+  resolve(dataDirectory, "hardware-results.json"),
+  endpointPolicy(config),
+  (sample) => queue.enqueue(sample),
+);
+await runtime.load();
+const requests = new Map<string, number>();
+let configurationPending: unknown;
 const waiting = new Map<string, () => void>();
 client.on("error", () => undefined);
 let ready = false;
@@ -32,13 +93,25 @@ client.on("offline", () => {
   ready = false;
 });
 client.on("connect", () => {
-  client.subscribe(ackTopic, { qos: 1 }, (error) => {
+  client.subscribe([ackTopic, configurationTopic], { qos: 1 }, (error) => {
     ready = !error;
   });
 });
 client.on("message", (receivedTopic, payload) => {
   try {
     const envelope = envelopeSchema.parse(JSON.parse(payload.toString()));
+    if (
+      receivedTopic === configurationTopic &&
+      envelope.credentialId === "meterwerk-receipt" &&
+      verifyMessage(receivedTopic, envelope, receiptPublicKey)
+    ) {
+      const value = controlResponseSchema.parse(JSON.parse(envelope.body));
+      const sent = requests.get(value.requestId);
+      if (!sent || Date.now() - sent > 10000) return;
+      requests.delete(value.requestId);
+      configurationPending = value;
+      return;
+    }
     if (
       receivedTopic !== ackTopic ||
       envelope.credentialId !== "meterwerk-receipt" ||
@@ -72,7 +145,7 @@ async function flush() {
         waiting.delete(item.messageId);
         resolve();
       });
-      const destination = topic(config.gatewayId, "readings");
+      const destination = `meterwerk/v1/gateways/${config.gatewayId}/${"kind" in item ? "telemetry" : "readings"}`;
       client.publish(
         destination,
         signedMessage(destination, config.credentialId, item, privateKey),
@@ -91,46 +164,75 @@ async function flush() {
 let previous: bigint | undefined;
 const started = Date.now();
 console.log(`Edge gateway ${config.gatewayId} started`);
-while (true) {
-  let connected = false;
+let connected = false;
+const controlTimer = setInterval(() => {
+  if (!ready) return;
+  for (const [id, sent] of requests)
+    if (Date.now() - sent > 10000) requests.delete(id);
+  const requestId = randomUUID();
+  requests.set(requestId, Date.now());
+  const destination = `meterwerk/v1/gateways/${config.gatewayId}/control`;
+  client.publish(
+    destination,
+    signedMessage(
+      destination,
+      config.credentialId,
+      {
+        requestId,
+        timestamp: new Date().toISOString(),
+        results: runtime.results.slice(0, 50),
+      },
+      privateKey,
+    ),
+    { qos: 0 },
+  );
+  const heartbeatTopic = topic(config.gatewayId, "heartbeat");
+  client.publish(
+    heartbeatTopic,
+    signedMessage(
+      heartbeatTopic,
+      config.credentialId,
+      {
+        gatewayId: config.gatewayId,
+        timestamp: new Date().toISOString(),
+        agentVersion: "0.4.0",
+        uptime: Math.floor((Date.now() - started) / 1000),
+        connectedDevices: runtime.connectedDevices() + (connected ? 1 : 0),
+        queueSize: queue.size,
+      },
+      privateKey,
+    ),
+    { qos: 0 },
+  );
+}, 2000);
+while (!stopping) {
+  if (configurationPending) {
+    const pending = configurationPending;
+    configurationPending = undefined;
+    await runtime.configure(pending);
+  }
+  await runtime.tick();
+  connected = false;
   try {
-    const total = await readModbusEnergy();
-    connected = true;
-    const delta = previous === undefined ? 0n : total - previous;
-    if (delta < 0n) throw new Error("Meter reset requires review");
-    await queue.enqueue({
-      messageId: randomUUID(),
-      deviceId: config.deviceId,
-      timestamp: new Date().toISOString(),
-      value: energyDecimal(total),
-      consumption: energyDecimal(delta),
-      unit: "kWh",
-      quality: "VALID",
-      source: "MQTT",
-    });
-    previous = total;
+    if (!runtime.hasDevice(config.deviceId)) {
+      const total = await readModbusEnergy();
+      connected = true;
+      const delta = previous === undefined ? 0n : total - previous;
+      if (delta < 0n) throw new Error("Meter reset requires review");
+      await queue.enqueue({
+        messageId: randomUUID(),
+        deviceId: config.deviceId,
+        timestamp: new Date().toISOString(),
+        value: energyDecimal(total),
+        consumption: energyDecimal(delta),
+        unit: "kWh",
+        quality: "VALID",
+        source: "MQTT",
+      });
+      previous = total;
+    }
   } catch {
     console.log("Modbus device unavailable");
-  }
-  if (ready) {
-    const destination = topic(config.gatewayId, "heartbeat");
-    client.publish(
-      destination,
-      signedMessage(
-        destination,
-        config.credentialId,
-        {
-          gatewayId: config.gatewayId,
-          timestamp: new Date().toISOString(),
-          agentVersion: "0.3.0",
-          uptime: Math.floor((Date.now() - started) / 1000),
-          connectedDevices: connected ? 1 : 0,
-          queueSize: queue.size,
-        },
-        privateKey,
-      ),
-      { qos: 0 },
-    );
   }
   try {
     await flush();
@@ -138,7 +240,10 @@ while (true) {
     /* Keep the durable queue for the next attempt. */
   }
   console.log(
-    `Edge poll: device=${connected ? "ONLINE" : "OFFLINE"}, queue=${queue.size}`,
+    `Edge poll: connectedDevices=${runtime.connectedDevices() + (connected ? 1 : 0)}, queue=${queue.size}`,
   );
   await new Promise((resolve) => setTimeout(resolve, 2000));
 }
+clearInterval(controlTimer);
+client.end(true);
+await unlink(lockPath);

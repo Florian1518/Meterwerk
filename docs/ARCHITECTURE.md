@@ -89,6 +89,20 @@ Diese ADR ersetzt die früheren Aussagen über noch nicht angeschlossene MQTT-/M
 4. Tages-/Monatsaggregate und Cursor-Pagination für große Datenmengen; aktuell lädt der 30-Tage-Chart gefilterte Rohwerte. Keinen unbegrenzten Großkundenbetrieb darauf aufbauen.
 5. Tarife mit Gültigkeitszeiträumen, exakte Decimal-Abrechnung, Exporte, Alarmregeln und Benachrichtigungen.
 
+## ADR 008: Hardwareprofile und gesteuerte Inbetriebnahme
+
+Die Phase-3-Transportarchitektur bleibt erhalten. Zentrale, Zod-validierte JSON-Profile beschreiben Register und Dekodierung. Der Simulator ist ein eigenes verifiziertes Profil; das dreiphasige Hardwareprofil bleibt bis zur Handbuchprüfung unverifiziert. Der Edge-Agent liest TCP und RTU mit denselben Profilverträgen. Decimal/BigInt bewahren ganzzahlige Zählerpräzision; Byte-/Word-Order, Skalierung und Plausibilitätsgrenzen werden explizit geprüft.
+
+Mandantengebundene ModbusConfiguration, ModbusDiagnostic, TelemetrySample, TechnicalMeasurement und GatewayCommand besitzen zusammengesetzte Hierarchie-Fremdschlüssel und eine versionierte Migration. Konfigurationen speichern revisionierte Profilsnapshots, damit verzögerte Queue-Daten weiterhin gegen ihren ursprünglichen Vertrag geprüft werden. Technische Messwerte verwenden Decimal; Importenergie speist zusätzlich die vorhandene Reading-Zeitreihe. Historische/ rückläufige Zählerstände erzeugen keinen künstlichen Verbrauch, sondern SUSPECT mit Nullverbrauch.
+
+Web-Mutationen authentifizieren Sitzung, Rolle, Mandant und Zählerzugriff, validieren strikt und schreiben atomare AuditEvents. USER benötigt PropertyGrant auch für technische Daten und CSV. Administrative Rohdaten sind separat geschützt. Das UI zeigt nur begrenzte DTOs ohne Credentials. SUPER_ADMIN benötigt einen expliziten Mandanten.
+
+Gateway-Kommandos werden über signierte Control-Pulls mit Request-ID und Gültigkeitsfrist zugestellt. Lokale Endpunktfreigaben verhindern beliebige Port-/Host-Zugriffe durch Serverkonfiguration. TEST/READ/START/STOP werden erst nach realer Gateway-Ausführung als erfolgreich markiert. Ergebnisse und autorisierte Konfiguration bleiben lokal erhalten. Polling läuft während Broker-Ausfällen weiter in die bestehende persistente Queue; signierte Commit-Bestätigungen und eindeutige Nachrichten-IDs verhindern doppelte Datenbankwerte. Abgelaufene Befehle werden nicht nach einem Neustart wiederholt.
+
+Der Worker unterscheidet Gateway-Heartbeat und Gerätepoll. Einzelfehler führen zu WARNING, wiederholte Fehler zu OFFLINE; Verbindungsabbrüche sofort. Der Zeitablauf berücksichtigt Polling-Intervall/Timeout. Commissioning-Status und Verbindungsstatus sind getrennt: ACTIVE ist eine abgeschlossene Inbetriebnahme, ONLINE ein aktueller Kontakt. Erfolgreiche neue Werte beheben FAULT, alte Queue-Daten stellen keinen aktuellen Verbindungsstatus her.
+
+Live-Daten werden alle fünf Sekunden über authentifizierte API-Zugriffe aktualisiert; inaktive Tabs pausieren. CSV begrenzt Zeitraum auf 31 Tage und Zeilen auf 10.000, verwendet UTC und Einheiten und entschärft Tabellenformeln. Keine Browser- oder Hardwareabnahme wird durch HTTP-/Simulatorprüfungen ersetzt. Betriebsgrenzen und Servicevorlagen stehen in `docs/EDGE-GATEWAY-OPERATIONS.md`.
+
 ## Referenzen
 
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)

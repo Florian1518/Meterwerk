@@ -190,6 +190,7 @@ model Gateway {
   @@unique([id, tenantId])
   @@unique([tenantId, externalGatewayId])
   credentials GatewayCredential[]
+  commands GatewayCommand[]
   @@index([tenantId, status])
 }
 model GatewayCredential {
@@ -222,6 +223,10 @@ model Device {
   updatedAt DateTime @updatedAt
   credentials DeviceCredential[]
   readings Reading[]
+  modbusConfig ModbusConfiguration?
+  diagnostic ModbusDiagnostic?
+  telemetry TelemetrySample[]
+  commands GatewayCommand[]
   @@unique([id, tenantId])
   @@unique([tenantId, externalDeviceId])
   @@index([tenantId, meterId])
@@ -278,4 +283,86 @@ model AuditEvent {
   entityId String
   createdAt DateTime @default(now())
   @@index([tenantId, createdAt])
+}
+enum CommissioningStatus {
+  NOT_CONFIGURED
+  COMMISSIONING
+  ACTIVE
+  FAULT
+  DISABLED
+}
+model ModbusConfiguration {
+  deviceId String @id
+  tenantId String
+  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  configuration Json
+  profile Json
+  history Json @default("[]")
+  revision Int @default(1)
+  state CommissioningStatus @default(NOT_CONFIGURED)
+  step Int @default(1)
+  pollingEnabled Boolean @default(false)
+  reviewedRevision Int?
+  confirmedUnitId String?
+  completedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@unique([deviceId, tenantId])
+  @@index([tenantId])
+}
+model ModbusDiagnostic {
+  deviceId String @id
+  tenantId String
+  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  lastPollAt DateTime?
+  lastSuccessAt DateTime?
+  responseMs Int?
+  lastError String?
+  successes Int @default(0)
+  errors Int @default(0)
+  consecutiveErrors Int @default(0)
+  revision Int @default(0)
+  raw Json
+  @@unique([deviceId, tenantId])
+  @@index([tenantId])
+}
+model TelemetrySample {
+  id String @id @default(cuid())
+  tenantId String
+  deviceId String
+  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  messageId String
+  timestamp DateTime
+  revision Int
+  error String?
+  measurements TechnicalMeasurement[]
+  @@unique([id, tenantId])
+  @@unique([tenantId, deviceId, messageId])
+  @@index([tenantId, deviceId, timestamp])
+}
+model TechnicalMeasurement {
+  id String @id @default(cuid())
+  tenantId String
+  sampleId String
+  sample TelemetrySample @relation(fields: [sampleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  metric String
+  value Decimal @db.Decimal(20,6)
+  unit String
+  @@unique([sampleId, metric])
+  @@index([tenantId, metric])
+}
+model GatewayCommand {
+  id String @id @default(cuid())
+  tenantId String
+  gatewayId String
+  gateway Gateway @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  deviceId String
+  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  action String
+  revision Int
+  status String @default("PENDING")
+  error String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  completedAt DateTime?
+  @@index([tenantId, gatewayId, status])
 }

@@ -185,4 +185,22 @@ pnpm test:phase3
 
 `test:phase3` startet diese drei Prozesse, stoppt/startet Simulator und MQTT gezielt und lässt die drei Prozesse bei Erfolg laufen. Ergebnisse und Prozess-IDs stehen in `.local/phase3-results.json` und `.local/phase3-processes.json`. Vor einem erneuten Lauf die vom Test gestarteten Prozesse unter Windows mit `node scripts/stop-phase3.mjs` beenden. Das Stoppskript prüft die Prozessidentitäten; Docker und Web laufen weiter. Es benötigt keine Änderung der PowerShell-Skriptrichtlinie. Ein weiterer Testlauf wird abgewiesen, solange die gespeicherten Prozesse noch laufen. Logs: `.local/{mqtt-worker,modbus-simulator,edge-gateway}.log`.
 
-Grenzen: lokale Entwicklungsumgebung, kein Produktionsbetrieb. Mosquitto ist nur an Loopback veröffentlicht, intern aber anonym; TLS, Broker-ACLs, Credential-Verwaltungsoberfläche, Queue-Kapazitätsgrenzen, Quarantäne dauerhaft ungültiger Nachrichten und Worker-Skalierung sind noch nicht implementiert. Der Simulator implementiert ausschließlich den genannten Registervertrag, kein vollständiges Modbus-Gerät. Die automatische Browserdarstellung muss zusätzlich mit einem verbundenen Browser geprüft werden; der E2E-Test prüft die authentifiziert ausgelieferten Dashboard-Daten per HTTP.
+Grenzen: lokale Entwicklungsumgebung, kein Produktionsbetrieb. Mosquitto ist nur an Loopback veröffentlicht, intern aber anonym; TLS, Broker-ACLs, Credential-Verwaltungsoberfläche, Queue-Kapazitätsgrenzen, Quarantäne dauerhaft ungültiger Nachrichten und Worker-Skalierung sind noch nicht implementiert. Die automatische Browserdarstellung muss zusätzlich mit einem verbundenen Browser geprüft werden; der E2E-Test prüft die authentifiziert ausgelieferten Dashboard-Daten per HTTP.
+
+### Phase 4a: Hardware-Readiness
+
+Die Phase-3-Kette bleibt bestehen und unterstützt jetzt zentrale Modbus-Profile, TCP und serielles RTU, signierte Gateway-Steueraufträge und 14 technische Messgrößen. Ohne gespeicherte Modbus-Konfiguration bleibt der bisherige Demo-Poll aktiv; nach Konfiguration steuern die Einstellungen des Zählers das Gateway. Die Hardwarevorlage enthält absichtlich keine erfundenen Register und muss vor Verwendung anhand des Herstellerhandbuchs vervollständigt werden.
+
+Nach `pnpm install --frozen-lockfile`, `pnpm db:generate` und `pnpm db:migrate` Web, Worker, Simulator und Edge starten. Als Administrator unter `/commissioning` den Demo-Zähler `MODBUS-DEMO-001` wählen. Profil „Simulator“ mit TCP 127.0.0.1:1502 / Unit 1 konfigurieren, Verbindung testen, Messwerte bestätigen, Nutzungseinheit bestätigen, Inbetriebnahme abschließen und Polling starten. Die Zählerdetailseite zeigt Live-Werte und CSV-Export; die Diagnose zusätzlich Auftragsergebnisse und administrative Rohdaten. Aktualisierung: fünf Sekunden bei sichtbarem Browser-Tab. Alle Messzeitpunkte und Exportzeiträume sind UTC.
+
+```powershell
+pnpm modbus:ports
+pnpm modbus:fault TIMEOUT
+pnpm modbus:fault NONE
+# Lokale Demo, Web/Worker/Simulator/Edge müssen laufen:
+pnpm test:modbus
+```
+
+Der Modbus-E2E-Test konfiguriert ausschließlich den lokalen Demo-Zähler, prüft Rechte, Inbetriebnahme, Live-Daten, CSV und simulierte Fehler/Wiederkehr. Er stellt am Ende NONE und aktives Polling wieder her; Ergebnisse: `.local/phase4a-results.json`. Weitere Fehlercodes: WRONG_SLAVE, DISCONNECTED, INVALID_REGISTER, UNREALISTIC, COMMUNICATION. Der Simulator liefert 14 Werte; ein TCP-Formatfehler abstrahiert Kommunikationsfehler, echte RTU-CRC-Prüfung findet im seriellen Transport statt.
+
+Vollständige Arbeitsanleitung: [Hardware-Inbetriebnahme](docs/HARDWARE-COMMISSIONING.md). Autostart, Windows-Service, systemd, Pfade, Queue, Logs und manuelle Updates: [Gateway-Betrieb](docs/EDGE-GATEWAY-OPERATIONS.md). Noch offen: reale Register-/Verdrahtungsabnahme, physischer RTU-Test, Dienst-/Langzeittest auf dem Zielgerät und die genannten Produktionsmaßnahmen. Pro Gateway maximal 32 konfigurierte Geräte; Abfragen laufen seriell. Die tatsächliche Pollfrequenz hängt zusätzlich von Antwortzeiten, Gerätezahl und dem Agent-Arbeitszyklus ab.
