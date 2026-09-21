@@ -4,6 +4,71 @@
   gap: 2px;
   white-space: nowrap;
 }
+.dashboard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -8px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.dashboard-controls label {
+  flex: 1 1 150px;
+  gap: 5px;
+  font-size: 10px;
+  color: #718078;
+}
+.dashboard-controls select {
+  padding: 8px 10px;
+  background: #fbfdfc;
+}
+.data-quality {
+  color: #65756d;
+  font-size: 10px;
+}
+.toast {
+  border: 1px solid #bfe7d4;
+  border-radius: 8px;
+  background: #effaf4;
+  color: #176b4d;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.form-help {
+  font-size: 10px;
+  color: #7b8c83;
+  font-weight: 400;
+}
+.required-mark {
+  color: #b42318;
+  font-style: normal;
+}
+.status-page {
+  max-width: 620px;
+  margin: 70px auto;
+  padding: 34px;
+}
+.status-page h1 {
+  margin: 12px 0;
+}
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+  align-items: center;
+}
+@media (max-width: 700px) {
+  .dashboard-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashboard-controls label:last-child {
+    grid-column: 1 / -1;
+  }
+}
 .edit-dialog {
   border: 1px solid #dce4df;
   border-radius: 12px;
@@ -1039,6 +1104,152 @@ footer {
     font-size: 47px;
   }
 }
+/* Phase 5e shared UX primitives */
+.nav-section + .nav-section {
+  margin-top: 18px;
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #76867e;
+  font-size: 11px;
+}
+.breadcrumbs > a,
+.breadcrumbs > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.breadcrumbs a:hover {
+  color: var(--primary);
+}
+.topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.protected-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+.global-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(340px, 35vw);
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #fafdfb;
+  color: #779087;
+}
+.global-search input {
+  border: 0;
+  outline: 0;
+  padding: 2px;
+  background: transparent;
+  width: 100%;
+  font-size: 12px;
+}
+.global-search input:focus {
+  outline: 0;
+}
+.search-clear {
+  border: 0;
+  background: transparent;
+  color: #779087;
+  display: flex;
+  padding: 2px;
+}
+.search-results {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 18px 45px #163e3120;
+}
+.search-results a {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  padding: 11px 13px;
+  border-bottom: 1px solid #eef2ef;
+}
+.search-results a:hover {
+  background: #f3f8f5;
+}
+.search-results strong {
+  font-size: 12px;
+}
+.search-results small {
+  grid-column: 2;
+}
+.search-kind {
+  grid-row: span 2;
+  align-self: center;
+  border-radius: 999px;
+  background: #e8f5ef;
+  color: #087450;
+  padding: 4px 7px;
+  font-size: 9px;
+}
+.search-results p {
+  padding: 14px;
+  font-size: 12px;
+}
+.table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.table-sort:hover {
+  color: var(--primary);
+}
+.table-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #edf0ee;
+  padding: 13px 20px;
+  color: #75817e;
+  font-size: 11px;
+}
+.table-pagination > div {
+  display: flex;
+  gap: 7px;
+}
+.button-secondary {
+  border: 1px solid #dce4df;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: #fff;
+  color: #40564b;
+  font-size: 11px;
+}
+.button-secondary:hover:not(:disabled) {
+  background: #f2f7f4;
+}
+.button-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 @media (max-width: 900px) {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1068,6 +1279,27 @@ footer {
   }
 }
 @media (max-width: 600px) {
+  .topbar-tools {
+    gap: 8px;
+  }
+  .global-search {
+    width: 42px;
+    padding: 7px;
+  }
+  .global-search input {
+    position: absolute;
+    right: 0;
+    top: 42px;
+    width: min(280px, calc(100vw - 32px));
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 10px 30px #163e3120;
+  }
+  .protected-label {
+    display: none;
+  }
   .app-shell {
     display: block;
   }

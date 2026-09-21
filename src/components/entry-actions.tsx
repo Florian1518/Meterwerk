@@ -86,6 +86,11 @@ export function EntryActions({
             fixed={{ id, operation: "update" }}
             title="Daten bearbeiten"
             expanded
+            confirmMessage={
+              kind === "users" && values.active === "true"
+                ? `Soll der Benutzer ${name} wirklich deaktiviert werden?`
+                : undefined
+            }
           />
         ) : (
           <form action={action}>

@@ -12,6 +12,12 @@ export function MeterReplacementForm({
   const [pending, setPending] = useState(false);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      !window.confirm(
+        "Zählerwechsel speichern? Der Ausbauzeitpunkt und Zählerstände werden dauerhaft dokumentiert.",
+      )
+    )
+      return;
     setPending(true);
     const data = new FormData(event.currentTarget);
     const payload = {
@@ -52,7 +58,14 @@ export function MeterReplacementForm({
         Historische Messwerte bleiben erhalten. Der neue Zähler muss dasselbe
         Medium und dieselbe Einheit haben.
       </p>
-      <p role="status">{message}</p>
+      {message && (
+        <p
+          role="status"
+          className={message.includes("gespeichert") ? "toast" : "form-error"}
+        >
+          {message}
+        </p>
+      )}
       <form className="form-grid" onSubmit={submit}>
         <label>
           Neuer Zähler (ID)

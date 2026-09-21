@@ -5,10 +5,10 @@ import {
   Activity,
   Bell,
   Building2,
-  ChevronRight,
   Gauge,
   Home,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Settings,
   ShieldCheck,
@@ -16,41 +16,84 @@ import {
   Warehouse,
   Zap,
   FileText,
-  ListChecks,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
-const navigation = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
-  { href: "/reports", label: "Berichte", icon: FileText },
-  { href: "/onboarding", label: "Onboarding", icon: ListChecks, manage: true },
-  { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
+import { Breadcrumbs } from "./breadcrumbs";
+import { GlobalSearch } from "./global-search";
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Activity;
+  manage?: boolean;
+  platform?: boolean;
+};
+const navigation: { group: string; items: NavItem[] }[] = [
   {
-    href: "/platform-admin",
-    label: "Plattformverwaltung",
-    icon: ShieldCheck,
-    platform: true,
+    group: "ÜBERSICHT",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
+    ],
   },
-  { href: "/properties", label: "Liegenschaften", icon: Building2 },
-  { href: "/buildings", label: "Gebäude", icon: Home },
-  { href: "/units", label: "Nutzungseinheiten", icon: Building2 },
-  { href: "/meters", label: "Zähler", icon: Gauge },
   {
-    href: "/commissioning",
-    label: "Inbetriebnahme",
-    icon: Activity,
-    manage: true,
+    group: "OBJEKTE",
+    items: [
+      { href: "/properties", label: "Liegenschaften", icon: Building2 },
+      { href: "/buildings", label: "Gebäude", icon: Home },
+      { href: "/units", label: "Nutzungseinheiten", icon: Building2 },
+    ],
   },
-  { href: "/users", label: "Benutzer", icon: Users, manage: true },
   {
-    href: "/system-status",
-    label: "Systemstatus",
-    icon: Activity,
-    manage: true,
+    group: "METERING",
+    items: [
+      { href: "/meters", label: "Zähler", icon: Gauge },
+      {
+        href: "/commissioning",
+        label: "Inbetriebnahme",
+        icon: Activity,
+        manage: true,
+      },
+    ],
   },
-  { href: "/alarms", label: "Alarme", icon: Bell },
-  { href: "/settings", label: "Einstellungen", icon: Settings },
+  {
+    group: "ANALYSE",
+    items: [
+      { href: "/reports", label: "Berichte", icon: FileText },
+      { href: "/alarms", label: "Alarme", icon: Bell },
+    ],
+  },
+  {
+    group: "BETRIEB",
+    items: [
+      {
+        href: "/system-status",
+        label: "Systemstatus",
+        icon: Activity,
+        manage: true,
+      },
+      {
+        href: "/onboarding",
+        label: "Onboarding",
+        icon: ListChecks,
+        manage: true,
+      },
+    ],
+  },
+  {
+    group: "ADMINISTRATION",
+    items: [
+      { href: "/users", label: "Benutzer", icon: Users, manage: true },
+      { href: "/settings", label: "Einstellungen", icon: Settings },
+      { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
+      {
+        href: "/platform-admin",
+        label: "Plattformverwaltung",
+        icon: ShieldCheck,
+        platform: true,
+      },
+    ],
+  },
 ];
 export function Shell({
   actor,
@@ -85,27 +128,35 @@ export function Shell({
             <small>Smart Metering Workspace</small>
           </div>
         </div>
-        <p className="nav-heading">WORKSPACE</p>
         <nav aria-label="Hauptnavigation">
-          {navigation
-            .filter(
+          {navigation.map((section) => {
+            const items = section.items.filter(
               (item) =>
                 (!item.platform || actor.role === "SUPER_ADMIN") &&
                 (!item.manage ||
                   ["SUPER_ADMIN", "TENANT_ADMIN"].includes(actor.role)),
-            )
-            .map((item) => (
-              <Link
-                aria-current={path === item.href ? "page" : undefined}
-                className={path === item.href ? "nav-link active" : "nav-link"}
-                href={`${item.href}${suffix}`}
-                key={item.href}
-              >
-                <item.icon size={18} />
-                {item.label}
-                {path === item.href && <span className="nav-dot" />}
-              </Link>
-            ))}
+            );
+            if (!items.length) return null;
+            return (
+              <div className="nav-section" key={section.group}>
+                <p className="nav-heading">{section.group}</p>
+                {items.map((item) => (
+                  <Link
+                    aria-current={path === item.href ? "page" : undefined}
+                    className={
+                      path === item.href ? "nav-link active" : "nav-link"
+                    }
+                    href={`${item.href}${suffix}`}
+                    key={item.href}
+                  >
+                    <item.icon size={17} />
+                    {item.label}
+                    {path === item.href && <span className="nav-dot" />}
+                  </Link>
+                ))}
+              </div>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <div className="demo-card">
@@ -139,16 +190,14 @@ export function Shell({
       </aside>
       <div className="main-shell">
         <header className="topbar">
-          <div>
-            Workspace <ChevronRight size={14} />
-            <strong>
-              {navigation.find((n) => n.href === path)?.label ?? "Übersicht"}
-            </strong>
+          <Breadcrumbs />
+          <div className="topbar-tools">
+            <GlobalSearch tenantId={tenant} />
+            <span className="protected-label">
+              <ShieldCheck size={15} /> Geschützter Bereich{" "}
+              <span className="topbar-dot" /> DEMO
+            </span>
           </div>
-          <span>
-            <ShieldCheck size={15} /> Geschützter Bereich{" "}
-            <span className="topbar-dot" /> DEMO
-          </span>
         </header>
         <main className="page-content">{children}</main>
         <footer>

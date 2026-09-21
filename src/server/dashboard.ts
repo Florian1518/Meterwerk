@@ -12,6 +12,7 @@ export async function dashboard(
   actor: Actor,
   requested: string | null | undefined,
   type: MeterType,
+  options: { propertyId?: string; days?: number } = {},
 ) {
   const tenantId = tenantScope(actor, requested);
   const now = new Date();
@@ -25,8 +26,12 @@ export async function dashboard(
   const previousEnd = new Date(
     Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth() + 1, 1),
   );
-  const chartStart = new Date(today.getTime() - 29 * 86400000);
-  const property = propertyScope(actor, tenantId);
+  const days = Math.min(90, Math.max(7, options.days ?? 30));
+  const chartStart = new Date(today.getTime() - (days - 1) * 86400000);
+  const property = {
+    ...propertyScope(actor, tenantId),
+    ...(options.propertyId ? { id: options.propertyId } : {}),
+  };
   const scope = { tenantId, unit: { building: { property } } };
   const selected = { ...scope, type };
   const valid = {
@@ -40,6 +45,8 @@ export async function dashboard(
     todayTotal,
     monthTotal,
     previousTotal,
+    periodTotal,
+    previousPeriodTotal,
     series,
     alarms,
     typeTotals,
@@ -84,6 +91,20 @@ export async function dashboard(
       where: { ...valid, timestamp: { gte: previous, lt: previousEnd } },
       _sum: { consumption: true },
     }),
+    db.reading.aggregate({
+      where: { ...valid, timestamp: { gte: chartStart, lte: now } },
+      _sum: { consumption: true },
+    }),
+    db.reading.aggregate({
+      where: {
+        ...valid,
+        timestamp: {
+          gte: new Date(chartStart.getTime() - days * 86400000),
+          lt: chartStart,
+        },
+      },
+      _sum: { consumption: true },
+    }),
     db.reading.findMany({
       where: { ...valid, timestamp: { gte: chartStart, lte: now } },
       select: { timestamp: true, consumption: true, source: true },
@@ -112,7 +133,7 @@ export async function dashboard(
       }),
     ),
   ]);
-  const byDay = Array.from({ length: 30 }, (_, i) => ({
+  const byDay = Array.from({ length: days }, (_, i) => ({
     date: new Date(chartStart.getTime() + i * 86400000)
       .toISOString()
       .slice(0, 10),
@@ -165,9 +186,16 @@ export async function dashboard(
     today: Number(todayTotal._sum.consumption ?? 0),
     month: Number(monthTotal._sum.consumption ?? 0),
     previous: Number(previousTotal._sum.consumption ?? 0),
+    period: Number(periodTotal._sum.consumption ?? 0),
+    previousPeriod: Number(previousPeriodTotal._sum.consumption ?? 0),
+    periodDays: days,
     cost,
     byDay,
     properties: [...properties.values()],
+    propertyOptions: [...properties.entries()].map(([id, value]) => ({
+      id,
+      name: value.name,
+    })),
     meters: meters.length,
     active: meters.filter(
       (m) =>
@@ -179,6 +207,12 @@ export async function dashboard(
     ).length,
     lastDataReceived,
     hasActualData,
+    dataQuality:
+      series.length === 0
+        ? "NO_DATA"
+        : series.every((row) => row.source === "DEMO")
+          ? "DEMO"
+          : "MIXED",
     alarms,
     alarmCount,
     typeTotals,

@@ -17,6 +17,7 @@ export function CreateForm({
   title = "Eintrag anlegen",
   fixed = {},
   expanded = false,
+  confirmMessage,
 }: {
   kind: string;
   tenantId?: string;
@@ -24,12 +25,23 @@ export function CreateForm({
   title?: string;
   fixed?: Record<string, string>;
   expanded?: boolean;
+  confirmMessage?: string;
 }) {
   const [state, action, pending] = useActionState(createAction, {});
   return (
     <details className="create-details" open={expanded || undefined}>
       <summary>＋ {title}</summary>
-      <form action={action} className="create-form">
+      <form
+        action={action}
+        className="create-form"
+        onSubmit={
+          confirmMessage
+            ? (event) => {
+                if (!window.confirm(confirmMessage)) event.preventDefault();
+              }
+            : undefined
+        }
+      >
         <input type="hidden" name="kind" value={kind} />
         {tenantId && (
           <input type="hidden" name="tenantId" value={tenantId} />
@@ -40,7 +52,15 @@ export function CreateForm({
         <div className="form-grid">
           {fields.map((field) => (
             <label key={field.name}>
-              {field.label}
+              <span>
+                {field.label}{" "}
+                {!field.optional && (
+                  <em className="required-mark" aria-hidden="true">
+                    *
+                  </em>
+                )}
+              </span>
+              {field.optional && <small className="form-help">Optional</small>}
               {field.options ? (
                 <select
                   name={field.name}

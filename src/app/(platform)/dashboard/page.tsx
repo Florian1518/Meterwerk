@@ -19,10 +19,16 @@ import { TenantSelect } from "@/components/tenant-select";
 import { DashboardRefresh } from "@/components/dashboard-refresh";
 import { UtilityOverview } from "@/components/utility-overview";
 import { utilityReport } from "@/server/utility";
+import { DashboardControls } from "@/components/dashboard-controls";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tenantId?: string; type?: string }>;
+  searchParams: Promise<{
+    tenantId?: string;
+    type?: string;
+    days?: string;
+    propertyId?: string;
+  }>;
 }) {
   const params = await searchParams;
   const ctx = await pageContext(params.tenantId);
@@ -30,7 +36,13 @@ export default async function DashboardPage({
     params.type && Object.hasOwn(typeLabels, params.type)
       ? (params.type as MeterType)
       : "ELECTRICITY";
-  const data = await dashboard(ctx.actor, ctx.tenantId, type);
+  const days = [7, 30, 90].includes(Number(params.days))
+    ? Number(params.days)
+    : 30;
+  const data = await dashboard(ctx.actor, ctx.tenantId, type, {
+    days,
+    propertyId: params.propertyId,
+  });
   const report = await utilityReport(ctx.tenantId);
   const cost = report.results.find((r) => r.utility === type)?.cost ?? null;
   const suffix = `?tenantId=${encodeURIComponent(ctx.tenantId)}`;
@@ -105,6 +117,13 @@ export default async function DashboardPage({
           </span>
         </div>
       </div>
+      <DashboardControls
+        properties={data.propertyOptions}
+        tenantId={ctx.tenantId}
+        type={type}
+        days={days}
+        propertyId={params.propertyId}
+      />
       <div className="portfolio-bar">
         <span>
           <Building2 size={17} />
@@ -116,6 +135,17 @@ export default async function DashboardPage({
           {data.lastDataReceived
             ? `${data.hasActualData ? "Echte Ingestion-Daten" : "Demo-Messwerte"} · Letzter Empfang ${new Date(data.lastDataReceived).toLocaleString("de-DE", { timeZone: "UTC" })} UTC`
             : "Keine Messung empfangen"}
+        </span>
+        <span
+          className="data-quality"
+          title="Qualität der in diesem Zeitraum eingegangenen Messwerte"
+        >
+          Datenqualität:{" "}
+          {data.dataQuality === "NO_DATA"
+            ? "Keine Daten"
+            : data.dataQuality === "DEMO"
+              ? "Demo"
+              : "Gemischt"}
         </span>
       </div>
       <div className="tab-row" aria-label="Zählerart">
