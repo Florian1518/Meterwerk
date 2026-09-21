@@ -1,4 +1,4 @@
-import type { MeterDriver } from "./types";
+import type { DriverCapabilities, MeterDriver } from "./types";
 
 export type RegisterMap = {
   totalEnergyImport: number;
@@ -33,6 +33,26 @@ export class ModbusDriver implements MeterDriver {
   async health() {
     return "WARNING" as const;
   }
+  async testConnection() {
+    try {
+      await this.connect();
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        detail: error instanceof Error ? error.message : "connection failed",
+      };
+    }
+  }
+  getCapabilities(): DriverCapabilities {
+    return {
+      utility: "ELECTRICITY",
+      protocol: this.config.protocol,
+      metrics: Object.keys(this.config.registerMap),
+      mode: "POLLING",
+      bidirectional: false,
+    };
+  }
   async disconnect() {}
 }
 
@@ -60,6 +80,33 @@ export class VirtualModbusMeter implements MeterDriver {
   }
   async health() {
     return this.connected ? ("ONLINE" as const) : ("OFFLINE" as const);
+  }
+  async testConnection() {
+    return {
+      ok: this.connected,
+      detail: this.connected ? undefined : "not connected",
+    };
+  }
+  getCapabilities(): DriverCapabilities {
+    return {
+      utility: "ELECTRICITY",
+      protocol: "VIRTUAL",
+      metrics: [
+        "ENERGY_IMPORT",
+        "ACTIVE_POWER",
+        "VOLTAGE_L1",
+        "VOLTAGE_L2",
+        "VOLTAGE_L3",
+        "CURRENT_L1",
+        "CURRENT_L2",
+        "CURRENT_L3",
+        "FREQUENCY",
+      ],
+      mode: "POLLING",
+      bidirectional: false,
+      manufacturer: "Meterwerk",
+      model: "Virtual Modbus",
+    };
   }
   async disconnect() {
     this.connected = false;

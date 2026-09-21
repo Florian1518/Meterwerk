@@ -4,7 +4,17 @@ export type GatewayStatus =
   | "WARNING"
   | "MAINTENANCE"
   | "DISABLED";
-export type MeterProtocol = "MODBUS_TCP" | "MODBUS_RTU" | "VIRTUAL";
+export type MeterProtocol =
+  | "MODBUS_TCP"
+  | "MODBUS_RTU"
+  | "MBUS"
+  | "WMBUS"
+  | "PULSE"
+  | "LORAWAN"
+  | "REST"
+  | "MQTT"
+  | "VENDOR_API"
+  | "VIRTUAL";
 export type ReadingQuality = "VALID" | "ESTIMATED" | "INVALID" | "SUSPECT";
 
 export type ReadingMessage = {
@@ -27,9 +37,22 @@ export type GatewayHeartbeat = {
   queueSize: number;
 };
 
+export type DriverCapabilities = {
+  utility: "ELECTRICITY" | "WATER" | "GAS" | "HEAT";
+  protocol: MeterProtocol;
+  metrics: string[];
+  mode: "POLLING" | "EVENT";
+  bidirectional: boolean;
+  serialNumber?: string;
+  manufacturer?: string;
+  model?: string;
+};
+
 export interface MeterDriver {
   connect(): Promise<void>;
   read(): Promise<Record<string, number>>;
   health(): Promise<"ONLINE" | "OFFLINE" | "WARNING">;
+  testConnection(): Promise<{ ok: boolean; detail?: string }>;
+  getCapabilities(): DriverCapabilities;
   disconnect(): Promise<void>;
 }

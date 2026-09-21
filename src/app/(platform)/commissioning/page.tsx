@@ -13,11 +13,24 @@ export default async function CommissioningPage({
   const meters = await listResource(actor, "meters", tenantId);
   return (
     <>
-      <h1>Modbus-Inbetriebnahme</h1>
+      <h1>Protokoll-Inbetriebnahme</h1>
       <p>
-        Gateway, Zähler und Profil zuordnen, Verbindung testen und Messwerte
-        bestätigen.
+        Zuerst Medium und Protokoll prüfen, dann Profil und
+        Kommunikationsparameter zuordnen, Verbindung oder Testtelegramm prüfen
+        und Messgrößen bestätigen.
       </p>
+      <section className="panel">
+        <h2>Vorbereitete Protokolle</h2>
+        <p>
+          MODBUS_RTU · MODBUS_TCP · MBUS · WMBUS · PULSE · LORAWAN · REST · MQTT
+          · VENDOR_API
+        </p>
+        <p>
+          Der vorhandene Modbus-Assistent ist für die lokale Simulation aktiv.
+          Die übrigen Adapter verwenden versionierte Profile und Testtelegramme;
+          konkrete Hardware bleibt ungeprüft.
+        </p>
+      </section>
       <Link className="text-link" href={`/meters?tenantId=${tenantId}`}>
         Neuen Zähler über die Zählerverwaltung anlegen
       </Link>

@@ -12,7 +12,7 @@ import {
 import {
   comparisonPeriods,
   decimalInput,
-  intervalCost,
+  timeProportionalCost,
   metrics,
   profiles,
   utilities,
@@ -87,10 +87,14 @@ export async function utilityReport(
         },
         select: { timestamp: true, consumption: true },
       });
-      for (const row of rows) {
-        const value = intervalCost(
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        const intervalStart =
+          index === 0 ? periods.month[0] : rows[index - 1].timestamp;
+        const value = timeProportionalCost(
           row.consumption.toString(),
           unit,
+          intervalStart,
           row.timestamp,
           prices.map((t) => ({
             ...t,

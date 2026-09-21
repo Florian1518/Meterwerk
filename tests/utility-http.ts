@@ -30,8 +30,12 @@ try {
     `${base}/dashboard?tenantId=demo-multi-utility`,
     { headers },
   );
-  assert.equal(dashboard.status, 200);
   const html = await dashboard.text();
+  assert.equal(
+    dashboard.status,
+    200,
+    `Dashboard status=${dashboard.status}; body=${html.slice(0, 500)}`,
+  );
   for (const label of [
     "Strom",
     "Wasser",
@@ -40,7 +44,10 @@ try {
     "Medienübersicht",
     "UTC",
   ])
-    assert(html.includes(label));
+    assert(
+      html.includes(label),
+      `Dashboard missing ${label}; body=${html.slice(0, 500)}`,
+    );
   for (const [utility, expected, absent] of [
     ["WATER", "Volumenzählerstand", "Spannung L1"],
     ["GAS", "Gasenergie", "Vorlauftemperatur"],
@@ -55,7 +62,22 @@ try {
     const body = await response.text();
     assert(body.includes(expected));
     assert(!body.includes(absent));
+    assert(body.includes("Geräteprofil und Kommunikation"));
+    assert(body.includes("Zählerwechsel"));
   }
+  const capabilityDevice = await db.device.findFirstOrThrow({
+    where: {
+      tenantId: "demo-multi-utility",
+      meterId: "demo-multi-utility-WATER",
+    },
+    select: { id: true },
+  });
+  const capabilityResponse = await fetch(
+    `${base}/api/devices/${capabilityDevice.id}/capability?tenantId=demo-multi-utility`,
+    { headers },
+  );
+  assert.equal(capabilityResponse.status, 200);
+  assert.equal((await capabilityResponse.json()).utility, "WATER");
   const unauthenticated = await fetch(
     `${base}/api/meters/demo-multi-utility-WATER/utility`,
   );
@@ -66,7 +88,7 @@ try {
   );
   assert.equal(noTenant.status, 400);
   console.log(
-    "7 multi-utility HTTP checks passed (dashboard, four profiles, authentication, explicit tenant).",
+    "12 multi-utility HTTP checks passed (dashboard, four profiles, capability UI/API, authentication, explicit tenant).",
   );
 } finally {
   await db.session.delete({ where: { id: sessionId } });

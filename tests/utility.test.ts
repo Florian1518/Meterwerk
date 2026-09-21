@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   gasEnergy,
   intervalCost,
+  timeProportionalCost,
   measurementSchema,
   normalize,
   profiles,
@@ -136,6 +137,34 @@ describe("Multi-Utility", () => {
     const p = comparisonPeriods(new Date("2026-01-01T12:00:00Z"));
     expect(p.previousMonth[0].toISOString()).toBe("2025-12-01T00:00:00.000Z");
     expect(p.yesterday[0].toISOString()).toBe("2025-12-31T00:00:00.000Z");
+  });
+  it("splits an interval across a tariff boundary without rewriting history", () => {
+    const start = new Date("2026-01-01T00:00:00Z"),
+      change = new Date("2026-01-01T01:00:00Z"),
+      end = new Date("2026-01-01T02:00:00Z");
+    const tariffs = [
+      {
+        validFrom: start,
+        validTo: change,
+        price: "1",
+        unit: "kWh",
+        basePerDay: "0",
+        condition: null,
+        calorific: null,
+      },
+      {
+        validFrom: change,
+        validTo: null,
+        price: "3",
+        unit: "kWh",
+        basePerDay: "0",
+        condition: null,
+        calorific: null,
+      },
+    ];
+    expect(
+      timeProportionalCost("2", "kWh", start, end, tariffs)?.toString(),
+    ).toBe("4");
   });
   it("simulates all utilities through the shared payload contract", () => {
     for (const simulator of [

@@ -10,6 +10,9 @@ import { ModbusConsole, type ModbusView } from "@/components/modbus-console";
 import { utilityDetail } from "@/server/utility";
 import { UtilityOverview } from "@/components/utility-overview";
 import { UtilitySettings } from "@/components/utility-settings";
+import { meterCapability } from "@/server/device-profiles";
+import { DeviceCapabilityPanel } from "@/components/device-capability-panel";
+import { MeterReplacementForm } from "@/components/meter-replacement-form";
 export default async function MeterPage({
   params,
   searchParams,
@@ -27,6 +30,7 @@ export default async function MeterPage({
     throw error;
   });
   const detail = await utilityDetail(meter.id, ctx.tenantId);
+  const capability = await meterCapability(meter.id, ctx.tenantId);
   const modbus = await readModbus(meter.id, ctx.tenantId);
   const to = new Date().toISOString();
   const from = new Date(new Date(to).getTime() - 30 * 86400000).toISOString();
@@ -70,6 +74,10 @@ export default async function MeterPage({
         meterId={meter.id}
         report={detail.report}
       />
+      <DeviceCapabilityPanel capability={capability} />
+      {["SUPER_ADMIN", "TENANT_ADMIN"].includes(ctx.actor.role) && (
+        <MeterReplacementForm oldMeterId={meter.id} tenantId={ctx.tenantId} />
+      )}
       {["SUPER_ADMIN", "TENANT_ADMIN"].includes(ctx.actor.role) && (
         <UtilitySettings
           meterId={meter.id}

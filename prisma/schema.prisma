@@ -1,27 +1,32 @@
 generator client {
   provider = "prisma-client"
-  output = "../src/generated/prisma"
+  output   = "../src/generated/prisma"
 }
+
 datasource db {
   provider = "postgresql"
 }
+
 enum Role {
   SUPER_ADMIN
   TENANT_ADMIN
   MANAGER
   USER
 }
+
 enum MeterType {
   ELECTRICITY
   WATER
   GAS
   HEAT
 }
+
 enum MeterStatus {
   ACTIVE
   OFFLINE
   MAINTENANCE
 }
+
 enum DeviceStatus {
   ONLINE
   OFFLINE
@@ -29,6 +34,7 @@ enum DeviceStatus {
   MAINTENANCE
   DISABLED
 }
+
 enum DeviceProtocol {
   VIRTUAL
   REST
@@ -38,13 +44,31 @@ enum DeviceProtocol {
   WMBUS
   LORAWAN
   VENDOR_API
+  MODBUS_RTU
+  MODBUS_TCP
+  PULSE
 }
+
+enum ProtocolMode {
+  POLLING
+  EVENT
+}
+
+enum SecurityMode {
+  NONE
+  OMS_AES128
+  TLS
+  API_KEY
+  OAUTH2
+}
+
 enum Quality {
   VALID
   ESTIMATED
   INVALID
   SUSPECT
 }
+
 enum Source {
   DEMO
   REST
@@ -52,306 +76,432 @@ enum Source {
   GATEWAY
   MANUAL
 }
+
 enum DeviceTokenStatus {
   ACTIVE
   REVOKED
 }
+
 enum AlarmStatus {
   OPEN
   ACKNOWLEDGED
   RESOLVED
 }
+
 model Tenant {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
-  createdAt DateTime @default(now())
-  users User[]
-  properties Property[]
-  gateways Gateway[]
-  devices Device[]
-  workerHealth WorkerHealth[]
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  createdAt       DateTime         @default(now())
+  users           User[]
+  properties      Property[]
+  gateways        Gateway[]
+  devices         Device[]
+  workerHealth    WorkerHealth[]
   technicalAlerts TechnicalAlert[]
-  tariffs Tariff[]
+  tariffs         Tariff[]
+  profiles        DeviceProfile[]
 }
+
 model User {
-  id String @id @default(cuid())
-  tenantId String?
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name String
-  email String @unique
+  id           String          @id @default(cuid())
+  tenantId     String?
+  tenant       Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name         String
+  email        String          @unique
   passwordHash String
-  role Role @default(USER)
-  active Boolean @default(true)
-  createdAt DateTime @default(now())
-  sessions Session[]
-  grants PropertyGrant[]
+  role         Role            @default(USER)
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  sessions     Session[]
+  grants       PropertyGrant[]
+
   @@unique([id, tenantId])
   @@index([tenantId])
 }
+
 model Session {
-  id String @id
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   @@index([expiresAt])
 }
+
 model LoginLimit {
-  key String @id
-  attempts Int @default(0)
-  resetAt DateTime
+  key      String   @id
+  attempts Int      @default(0)
+  resetAt  DateTime
 }
+
 model DeviceRateLimit {
-  key String @id
-  attempts Int @default(0)
-  resetAt DateTime
+  key      String   @id
+  attempts Int      @default(0)
+  resetAt  DateTime
 }
+
 model Property {
-  id String @id @default(cuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name String
-  address String
-  city String
-  createdAt DateTime @default(now())
+  id        String          @id @default(cuid())
+  tenantId  String
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  address   String
+  city      String
+  createdAt DateTime        @default(now())
   buildings Building[]
-  grants PropertyGrant[]
+  grants    PropertyGrant[]
+
   @@unique([id, tenantId])
   @@index([tenantId])
 }
+
 model PropertyGrant {
-  tenantId String
-  userId String
+  tenantId   String
+  userId     String
   propertyId String
-  user User @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  property Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  user       User     @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
   @@id([userId, propertyId])
   @@index([tenantId])
 }
+
 model Building {
-  id String @id @default(cuid())
-  tenantId String
+  id         String   @id @default(cuid())
+  tenantId   String
   propertyId String
-  property Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  name String
-  units Unit[]
+  property   Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  name       String
+  units      Unit[]
+
   @@unique([id, tenantId])
   @@index([tenantId, propertyId])
 }
+
 model Unit {
-  id String @id @default(cuid())
-  tenantId String
+  id         String   @id @default(cuid())
+  tenantId   String
   buildingId String
-  building Building @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  name String
-  floor String
-  area Decimal @db.Decimal(12, 2)
-  meters Meter[]
+  building   Building @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  name       String
+  floor      String
+  area       Decimal  @db.Decimal(12, 2)
+  meters     Meter[]
+
   @@unique([id, tenantId])
   @@index([tenantId, buildingId])
 }
+
 model Meter {
-  id String @id @default(cuid())
-  tenantId String
-  unitId String
-  unit Unit @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  serialNumber String
+  id               String             @id @default(cuid())
+  tenantId         String
+  unitId           String
+  unit             Unit               @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  serialNumber     String
   externalDeviceId String?
-  type MeterType
-  manufacturer String
-  model String
-  measurementUnit String
-  location String
-  status MeterStatus @default(ACTIVE)
-  lastContact DateTime?
-  installedAt DateTime
-  demoPricePerUnit Decimal @db.Decimal(10, 4)
-  readings Reading[]
-  alarms Alarm[]
-  devices Device[]
-  utilityConfig Json @default("{}")
-  tariffs Tariff[]
+  type             MeterType
+  manufacturer     String
+  model            String
+  measurementUnit  String
+  location         String
+  status           MeterStatus        @default(ACTIVE)
+  lastContact      DateTime?
+  installedAt      DateTime
+  demoPricePerUnit Decimal            @db.Decimal(10, 4)
+  readings         Reading[]
+  alarms           Alarm[]
+  devices          Device[]
+  utilityConfig    Json               @default("{}")
+  tariffs          Tariff[]
+  replacementsOut  MeterReplacement[] @relation("OldMeter")
+  replacementsIn   MeterReplacement[] @relation("NewMeter")
+
   @@unique([id, tenantId])
   @@unique([tenantId, serialNumber])
   @@unique([tenantId, externalDeviceId])
   @@index([tenantId, unitId])
 }
+
 model Gateway {
-  id String @id @default(cuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name String
+  id                String              @id @default(cuid())
+  tenantId          String
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name              String
   externalGatewayId String
-  manufacturer String
-  model String
-  firmwareVersion String?
-  queueSize Int @default(0)
-  queueWarning Boolean @default(false)
-  quarantineSize Int @default(0)
-  queueDropped Int @default(0)
-  status DeviceStatus @default(MAINTENANCE)
-  lastSeenAt DateTime?
-  installedAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  devices Device[]
+  manufacturer      String
+  model             String
+  firmwareVersion   String?
+  queueSize         Int                 @default(0)
+  queueWarning      Boolean             @default(false)
+  quarantineSize    Int                 @default(0)
+  queueDropped      Int                 @default(0)
+  status            DeviceStatus        @default(MAINTENANCE)
+  lastSeenAt        DateTime?
+  installedAt       DateTime
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  devices           Device[]
+  credentials       GatewayCredential[]
+  commands          GatewayCommand[]
+
   @@unique([id, tenantId])
   @@unique([tenantId, externalGatewayId])
-  credentials GatewayCredential[]
-  commands GatewayCommand[]
   @@index([tenantId, status])
 }
+
 model GatewayCredential {
-  id String @id
-  tenantId String
-  gatewayId String
-  publicKey String
+  id             String            @id
+  tenantId       String
+  gatewayId      String
+  publicKey      String
   keyFingerprint String?
-  expiresAt DateTime?
-  lastUsedAt DateTime?
-  revokedAt DateTime?
-  status DeviceTokenStatus @default(ACTIVE)
-  createdAt DateTime @default(now())
-  gateway Gateway @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  status         DeviceTokenStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  gateway        Gateway           @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
   @@index([tenantId, gatewayId])
 }
+
 model WorkerHealth {
-  tenantId String @id
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  heartbeatAt DateTime
-  mqttConnected Boolean
+  tenantId           String    @id
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  heartbeatAt        DateTime
+  mqttConnected      Boolean
   mqttDisconnectedAt DateTime?
-  subscribed Boolean
-  errorStreak Int @default(0)
-  lastIngestionAt DateTime?
+  subscribed         Boolean
+  errorStreak        Int       @default(0)
+  lastIngestionAt    DateTime?
 }
+
 model TechnicalAlert {
-  id String @id @default(cuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  kind String
-  entityId String
-  active Boolean @default(true)
-  openedAt DateTime @default(now())
-  resolvedAt DateTime?
-  occurrences Int @default(1)
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind        String
+  entityId    String
+  active      Boolean   @default(true)
+  openedAt    DateTime  @default(now())
+  resolvedAt  DateTime?
+  occurrences Int       @default(1)
+
   @@unique([tenantId, kind, entityId])
   @@index([tenantId, active])
 }
+
 model Device {
-  id String @id @default(cuid())
-  tenantId String
-  meterId String
-  gatewayId String?
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  meter Meter @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  gateway Gateway? @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  id               String               @id @default(cuid())
+  tenantId         String
+  meterId          String
+  gatewayId        String?
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  meter            Meter                @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  gateway          Gateway?             @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
   externalDeviceId String
-  manufacturer String
-  model String
-  firmwareVersion String?
-  protocol DeviceProtocol
-  status DeviceStatus @default(MAINTENANCE)
-  lastSeenAt DateTime?
-  installedAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  credentials DeviceCredential[]
-  readings Reading[]
-  modbusConfig ModbusConfiguration?
-  diagnostic ModbusDiagnostic?
-  telemetry TelemetrySample[]
-  commands GatewayCommand[]
+  manufacturer     String
+  model            String
+  firmwareVersion  String?
+  protocol         DeviceProtocol
+  status           DeviceStatus         @default(MAINTENANCE)
+  lastSeenAt       DateTime?
+  installedAt      DateTime
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  credentials      DeviceCredential[]
+  readings         Reading[]
+  modbusConfig     ModbusConfiguration?
+  diagnostic       ModbusDiagnostic?
+  telemetry        TelemetrySample[]
+  commands         GatewayCommand[]
+  profileId        String?
+  profile          DeviceProfile?       @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  protocolConfig   Json                 @default("{}")
+  protocolMode     ProtocolMode         @default(POLLING)
+  pulseConfig      PulseConfig?
+  wirelessConfig   WirelessMeterConfig?
+
   @@unique([id, tenantId])
   @@unique([tenantId, externalDeviceId])
   @@index([tenantId, meterId])
   @@index([tenantId, status])
 }
+
+model DeviceProfile {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  manufacturer  String
+  model         String
+  utility       MeterType
+  protocol      DeviceProtocol
+  version       Int            @default(1)
+  capabilities  Json
+  mapping       Json
+  defaults      Json           @default("{}")
+  firmwareNotes String?
+  active        Boolean        @default(true)
+  devices       Device[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, manufacturer, model, version])
+  @@index([tenantId, utility, protocol])
+}
+
+model PulseConfig {
+  id              String    @id @default(cuid())
+  tenantId        String
+  deviceId        String    @unique
+  device          Device    @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  impulsesPerUnit Decimal   @db.Decimal(20, 6)
+  unit            String
+  utility         MeterType
+  debounceMs      Int       @default(50)
+  rollover        Decimal?  @db.Decimal(20, 6)
+  inputChannel    String
+  lastCounter     Decimal?  @db.Decimal(20, 6)
+  lastTimestamp   DateTime?
+
+  @@unique([deviceId, tenantId])
+  @@index([tenantId, utility])
+}
+
+model WirelessMeterConfig {
+  id               String       @id @default(cuid())
+  tenantId         String
+  deviceId         String       @unique
+  device           Device       @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  deviceIdValue    String
+  manufacturerCode String
+  encryptionKeyRef String?
+  securityMode     SecurityMode @default(NONE)
+  rssi             Int?
+  snr              Decimal?     @db.Decimal(8, 3)
+  receivedAt       DateTime?
+
+  @@unique([deviceId, tenantId])
+  @@index([tenantId, deviceIdValue])
+}
+
+model MeterReplacement {
+  id                String   @id @default(cuid())
+  tenantId          String
+  oldMeterId        String
+  newMeterId        String
+  removedAt         DateTime
+  removedRegister   Decimal  @db.Decimal(20, 6)
+  installedAt       DateTime
+  installedRegister Decimal  @db.Decimal(20, 6)
+  reason            String
+  documentation     String?
+  actorId           String
+  oldMeter          Meter    @relation("OldMeter", fields: [oldMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  newMeter          Meter    @relation("NewMeter", fields: [newMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, oldMeterId, removedAt])
+  @@index([tenantId, newMeterId, installedAt])
+}
+
 model DeviceCredential {
-  id String @id @default(cuid())
-  tenantId String
-  deviceId String
-  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tokenHash String @unique
-  status DeviceTokenStatus @default(ACTIVE)
-  createdAt DateTime @default(now())
-  revokedAt DateTime?
+  id         String            @id @default(cuid())
+  tenantId   String
+  deviceId   String
+  device     Device            @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tokenHash  String            @unique
+  status     DeviceTokenStatus @default(ACTIVE)
+  createdAt  DateTime          @default(now())
+  revokedAt  DateTime?
   lastUsedAt DateTime?
+
   @@index([tenantId, deviceId, status])
 }
+
 model Reading {
-  id String @id @default(cuid())
-  tenantId String
-  meterId String
-  deviceId String?
-  messageId String?
-  meter Meter @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  device Device? @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  timestamp DateTime
-  registerValue Decimal @db.Decimal(20, 6)
-  meterValue Decimal? @db.Decimal(20, 6)
-  consumption Decimal @db.Decimal(20, 6)
+  id              String        @id @default(cuid())
+  tenantId        String
+  meterId         String
+  deviceId        String?
+  messageId       String?
+  meter           Meter         @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  device          Device?       @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  timestamp       DateTime
+  registerValue   Decimal       @db.Decimal(20, 6)
+  meterValue      Decimal?      @db.Decimal(20, 6)
+  consumption     Decimal       @db.Decimal(20, 6)
   measurementUnit String
-  source Source
-  quality Quality @default(VALID)
-  receivedAt DateTime @default(now())
-  measurements Measurement[]
+  source          Source
+  quality         Quality       @default(VALID)
+  receivedAt      DateTime      @default(now())
+  measurements    Measurement[]
+
   @@unique([id, tenantId])
   @@unique([tenantId, deviceId, messageId])
   @@unique([tenantId, meterId, timestamp, source])
   @@index([tenantId, timestamp])
 }
+
 model Measurement {
-  id String @id @default(cuid())
-  tenantId String
+  id        String  @id @default(cuid())
+  tenantId  String
   readingId String
-  reading Reading @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  metric String
-  rawValue Decimal @db.Decimal(20,6)
-  rawUnit String
-  value Decimal @db.Decimal(20,6)
-  unit String
-  quality Quality
+  reading   Reading @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  metric    String
+  rawValue  Decimal @db.Decimal(20, 6)
+  rawUnit   String
+  value     Decimal @db.Decimal(20, 6)
+  unit      String
+  quality   Quality
+
   @@unique([readingId, metric])
   @@index([tenantId, metric])
 }
+
 model Tariff {
-  id String @id @default(cuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  meterId String?
-  meter Meter? @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  utility MeterType
-  validFrom DateTime
-  validTo DateTime?
-  unit String
-  price Decimal @db.Decimal(20,6)
-  basePerDay Decimal @default(0) @db.Decimal(20,6)
-  condition Decimal? @db.Decimal(12,6)
-  calorific Decimal? @db.Decimal(12,6)
+  id         String    @id @default(cuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  meterId    String?
+  meter      Meter?    @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  utility    MeterType
+  validFrom  DateTime
+  validTo    DateTime?
+  unit       String
+  price      Decimal   @db.Decimal(20, 6)
+  basePerDay Decimal   @default(0) @db.Decimal(20, 6)
+  condition  Decimal?  @db.Decimal(12, 6)
+  calorific  Decimal?  @db.Decimal(12, 6)
+
   @@index([tenantId, utility, validFrom])
 }
+
 model Alarm {
-  id String @id @default(cuid())
-  tenantId String
-  meterId String
-  meter Meter @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  title String
-  severity String
-  status AlarmStatus @default(OPEN)
-  createdAt DateTime @default(now())
+  id        String      @id @default(cuid())
+  tenantId  String
+  meterId   String
+  meter     Meter       @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title     String
+  severity  String
+  status    AlarmStatus @default(OPEN)
+  createdAt DateTime    @default(now())
+
   @@index([tenantId, status])
 }
+
 model AuditEvent {
-  id String @id @default(cuid())
-  tenantId String?
-  actorId String
-  action String
-  entityId String
+  id        String   @id @default(cuid())
+  tenantId  String?
+  actorId   String
+  action    String
+  entityId  String
   createdAt DateTime @default(now())
+
   @@index([tenantId, createdAt])
 }
+
 enum CommissioningStatus {
   NOT_CONFIGURED
   COMMISSIONING
@@ -359,78 +509,88 @@ enum CommissioningStatus {
   FAULT
   DISABLED
 }
+
 model ModbusConfiguration {
-  deviceId String @id
-  tenantId String
-  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  configuration Json
-  profile Json
-  history Json @default("[]")
-  revision Int @default(1)
-  state CommissioningStatus @default(NOT_CONFIGURED)
-  step Int @default(1)
-  pollingEnabled Boolean @default(false)
+  deviceId         String              @id
+  tenantId         String
+  device           Device              @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  configuration    Json
+  profile          Json
+  history          Json                @default("[]")
+  revision         Int                 @default(1)
+  state            CommissioningStatus @default(NOT_CONFIGURED)
+  step             Int                 @default(1)
+  pollingEnabled   Boolean             @default(false)
   reviewedRevision Int?
-  confirmedUnitId String?
-  completedAt DateTime?
-  updatedAt DateTime @updatedAt
+  confirmedUnitId  String?
+  completedAt      DateTime?
+  updatedAt        DateTime            @updatedAt
+
   @@unique([deviceId, tenantId])
   @@index([tenantId])
 }
+
 model ModbusDiagnostic {
-  deviceId String @id
-  tenantId String
-  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  lastPollAt DateTime?
-  lastSuccessAt DateTime?
-  responseMs Int?
-  lastError String?
-  successes Int @default(0)
-  errors Int @default(0)
-  consecutiveErrors Int @default(0)
-  revision Int @default(0)
-  raw Json
+  deviceId          String    @id
+  tenantId          String
+  device            Device    @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  lastPollAt        DateTime?
+  lastSuccessAt     DateTime?
+  responseMs        Int?
+  lastError         String?
+  successes         Int       @default(0)
+  errors            Int       @default(0)
+  consecutiveErrors Int       @default(0)
+  revision          Int       @default(0)
+  raw               Json
+
   @@unique([deviceId, tenantId])
   @@index([tenantId])
 }
+
 model TelemetrySample {
-  id String @id @default(cuid())
-  tenantId String
-  deviceId String
-  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  messageId String
-  timestamp DateTime
-  revision Int
-  error String?
+  id           String                 @id @default(cuid())
+  tenantId     String
+  deviceId     String
+  device       Device                 @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  messageId    String
+  timestamp    DateTime
+  revision     Int
+  error        String?
   measurements TechnicalMeasurement[]
+
   @@unique([id, tenantId])
   @@unique([tenantId, deviceId, messageId])
   @@index([tenantId, deviceId, timestamp])
 }
+
 model TechnicalMeasurement {
-  id String @id @default(cuid())
+  id       String          @id @default(cuid())
   tenantId String
   sampleId String
-  sample TelemetrySample @relation(fields: [sampleId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  metric String
-  value Decimal @db.Decimal(20,6)
-  unit String
+  sample   TelemetrySample @relation(fields: [sampleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  metric   String
+  value    Decimal         @db.Decimal(20, 6)
+  unit     String
+
   @@unique([sampleId, metric])
   @@index([tenantId, metric])
 }
+
 model GatewayCommand {
-  id String @id @default(cuid())
-  tenantId String
-  gatewayId String
-  gateway Gateway @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  deviceId String
-  device Device @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  action String
-  revision Int
-  status String @default("PENDING")
-  error String?
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  id          String    @id @default(cuid())
+  tenantId    String
+  gatewayId   String
+  gateway     Gateway   @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  deviceId    String
+  device      Device    @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  action      String
+  revision    Int
+  status      String    @default("PENDING")
+  error       String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
   completedAt DateTime?
+
   @@index([tenantId, gatewayId, status])
 }

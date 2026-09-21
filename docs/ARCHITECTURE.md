@@ -130,3 +130,11 @@ Tariff ist mandantengebunden mit optionalem zusammengesetztem Zähler-Fremdschl�
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)
 - [Prisma 7 Upgrade Guide](https://docs.prisma.io/docs/guides/upgrade-prisma-orm/v7)
 - Zusätzlich wurden die installierten Prisma-/Next.js-Pakete und ihre lokalen Anleitungen geprüft.
+
+## ADR 011: Protokollunabhängige Geräteprofile
+
+Phase 5B führt eine gemeinsame Driver- und Ingestion-Grenze für MODBUS_RTU, MODBUS_TCP, MBUS, WMBUS, PULSE, LORAWAN, REST, MQTT und VENDOR_API ein. Adapter liefern normalisierte Messgrößen; Authentifizierung, Tenant-Prüfung, Validierung, Idempotenz, Persistenz, Aggregation und Alarme bleiben im zentralen Ingestion-Service. Die Adapter und virtuellen Geräte schreiben niemals direkt in PostgreSQL.
+
+`DeviceProfile` versioniert Hersteller, Modell, Medium, Protokoll, Messgrößen, Einheiten und Decoder-Konfiguration. Historische Messwerte behalten dadurch ihre ursprüngliche Profilversion. M-Bus/Wireless-M-Bus, Pulse und LoRaWAN sind als Decoder und Simulatoren vorbereitet; konkrete Herstellerhardware, Schlüssel und produktive Funk-/Busanbindungen bleiben offen. Wireless-Schlüssel werden nur als Referenz auf einen Secret Store modelliert und nicht in DTOs oder Logs ausgegeben.
+
+Ein `MeterReplacement` trennt den logischen Messpunkt von physischen Zählergenerationen. Ausbau-/Einbauzeitpunkte und Registerstände ermöglichen durchgehende Verbrauchs- und Tarifauswertungen ohne Änderung historischer Daten. Tarifintervalle werden zeitanteilig anhand von `validFrom`/`validTo` berechnet.

@@ -222,3 +222,39 @@ export function intervalCost(
   else if (unit !== tariff.unit) throw new Error("Tarifeinheit passt nicht.");
   return amount.mul(tariff.price);
 }
+export function timeProportionalCost(
+  consumption: Decimal.Value,
+  unit: string,
+  start: Date,
+  end: Date,
+  tariffs: Price[],
+) {
+  if (end <= start) return new Decimal(0);
+  const boundaries = [
+    ...new Set([
+      start.getTime(),
+      end.getTime(),
+      ...tariffs
+        .flatMap((t) => [
+          t.validFrom.getTime(),
+          t.validTo?.getTime() ?? end.getTime(),
+        ])
+        .filter((t) => t > start.getTime() && t < end.getTime()),
+    ]),
+  ].sort((a, b) => a - b);
+  let total = new Decimal(0);
+  const duration = end.getTime() - start.getTime();
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const share = new Decimal(boundaries[i + 1] - boundaries[i]).div(duration);
+    const midpoint = new Date((boundaries[i] + boundaries[i + 1]) / 2);
+    const value = intervalCost(
+      new Decimal(consumption).mul(share),
+      unit,
+      midpoint,
+      tariffs,
+    );
+    if (value === null) return null;
+    total = total.plus(value);
+  }
+  return total;
+}
