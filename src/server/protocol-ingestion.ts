@@ -8,6 +8,7 @@ import { normalizedProtocolReadingSchema, protocols } from "../lib/protocols";
 export async function ingestProtocolReading(
   authorization: string | null,
   raw: unknown,
+  correlationId?: string,
 ) {
   const auth = await authenticateDevice(authorization);
   const value = normalizedProtocolReadingSchema.parse(raw);
@@ -29,9 +30,13 @@ export async function ingestProtocolReading(
     );
   if (!protocols.includes(value.protocol))
     throw new AccessError(400, "Unbekanntes Protokoll.");
-  return ingestUtility(authorization, {
-    messageId: value.messageId,
-    timestamp: value.timestamp,
-    measurements: value.measurements,
-  });
+  return ingestUtility(
+    authorization,
+    {
+      messageId: value.messageId,
+      timestamp: value.timestamp,
+      measurements: value.measurements,
+    },
+    correlationId,
+  );
 }

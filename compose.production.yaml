@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${METERWERK_IMAGE:-meterwerk/app:pilot}
+    restart: unless-stopped
+    env_file:
+      - ${METERWERK_ENV_FILE:-.env.production}
+    environment:
+      METERWERK_ENV: production
+      NODE_ENV: production
+    expose:
+      - "3000"
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:3000/api/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${METERWERK_IMAGE:-meterwerk/app:pilot}
+    restart: unless-stopped
+    env_file:
+      - ${METERWERK_ENV_FILE:-.env.production}
+    environment:
+      METERWERK_ENV: production
+      NODE_ENV: production
+    command:
+      [
+        "node",
+        "node_modules/tsx/dist/cli.mjs",
+        "--conditions=react-server",
+        "src/server/mqtt-worker.ts",
+      ]
+    depends_on:
+      mqtt:
+        condition: service_healthy
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    expose:
+      - "1883"
+    volumes:
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+volumes:
+  mqtt_data:
+  mqtt_log:

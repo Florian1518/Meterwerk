@@ -16,6 +16,7 @@ import {
   Warehouse,
   Zap,
   FileText,
+  ListChecks,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -23,7 +24,14 @@ const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
   { href: "/reports", label: "Berichte", icon: FileText },
+  { href: "/onboarding", label: "Onboarding", icon: ListChecks, manage: true },
   { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
+  {
+    href: "/platform-admin",
+    label: "Plattformverwaltung",
+    icon: ShieldCheck,
+    platform: true,
+  },
   { href: "/properties", label: "Liegenschaften", icon: Building2 },
   { href: "/buildings", label: "Gebäude", icon: Home },
   { href: "/units", label: "Nutzungseinheiten", icon: Building2 },

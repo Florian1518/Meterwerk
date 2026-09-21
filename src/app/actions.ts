@@ -14,13 +14,14 @@ export async function loginAction(
   form: FormData,
 ): Promise<ActionState> {
   try {
-    const { email, password } = z
+    const { email, password, mfaToken } = z
       .object({
         email: z.email().toLowerCase(),
         password: z.string().min(1).max(128),
+        mfaToken: z.string().trim().max(32).optional(),
       })
       .parse(Object.fromEntries(form));
-    await signIn(email, password);
+    await signIn(email, password, mfaToken);
   } catch (error) {
     return { error: message(error) };
   }

@@ -1,14 +1,18 @@
-# Standalone: docker compose -f compose.pilot.yaml up -d
 services:
+  app:
+    extends:
+      file: compose.production.yaml
+      service: app
+    image: ${METERWERK_IMAGE:-meterwerk/app:pilot}
+  worker:
+    extends:
+      file: compose.production.yaml
+      service: worker
+    image: ${METERWERK_IMAGE:-meterwerk/app:pilot}
   mqtt:
-    image: eclipse-mosquitto:2
-    restart: unless-stopped
-    ports:
-      - "8883:8883"
-    volumes:
-      - ./infra/mosquitto/pilot.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./infra/mosquitto/pilot.acl:/mosquitto/config/pilot.acl:ro
-      - ./.local/pilot-mqtt:/mosquitto/secrets:ro
-      - pilot_mqtt_data:/mosquitto/data
+    extends:
+      file: compose.production.yaml
+      service: mqtt
 volumes:
-  pilot_mqtt_data:
+  mqtt_data:
+  mqtt_log:

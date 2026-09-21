@@ -13,6 +13,7 @@ import {
 export async function ingestUtility(
   authorization: string | null,
   raw: unknown,
+  correlationId?: string,
 ) {
   const { device, credential } = await authenticateDevice(authorization);
   await consumeDeviceRateLimit(credential.id);
@@ -203,6 +204,7 @@ export async function ingestUtility(
         actorId: device.id,
         action: "utility.ingest",
         entityId: reading.id,
+        correlationId,
       },
     });
     return { id: reading.id, duplicate: false };

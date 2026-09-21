@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       result = await ingestUtility(
         request.headers.get("authorization"),
         payload,
+        request.headers.get("x-correlation-id") ?? undefined,
       );
     } else {
       const auth = await authenticateDevice(

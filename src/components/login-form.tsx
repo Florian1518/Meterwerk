@@ -1,5 +1,6 @@
 "use client";
 import { useActionState } from "react";
+import Link from "next/link";
 import { loginAction } from "@/app/actions";
 import { Button } from "./ui/button";
 export function LoginForm() {
@@ -29,6 +30,16 @@ export function LoginForm() {
           maxLength={128}
         />
       </label>
+      <label>
+        MFA-Code (falls aktiviert)
+        <input
+          name="mfaToken"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={32}
+        />
+      </label>
+      <Link href="/password-reset">Passwort vergessen?</Link>
       {state.error && (
         <p role="alert" className="form-error">
           {state.error}

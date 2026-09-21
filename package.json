@@ -37,6 +37,7 @@
     "mqtt-worker": "tsx --conditions=react-server src/server/mqtt-worker.ts",
     "db:seed:edge": "tsx --conditions=react-server src/server/seed-edge.ts",
     "test:gateway": "tsx --conditions=react-server tests/gateway-security.ts",
+    "test:security": "tsx --conditions=react-server tests/security-integration.ts",
     "test:phase3": "tsx --conditions=react-server scripts/phase3-e2e.ts",
     "test:modbus": "tsx --conditions=react-server tests/modbus-integration.ts",
     "format": "prettier --write .",

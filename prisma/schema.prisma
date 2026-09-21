@@ -103,6 +103,14 @@ enum ReportDelivery {
   EMAIL
 }
 
+enum NotificationChannel {
+  PORTAL
+  EMAIL
+  SMS
+  PUSH
+  WEBHOOK
+}
+
 model Tenant {
   id              String           @id @default(cuid())
   name            String
@@ -120,6 +128,7 @@ model Tenant {
   reportSchedules ReportSchedule[]
   notes           Note[]
   attachments     Attachment[]
+  invitations     Invitation[]
 }
 
 model User {
@@ -138,6 +147,15 @@ model User {
   reportSchedules ReportSchedule[]
   notes        Note[]
   attachments  Attachment[]
+  mfaEnabled Boolean @default(false)
+  mfaSecretEncrypted String?
+  mfaConfiguredAt DateTime?
+  mfaRecoveryCodes MfaRecoveryCode[]
+  passwordResetTokens PasswordResetToken[]
+  invitationsCreated Invitation[] @relation("InvitationCreator")
+  invitationsAccepted Invitation[] @relation("InvitationAcceptor")
+  notificationPreferences NotificationPreference[]
+  loginHistory LoginHistory[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -148,9 +166,75 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
+  revokedAt DateTime?
+  rotatedFromId String?
   createdAt DateTime @default(now())
 
   @@index([expiresAt])
+}
+
+model MfaRecoveryCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, usedAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, expiresAt])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  role        Role      @default(USER)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  acceptedById String?
+  acceptedBy  User?     @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  createdById String
+  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  propertyIds Json      @default("[]")
+  createdAt   DateTime  @default(now())
+  @@index([tenantId, email, expiresAt])
+}
+
+model NotificationPreference {
+  id        String             @id @default(cuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel
+  event     String
+  enabled   Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  @@unique([userId, channel, event])
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  success   Boolean
+  reason    String?
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([email, createdAt])
 }
 
 model LoginLimit {
@@ -595,6 +679,7 @@ model AuditEvent {
   actorId   String
   action    String
   entityId  String
+  correlationId String?
   createdAt DateTime @default(now())
 
   @@index([tenantId, createdAt])

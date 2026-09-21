@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
       await ingestProtocolReading(
         request.headers.get("authorization"),
         await request.json(),
+        request.headers.get("x-correlation-id") ?? undefined,
       ),
     );
   } catch (error) {
