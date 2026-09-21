@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { requireManage, tenantScope } from "./policy";
 import { modbusConfigSchema, offlineAfter } from "@/lib/modbus/contracts";
+import { utilityConfigSchema } from "../lib/utility-alarms";
 
 export async function reconcileAlerts(tenantId: string) {
   const now = Date.now();
@@ -20,6 +21,27 @@ export async function reconcileAlerts(tenantId: string) {
     }),
   ]);
   const conditions: { kind: string; entityId: string; active: boolean }[] = [];
+  const utilityMeters = await db.meter.findMany({
+    where: {
+      tenantId,
+      status: { not: "MAINTENANCE" },
+      readings: { some: { measurements: { some: {} } } },
+    },
+    select: {
+      id: true,
+      lastContact: true,
+      installedAt: true,
+      utilityConfig: true,
+    },
+  });
+  for (const meter of utilityMeters)
+    conditions.push({
+      kind: "UTILITY_OFFLINE",
+      entityId: meter.id,
+      active:
+        now - (meter.lastContact ?? meter.installedAt).getTime() >
+        utilityConfigSchema.parse(meter.utilityConfig).offlineMinutes * 60000,
+    });
   const alive = !!health && now - health.heartbeatAt.getTime() < 30000;
   conditions.push({
     kind: "INGESTION_OFFLINE",
@@ -110,7 +132,11 @@ export async function reconcileAlerts(tenantId: string) {
     }
     const expected = new Set(conditions.map((c) => `${c.kind}:${c.entityId}`));
     const obsolete = await tx.technicalAlert.findMany({
-      where: { tenantId, active: true },
+      where: {
+        tenantId,
+        active: true,
+        NOT: { kind: { startsWith: "UTILITY_" } },
+      },
     });
     for (const alert of obsolete)
       if (!expected.has(`${alert.kind}:${alert.entityId}`)) {

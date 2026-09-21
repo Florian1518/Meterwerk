@@ -117,6 +117,14 @@ Strukturierte Logs verwenden eine Feldfreigabeliste und keine Payload-/Error-Ser
 
 Diese ADR ersetzt die früheren Hinweise auf fehlende TLS-/ACL-, Credential-, Queue- und Monitoring-Funktionen. Die standortspezifische Bereitstellung und reale Hardware-/Dauerbetriebsabnahme bleiben erforderlich; siehe `docs/PILOT-INSTALLATION.md`.
 
+## ADR 010: Gemeinsame Utility-Profile und historische Tarife
+
+Phase 5A verwendet den bestehenden MeterType für ELECTRICITY, WATER, GAS und HEAT. Ein zentraler Profilkatalog trennt Medium, Messgröße und Einheit; `Measurement` erweitert `Reading` um Decimal-Rohwerte, normalisierte Werte und Qualität. REST, bisherige Gateway-Readings und Modbus-Telemetrie schreiben in dieselbe Struktur. Der alte Reading-Vertrag sowie die Phase-3-/4a-/4b-Transporte bleiben kompatibel. Der Primärzählerstand liefert Verbrauch; technische Momentanwerte werden nicht addiert. Bestehende Readings werden per versionierter Migration mit ihrer bekannten Primärmessgröße ergänzt.
+
+Neue Web-Einstiege authentifizieren selbst und verwenden aktuelle Sitzung, tenantScope und PropertyGrant. Gerätepakete bestimmen keine Mandanten-/Zähler-ID. Deduplizierung, Tenant-Sperre, Messwerte und AuditEvent liegen in einer Transaktion. Utility-Alarme teilen TechnicalAlert und dessen eindeutigen Tenant/Typ/Objekt-Schlüssel; der technische Monitor darf fachliche Alarme nicht pauschal auflösen.
+
+Tariff ist mandantengebunden mit optionalem zusammengesetztem Zähler-Fremdschlüssel. Preise und Gasfaktoren gelten für historische Zeitintervalle; zukünftige Wechsel schließen offene Vorgänger atomar. Kosten verwenden Decimal, Tarifeinheiten bleiben mediengebunden und Tariflücken werden sichtbar. UTC-Berichte verwenden explizite Zeiträume und qualitätsgefilterte Werte. CSV bleibt begrenzt und freigabegefiltert. Der eigene Demo-Mandant vermeidet Änderungen an bestehenden Demo-Freigaben und Passwörtern. Details, Messgrößen und betriebliche Grenzen stehen in [MULTI-UTILITY.md](MULTI-UTILITY.md).
+
 ## Referenzen
 
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)

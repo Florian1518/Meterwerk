@@ -1,4 +1,5 @@
 import "server-only";
+import { recordPrimaryMeasurement } from "./utility-measurements";
 import { z } from "zod";
 import { db } from "./db";
 import { Prisma } from "../generated/prisma/client";
@@ -156,7 +157,7 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
       (after && register.gt(after.registerValue))
     )
       throw new Error("Nonmonotonic register");
-    await tx.reading.create({
+    const createdReading = await tx.reading.create({
       data: {
         tenantId,
         meterId: device.meterId,
@@ -171,6 +172,7 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
         quality: "VALID",
       },
     });
+    await recordPrimaryMeasurement(tx, createdReading);
     // Historical queue replay must not make a currently disconnected device ONLINE.
     if (!device.lastSeenAt || timestamp > device.lastSeenAt) {
       const online = Date.now() - timestamp.getTime() < 15000;

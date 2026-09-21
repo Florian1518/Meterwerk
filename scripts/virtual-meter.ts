@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { VirtualMeter } from "../src/lib/utility-simulator";
 import { db } from "../src/server/db";
 import { hashDeviceToken, newDeviceToken } from "../src/server/device-auth";
 const base = process.env.APP_URL ?? "http://localhost:3000";
@@ -6,6 +7,7 @@ const tenantId = process.env.VIRTUAL_TENANT_ID ?? "demo-tenant-0";
 const intervalMs = 15 * 60_000;
 const once = process.argv.includes("--once");
 const create = process.argv.includes("--create");
+let createdToken: string | undefined;
 const meter = await db.meter.findFirst({
   where: {
     tenantId,
@@ -38,6 +40,7 @@ if (!device && create) {
   });
   if (device) {
     const token = newDeviceToken();
+    createdToken = token;
     await db.deviceCredential.create({
       data: {
         tenantId,
@@ -46,7 +49,7 @@ if (!device && create) {
       },
     });
     console.log(
-      `Virtual Device erstellt: ${device.externalDeviceId}\nDevice-Token (nur jetzt sichtbar): ${token}`,
+      `Virtual Device erstellt: ${device.externalDeviceId}. Credential bleibt ausschließlich im Prozessspeicher.`,
     );
   }
 }
@@ -59,54 +62,40 @@ const credential = await db.deviceCredential.findFirst({
 });
 if (!credential) throw new Error("Kein aktives Device-Credential vorhanden.");
 // Token is deliberately never read back from a hash. For operation, use VIRTUAL_DEVICE_TOKEN supplied at creation time.
-const token = process.env.VIRTUAL_DEVICE_TOKEN;
+const token = process.env.VIRTUAL_DEVICE_TOKEN ?? createdToken;
 if (!token) {
   await db.$disconnect();
   throw new Error(
-    "VIRTUAL_DEVICE_TOKEN setzen; der Token wird bei --create nur einmal ausgegeben.",
+    "VIRTUAL_DEVICE_TOKEN aus der autorisierten Device-Credential-Verwaltung setzen.",
   );
 }
-let register = Number(
-  (
-    await db.reading.findFirst({
-      where: { meterId: meter.id },
-      orderBy: { timestamp: "desc" },
-      select: { registerValue: true },
-    })
-  )?.registerValue ?? 0,
+const previous = await db.reading.findFirst({
+  where: { tenantId, meterId: meter.id },
+  orderBy: { timestamp: "desc" },
+  include: { measurements: true },
+});
+const simulator = new VirtualMeter(
+  meter.type,
+  previous?.registerValue.toString() ?? "0",
+  process.argv.includes("--leak"),
+  {
+    export: previous?.measurements
+      .find((m) => m.metric === "ENERGY_EXPORT")
+      ?.value.toString(),
+    volume: previous?.measurements
+      .find((m) => m.metric === "VOLUME_TOTAL")
+      ?.value.toString(),
+  },
 );
-let sequence = Date.now();
 async function send() {
   const now = new Date();
-  const hour = now.getUTCHours() + now.getUTCMinutes() / 60;
-  const profile =
-    hour < 6
-      ? 0.35
-      : hour < 9
-        ? 1.25
-        : hour < 18
-          ? 1.0
-          : hour < 22
-            ? 0.8
-            : 0.45;
-  const noise = 0.95 + Math.random() * 0.1;
-  const consumption = Number((profile * noise).toFixed(6));
-  register += consumption;
   const response = await fetch(`${base}/api/v1/ingest/readings`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      messageId: `virtual-${device!.id}-${sequence++}`,
-      timestamp: now.toISOString(),
-      value: Number(register.toFixed(6)),
-      consumption,
-      unit: meter!.measurementUnit,
-      quality: "VALID",
-      source: "REST",
-    }),
+    body: JSON.stringify(simulator.sample(now)),
   });
   console.log(
     `${now.toISOString()} ${response.status} ${await response.text()}`,

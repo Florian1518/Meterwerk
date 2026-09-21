@@ -1,4 +1,6 @@
 import "server-only";
+import { modbusMetrics } from "./utility-measurements";
+import { normalize } from "../lib/utility";
 import { z } from "zod";
 import { Prisma } from "../generated/prisma/client";
 import {
@@ -113,7 +115,7 @@ export async function acceptTelemetry(
       });
       const register = new Prisma.Decimal(energy.value);
       const monotonic = !before || register.gte(before.registerValue);
-      await tx.reading.create({
+      const reading = await tx.reading.create({
         data: {
           tenantId,
           meterId: device.meterId,
@@ -130,6 +132,18 @@ export async function acceptTelemetry(
           source: "MQTT",
           quality: monotonic && !after ? "VALID" : "SUSPECT",
         },
+      });
+      await tx.measurement.createMany({
+        data: value.values.map((item) => ({
+          ...normalize("ELECTRICITY", {
+            metric: modbusMetrics[item.metric],
+            value: item.value,
+            unit: item.unit,
+            quality: reading.quality,
+          }),
+          tenantId,
+          readingId: reading.id,
+        })),
       });
     }
   }

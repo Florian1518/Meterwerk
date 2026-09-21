@@ -32,7 +32,7 @@ export async function dashboard(
   const valid = {
     tenantId,
     meter: selected,
-    quality: { not: "INVALID" as const },
+    quality: { in: ["VALID", "ESTIMATED"] as ("VALID" | "ESTIMATED")[] },
   };
   const [
     meters,
@@ -100,7 +100,7 @@ export async function dashboard(
           where: {
             tenantId,
             meter: { ...scope, type: key as MeterType },
-            quality: { not: "INVALID" },
+            quality: { in: ["VALID", "ESTIMATED"] },
             timestamp: { gte: month, lte: now },
           },
           _sum: { consumption: true },
@@ -130,7 +130,7 @@ export async function dashboard(
     string,
     { name: string; city: string; value: number; meters: number }
   >();
-  let cost = 0;
+  const cost = null; // Historical utility costs are rendered by UtilityOverview.
   for (const meter of meters) {
     const p = meter.unit.building.property;
     const value = meterTotals.get(meter.id) ?? 0;
@@ -143,7 +143,6 @@ export async function dashboard(
     entry.value += value;
     entry.meters++;
     properties.set(p.id, entry);
-    cost += value * Number(meter.demoPricePerUnit);
   }
   const alarmCount = await db.alarm.count({
     where: { tenantId, meter: scope, status: { not: "RESOLVED" } },

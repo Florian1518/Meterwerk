@@ -1,5 +1,7 @@
 # Meterwerk
 
+Phase 5A erweitert das bestehende System um ein gemeinsames Messgrößenmodell für Strom, Wasser, Gas und Wärme, Einheiten-Normalisierung, historische Tarife, profilabhängige Detailseiten und vier virtuelle Simulatoren. Start, API-Verträge, Demo und Grenzen: [Multi-Utility-Anleitung](docs/MULTI-UTILITY.md). Nach den Migrationen erzeugt `pnpm db:seed:utility` mit `SEED_DEMO=true` auf der lokalen Entwicklungsdatenbank den separaten Demo-Mandanten; `pnpm test:utility` prüft die neuen Datenbankzugriffe. Keine reale Hardware oder M-Bus-/wM-Bus-Anbindung wurde ergänzt.
+
 Lauffähiges Smart-Metering-SaaS-Grundsystem mit Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL und Prisma. Deutsche Oberfläche, zwei Demo-Mandanten und serverseitiges Rollenmodell.
 
 ## Lokal starten

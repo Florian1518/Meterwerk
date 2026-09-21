@@ -7,6 +7,9 @@ import { DataTable } from "@/components/data-table";
 import { typeLabels } from "@/server/dashboard";
 import { readModbus } from "@/server/modbus";
 import { ModbusConsole, type ModbusView } from "@/components/modbus-console";
+import { utilityDetail } from "@/server/utility";
+import { UtilityOverview } from "@/components/utility-overview";
+import { UtilitySettings } from "@/components/utility-settings";
 export default async function MeterPage({
   params,
   searchParams,
@@ -23,6 +26,10 @@ export default async function MeterPage({
     if (error instanceof AccessError && error.status === 404) notFound();
     throw error;
   });
+  const detail = await utilityDetail(meter.id, ctx.tenantId);
+  const modbus = await readModbus(meter.id, ctx.tenantId);
+  const to = new Date().toISOString();
+  const from = new Date(new Date(to).getTime() - 30 * 86400000).toISOString();
   return (
     <>
       <Link className="text-link" href={`/meters?tenantId=${ctx.tenantId}`}>
@@ -58,15 +65,68 @@ export default async function MeterPage({
         </dl>
       </section>
       <h2 className="section-title">Letzte 48 Messwerte</h2>
-      <ModbusConsole
-        initial={
-          JSON.parse(
-            JSON.stringify(
-              await readModbus(meter.id, (await searchParams).tenantId),
-            ),
-          ) as ModbusView
-        }
+      <UtilityOverview
+        tenantId={ctx.tenantId}
+        meterId={meter.id}
+        report={detail.report}
       />
+      {["SUPER_ADMIN", "TENANT_ADMIN"].includes(ctx.actor.role) && (
+        <UtilitySettings
+          meterId={meter.id}
+          tenantId={ctx.tenantId}
+          utility={meter.type}
+          config={detail.config}
+        />
+      )}
+      <section className="panel">
+        <h2>Tarifhistorie</h2>
+        {detail.tariffs.length ? (
+          detail.tariffs.map((t) => (
+            <p key={t.id}>
+              {t.scope}: {t.from} bis {t.to ?? "offen"} UTC · {t.price} €/
+              {t.unit} + {t.basePerDay} €/Tag{" "}
+              {t.condition
+                ? `· Zustandszahl ${t.condition}, Brennwert ${t.calorific} kWh/m3`
+                : ""}
+            </p>
+          ))
+        ) : (
+          <p>Keine Tarife hinterlegt.</p>
+        )}
+      </section>
+      <section className="panel">
+        <h2>Messgrößen · {typeLabels[meter.type]}</h2>
+        <p>
+          Letzter Messzeitpunkt (UTC):{" "}
+          {detail.timestamp ?? "Noch keine Messwerte"}
+        </p>
+        <dl className="meter-details">
+          {detail.values.map((v) => (
+            <div key={v.metric}>
+              <dt>{v.label}</dt>
+              <dd>
+                {v.value ?? "Nicht verfügbar"} {v.value !== null ? v.unit : ""}{" "}
+                {v.value !== null ? `· ${v.quality}` : ""}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {detail.alerts.map((a) => (
+          <p key={a.kind}>
+            {a.kind} · seit {a.openedAt.toISOString()}
+          </p>
+        ))}
+        <Link
+          href={`/api/meters/${meter.id}/export?tenantId=${encodeURIComponent(ctx.tenantId)}&format=utility&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+        >
+          Messgrößen als CSV exportieren (30 Tage)
+        </Link>
+      </section>
+      {modbus.devices.length > 0 && (
+        <ModbusConsole
+          initial={JSON.parse(JSON.stringify(modbus)) as ModbusView}
+        />
+      )}
       <DataTable
         headers={[
           "Zeitpunkt (UTC)",

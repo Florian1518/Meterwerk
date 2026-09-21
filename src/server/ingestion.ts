@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { db } from "./db";
 import { AccessError } from "./policy";
+import { recordPrimaryMeasurement } from "./utility-measurements";
 import type { Device } from "@/generated/prisma/client";
 export const readingPayload = z
   .object({
@@ -68,6 +69,15 @@ export async function ingestReading(
         quality: value.quality,
         source: "REST",
         receivedAt: new Date(),
+      },
+    });
+    await recordPrimaryMeasurement(tx, created);
+    await tx.auditEvent.create({
+      data: {
+        tenantId: device.tenantId,
+        actorId: device.id,
+        action: "reading.ingest",
+        entityId: created.id,
       },
     });
     await tx.device.update({

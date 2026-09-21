@@ -20,7 +20,7 @@ export async function authenticateDevice(authorization: string | null) {
   if (!credential) throw new AccessError(401, "Ungültiges Device-Credential.");
   if (credential.status !== "ACTIVE" || credential.device.status === "DISABLED")
     throw new AccessError(403, "Device ist deaktiviert.");
-  if (!["ONLINE", "WARNING"].includes(credential.device.status))
+  if (!["ONLINE", "WARNING", "OFFLINE"].includes(credential.device.status))
     throw new AccessError(
       403,
       "Device ist nicht für Ingestion freigeschaltet.",

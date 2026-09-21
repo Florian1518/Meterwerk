@@ -17,6 +17,8 @@ import { number } from "@/lib/utils";
 import { ConsumptionChart } from "@/components/chart";
 import { TenantSelect } from "@/components/tenant-select";
 import { DashboardRefresh } from "@/components/dashboard-refresh";
+import { UtilityOverview } from "@/components/utility-overview";
+import { utilityReport } from "@/server/utility";
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -29,6 +31,8 @@ export default async function DashboardPage({
       ? (params.type as MeterType)
       : "ELECTRICITY";
   const data = await dashboard(ctx.actor, ctx.tenantId, type);
+  const report = await utilityReport(ctx.tenantId);
+  const cost = report.results.find((r) => r.utility === type)?.cost ?? null;
   const suffix = `?tenantId=${encodeURIComponent(ctx.tenantId)}`;
   const max = Math.max(...data.properties.map((p) => p.value), 1);
   const kpis = [
@@ -55,15 +59,16 @@ export default async function DashboardPage({
     },
     {
       label: "Geschätzte Kosten",
-      value: number(data.cost, 2),
+      value: cost === null ? "—" : cost,
       unit: "€",
-      note: "Monat · Demo-Arbeitspreis, ohne Grundpreis",
+      note: "Monat · historische Tarife; — bei Tariflücken",
       icon: CircleDollarSign,
     },
   ];
   return (
     <>
       <DashboardRefresh />
+      <UtilityOverview tenantId={ctx.tenantId} report={report} />
       {data.edgeDevices.length > 0 && (
         <section
           aria-label="Edge-Geräte"
