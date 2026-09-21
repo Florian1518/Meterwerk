@@ -78,6 +78,41 @@ try {
   );
   assert.equal(capabilityResponse.status, 200);
   assert.equal((await capabilityResponse.json()).utility, "WATER");
+  const portfolioResponse = await fetch(
+    `${base}/api/portfolio?tenantId=demo-multi-utility`,
+    { headers },
+  );
+  assert.equal(portfolioResponse.status, 200);
+  const portfolio = await portfolioResponse.json();
+  assert.equal(portfolio.byUtility.length, 4);
+  const portfolioPage = await fetch(
+    `${base}/portfolio?tenantId=demo-multi-utility`,
+    { headers },
+  );
+  assert.equal(portfolioPage.status, 200);
+  assert((await portfolioPage.text()).includes("Portfolioübersicht"));
+  const reportResponse = await fetch(
+    `${base}/api/reports?tenantId=demo-multi-utility`,
+    {
+      headers: { ...headers, origin: base, "content-type": "application/json" },
+      method: "POST",
+      body: JSON.stringify({
+        type: "MONTHLY",
+        title: "HTTP Testbericht",
+        from: "2026-01-01T00:00:00.000Z",
+        to: "2026-02-01T00:00:00.000Z",
+        filters: {},
+      }),
+    },
+  );
+  assert.equal(reportResponse.status, 201);
+  const report = await reportResponse.json();
+  const pdfResponse = await fetch(
+    `${base}/api/reports/${report.id}/export?format=pdf&tenantId=demo-multi-utility`,
+    { headers },
+  );
+  assert.equal(pdfResponse.status, 200);
+  assert.equal((await pdfResponse.text()).slice(0, 8), "%PDF-1.4");
   const unauthenticated = await fetch(
     `${base}/api/meters/demo-multi-utility-WATER/utility`,
   );
@@ -88,7 +123,7 @@ try {
   );
   assert.equal(noTenant.status, 400);
   console.log(
-    "12 multi-utility HTTP checks passed (dashboard, four profiles, capability UI/API, authentication, explicit tenant).",
+    "18 customer-portal HTTP checks passed (dashboard, portfolio, reports, PDF, profiles, capability, authentication, explicit tenant).",
   );
 } finally {
   await db.session.delete({ where: { id: sessionId } });

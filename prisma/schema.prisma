@@ -88,6 +88,21 @@ enum AlarmStatus {
   RESOLVED
 }
 
+enum ReportType {
+  MONTHLY
+  YEARLY
+  CONSUMPTION
+  COST
+  METER_STATUS
+  ALARM
+  PROPERTY
+}
+
+enum ReportDelivery {
+  PORTAL
+  EMAIL
+}
+
 model Tenant {
   id              String           @id @default(cuid())
   name            String
@@ -101,6 +116,10 @@ model Tenant {
   technicalAlerts TechnicalAlert[]
   tariffs         Tariff[]
   profiles        DeviceProfile[]
+  reports         Report[]
+  reportSchedules ReportSchedule[]
+  notes           Note[]
+  attachments     Attachment[]
 }
 
 model User {
@@ -115,6 +134,10 @@ model User {
   createdAt    DateTime        @default(now())
   sessions     Session[]
   grants       PropertyGrant[]
+  reports      Report[] @relation("ReportCreator")
+  reportSchedules ReportSchedule[]
+  notes        Note[]
+  attachments  Attachment[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -487,8 +510,83 @@ model Alarm {
   severity  String
   status    AlarmStatus @default(OPEN)
   createdAt DateTime    @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  resolvedAt DateTime?
+  resolvedBy String?
+  comment   String?
+  comments  Note[]
 
   @@index([tenantId, status])
+  @@unique([id, tenantId])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User         @relation("ReportCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  type        ReportType
+  title       String
+  periodFrom  DateTime
+  periodTo    DateTime
+  filters     Json         @default("{}")
+  status      String       @default("READY")
+  content     Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+}
+
+model ReportSchedule {
+  id          String        @id @default(cuid())
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  type        ReportType
+  delivery    ReportDelivery @default(PORTAL)
+  dayOfMonth  Int?
+  active      Boolean       @default(true)
+  filters     Json          @default("{}")
+  lastRunAt   DateTime?
+  createdAt   DateTime      @default(now())
+  @@unique([id, tenantId])
+  @@index([tenantId, active])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  targetType String
+  entityId   String
+  text       String
+  createdAt  DateTime @default(now())
+  alarmId    String?
+  alarm      Alarm?   @relation(fields: [alarmId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  @@unique([id, tenantId])
+  @@index([tenantId, targetType, entityId, createdAt])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  targetType String
+  entityId   String
+  fileName   String
+  contentType String
+  storageKey String
+  sizeBytes  Int
+  createdAt  DateTime @default(now())
+  @@unique([id, tenantId])
+  @@index([tenantId, targetType, entityId])
 }
 
 model AuditEvent {
