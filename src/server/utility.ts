@@ -1,4 +1,5 @@
 import "server-only";
+import { recordTenantUsage } from "./licensing";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
@@ -415,6 +416,7 @@ export async function exportUtilityCsv(
   });
   if (rows.length > 10000)
     throw new AccessError(400, "Zu viele Messwerte. Zeitraum verkürzen.");
+  await recordTenantUsage(tenantId, "EXPORT");
   return csvDocument(
     [
       "Medium",

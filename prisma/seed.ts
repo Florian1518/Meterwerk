@@ -2,6 +2,7 @@ import "dotenv/config";
 import {
   PrismaClient,
   type MeterType,
+  type FeatureKey,
   type Prisma,
 } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -29,6 +30,90 @@ const previousEnd = new Date(
 const types: MeterType[] = ["ELECTRICITY", "WATER", "GAS", "HEAT"];
 try {
   const passwordHash = await hashPassword(password);
+  const planDefinitions = [
+    {
+      id: "plan-basic",
+      code: "BASIC" as const,
+      name: "Basic",
+      maxProperties: 5,
+      maxMeters: 100,
+      maxUsers: 5,
+      maxGateways: 1,
+      supportLevel: "STANDARD" as const,
+      features: ["REPORTING", "API"] as const,
+    },
+    {
+      id: "plan-professional",
+      code: "PROFESSIONAL" as const,
+      name: "Professional",
+      maxProperties: 50,
+      maxMeters: 2000,
+      maxUsers: 25,
+      maxGateways: 10,
+      supportLevel: "PRIORITY" as const,
+      features: [
+        "REPORTING",
+        "ANALYTICS",
+        "API",
+        "WEBHOOKS",
+        "ADVANCED_EXPORTS",
+      ] as const,
+    },
+    {
+      id: "plan-enterprise",
+      code: "ENTERPRISE" as const,
+      name: "Enterprise",
+      maxProperties: 2147483647,
+      maxMeters: 2147483647,
+      maxUsers: 2147483647,
+      maxGateways: 2147483647,
+      supportLevel: "DEDICATED" as const,
+      features: [
+        "REPORTING",
+        "ANALYTICS",
+        "API",
+        "WEBHOOKS",
+        "ADVANCED_EXPORTS",
+      ] as const,
+    },
+  ];
+  for (const definition of planDefinitions) {
+    await db.plan.upsert({
+      where: { code: definition.code },
+      update: {
+        name: definition.name,
+        maxProperties: definition.maxProperties,
+        maxMeters: definition.maxMeters,
+        maxUsers: definition.maxUsers,
+        maxGateways: definition.maxGateways,
+        supportLevel: definition.supportLevel,
+      },
+      create: {
+        id: definition.id,
+        code: definition.code,
+        name: definition.name,
+        maxProperties: definition.maxProperties,
+        maxMeters: definition.maxMeters,
+        maxUsers: definition.maxUsers,
+        maxGateways: definition.maxGateways,
+        supportLevel: definition.supportLevel,
+        features: {
+          create: [
+            "REPORTING",
+            "ANALYTICS",
+            "API",
+            "WEBHOOKS",
+            "ADVANCED_EXPORTS",
+          ].map((feature) => ({
+            feature: feature as FeatureKey,
+            enabled: (definition.features as readonly string[]).includes(
+              feature,
+            ),
+          })),
+        },
+      },
+    });
+  }
   await db.user.upsert({
     where: { email: "admin@meterwerk.demo" },
     update: {},
@@ -49,6 +134,20 @@ try {
         id: tenantId,
         name: t === 0 ? "Nordstern Immobilien" : "Rheinblick Quartiere",
         slug: t === 0 ? "nordstern" : "rheinblick",
+      },
+    });
+    await db.subscription.upsert({
+      where: { id: `subscription-${tenantId}` },
+      update: {
+        plan: { connect: { code: "BASIC" as const } },
+        status: "ACTIVE",
+        endsAt: null,
+      },
+      create: {
+        id: `subscription-${tenantId}`,
+        tenant: { connect: { id: tenantId } },
+        plan: { connect: { code: "BASIC" as const } },
+        status: "ACTIVE",
       },
     });
     for (const [i, role] of (

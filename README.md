@@ -207,6 +207,12 @@ Der Modbus-E2E-Test konfiguriert ausschließlich den lokalen Demo-Zähler, prüf
 
 Vollständige Arbeitsanleitung: [Hardware-Inbetriebnahme](docs/HARDWARE-COMMISSIONING.md). Autostart, Windows-Service, systemd, Pfade, Queue, Logs und manuelle Updates: [Gateway-Betrieb](docs/EDGE-GATEWAY-OPERATIONS.md). Noch offen: reale Register-/Verdrahtungsabnahme, physischer RTU-Test, Dienst-/Langzeittest auf dem Zielgerät und die genannten Produktionsmaßnahmen. Pro Gateway maximal 32 konfigurierte Geräte; Abfragen laufen seriell. Die tatsächliche Pollfrequenz hängt zusätzlich von Antwortzeiten, Gerätezahl und dem Agent-Arbeitszyklus ab.
 
+### Phase 5f: Nutzung und Planlimits
+
+Nach `pnpm db:migrate` und `pnpm db:generate` die Anwendung neu starten. Die Plattformadministration zeigt wirksame Limits, aktuellen Bestand und Warnungen ab 80/90/100 Prozent. Zusätzliche Gebäude-/Einheiten-/Device-Limits sind zunächst unbegrenzt und über Enterprise-Overrides konfigurierbar. Bestandsdaten bleiben nach Downgrade lesbar; neue Anlage wird am Limit atomar abgelehnt.
+
+Device-API-Aufrufe und Exporte werden ab Einführung monatlich in UTC gezählt; Reports als Bestand. Dafür gibt es derzeit keine Nutzungsabrechnung oder Quoten. Lokale Prüfungen: `pnpm test:licensing` und `pnpm test:usage` (Demo-Datenbank); außerdem die üblichen Unit- und Integrationstests. Keine reale Hardware erforderlich.
+
 ### Phase 4b: Pilotbetrieb
 
 Nach `pnpm db:migrate` und `pnpm db:generate` Web, Worker und Agent neu starten. Unter `/system-status` stehen Gateway-Anlage, einmalige Credential-Erstellung/Rotation/Widerruf, technische Health-Daten und deduplizierte Alarme bereit. Die bestehende Modbus-Inbetriebnahme bleibt unter `/commissioning` erhalten.

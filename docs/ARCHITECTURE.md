@@ -125,6 +125,26 @@ Neue Web-Einstiege authentifizieren selbst und verwenden aktuelle Sitzung, tenan
 
 Tariff ist mandantengebunden mit optionalem zusammengesetztem Zähler-Fremdschlüssel. Preise und Gasfaktoren gelten für historische Zeitintervalle; zukünftige Wechsel schließen offene Vorgänger atomar. Kosten verwenden Decimal, Tarifeinheiten bleiben mediengebunden und Tariflücken werden sichtbar. UTC-Berichte verwenden explizite Zeiträume und qualitätsgefilterte Werte. CSV bleibt begrenzt und freigabegefiltert. Der eigene Demo-Mandant vermeidet Änderungen an bestehenden Demo-Freigaben und Passwörtern. Details, Messgrößen und betriebliche Grenzen stehen in [MULTI-UTILITY.md](MULTI-UTILITY.md).
 
+## ADR 012: SaaS-Pläne und serverseitige Entitlements
+
+Phase 5f ergänzt `Plan`, `PlanFeature`, `Subscription`, `TenantFeatureOverride` und `TenantPlanOverride`. Eine Subscription ist tenantgebunden; die aktive Subscription wird nach Status und Gültigkeitszeitraum aufgelöst. BASIC, PROFESSIONAL und ENTERPRISE werden versioniert über eine Migration angelegt; bestehende Mandanten erhalten BASIC. Enterprise-Overrides können einzelne Features und Quoten für genau einen Mandanten ersetzen.
+
+Entitlements werden ausschließlich in `src/server/licensing.ts` aufgelöst. `requireFeature` und `requireQuota` sind verbindliche serverseitige Prüfungen; eine ausgeblendete UI-Aktion ist keine Berechtigung. Reporting, Analytics, erweiterte Exporte und Device-API-Einstiegspunkte prüfen die jeweiligen Features. Quoten werden vor Stammdatenanlage geprüft. SUPER_ADMIN ist die einzige Rolle für Planwechsel und Overrides; jede Änderung schreibt ein AuditEvent. Es gibt keine Abrechnung, keine Zahlungsprovider und keine reale Hardwarekopplung.
+
+## Usage und Limits (Phase 5f, Teil 2)
+
+Die sieben Bestandszähler werden direkt aus mandantengefilterten Tabellen gelesen. Gebäude, Nutzungseinheiten und Devices erhalten zusätzliche Planfelder und Enterprise-Overrides. Ihre Standardlimits bleiben bis zur kommerziellen Festlegung unbegrenzt; bestehende Limits aus Teil 1 bleiben unverändert. Auch deaktivierte Ressourcen zählen zum Bestand. Null erlaubt keine Neuanlage.
+
+Ressourcenanlage und Limitprüfung erfolgen in derselben Transaktion unter einer Tenant-Zeilensperre, einschließlich Einladungsannahme und Modbus-Device-Konfiguration. Planwechsel und Overrides verwenden dieselbe Sperre. Fehler rollen Anlage und Audit zurück. Downgrades löschen keine Daten; Bestandszugriffe und Bearbeitung prüfen kein Erstellungslimit. Enterprise-Overrides bleiben gespeichert, wirken aber ausschließlich bei aktivem Enterprise-Plan. Limitänderungen erzeugen atomar `subscription.limits_changed` neben den vorhandenen Plan- und Feature-Audits.
+
+Die Admin-Anzeige verwendet wirksame Limits und zeigt Warnungen ab 80, 90 und 100 Prozent. Usage-Aggregate sind ausschließlich für SUPER_ADMIN mit explizitem Tenant und für TENANT_ADMIN des eigenen Tenants zugänglich. Snapshots lesen konsistent mit Repeatable Read.
+
+`TenantUsageCounter` zählt monatlich in UTC authentifizierte Device-API-Aufrufe und serverseitig erzeugte Exporte ab Einführung der Erfassung. Authentifizierte Aufrufe zählen auch bei späterem fachlichem Fehler; anonyme/abgelehnte Authentifizierungen und interne Portalaufrufe zählen nicht. Reports werden als aktueller Bestand gezählt. Diese drei Werte sind Beobachtungswerte ohne zusätzliche Quoten oder Abrechnung; frühere Exporte/API-Aufrufe werden nicht rekonstruiert. Die Rückgabe eines Exports belegt keinen vollständigen Download beim Empfänger.
+
+## ADR 013: Providerneutrale SaaS-Billing-Vorbereitung
+
+Phase 5f Teil 3 ergänzt Testphase, Abonnementstatus, Laufzeit und Monats-/Jahresintervall, optionale Dezimal-Preisfelder, Rechnungskontakt und externe Billing-ID. `src/server/billing/provider.ts` hält einen neutralen Adaptervertrag für eine spätere Integration bereit. Kein Provider ist ausgewählt oder implementiert; es gibt keine Rechnungsstellung oder Zahlung. Vertragsfelder sind von `Tariff` und Energiekosten getrennt. Details, Statusübergänge, Rollen und Prüfungen: [SaaS-Pläne](SAAS-PLANS.md).
+
 ## Referenzen
 
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)

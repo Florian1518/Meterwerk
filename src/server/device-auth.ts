@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { db } from "./db";
 import { AccessError, tenantScope } from "./policy";
+import { requireTenantFeature, recordTenantUsage } from "./licensing";
 export const hashDeviceToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 export function newDeviceToken() {
@@ -18,6 +19,7 @@ export async function authenticateDevice(authorization: string | null) {
     include: { device: { include: { meter: true, gateway: true } } },
   });
   if (!credential) throw new AccessError(401, "Ungültiges Device-Credential.");
+  await requireTenantFeature(credential.device.tenantId, "API");
   if (credential.status !== "ACTIVE" || credential.device.status === "DISABLED")
     throw new AccessError(403, "Device ist deaktiviert.");
   if (!["ONLINE", "WARNING", "OFFLINE"].includes(credential.device.status))
@@ -29,6 +31,7 @@ export async function authenticateDevice(authorization: string | null) {
     where: { id: credential.id },
     data: { lastUsedAt: new Date() },
   });
+  await recordTenantUsage(credential.device.tenantId, "API");
   return { credential, device: credential.device };
 }
 export async function consumeDeviceRateLimit(key: string) {

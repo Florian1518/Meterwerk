@@ -9,6 +9,7 @@ import {
   type Actor,
 } from "./policy";
 import { hashPassword } from "./password";
+import { requireTenantQuota } from "./licensing";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const editableResources = [
@@ -135,6 +136,8 @@ export async function writeResource(
   const passwordHash = password ? await hashPassword(password) : undefined;
   // Tenant row lock serializes administration and protects the last-admin invariant.
   return db.$transaction(async (tx) => {
+    if (operation === "create" && kind !== "tenants" && kind !== "alarms")
+      await requireTenantQuota(tx, tenantId, kind);
     if (tenantId)
       await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
     const id = envelope.id;
@@ -205,6 +208,16 @@ export async function writeResource(
               ? await tx.tenant.create({ data })
               : await tx.tenant.update({ where: { id }, data })
           ).id;
+          if (operation === "create") {
+            const basic = await tx.plan.findUnique({
+              where: { code: "BASIC" },
+            });
+            if (!basic)
+              throw new AccessError(503, "SaaS-Pläne sind nicht eingerichtet.");
+            await tx.subscription.create({
+              data: { tenantId: resultId, planId: basic.id },
+            });
+          }
           break;
         }
         case "properties": {

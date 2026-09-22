@@ -1,4 +1,5 @@
 import "server-only";
+import { requireTenantQuota, recordTenantUsage } from "./licensing";
 import { z } from "zod";
 import { db } from "./db";
 import { requireActor } from "./auth";
@@ -176,6 +177,7 @@ export async function writeModbus(
   const value = operationSchema.parse(raw);
   return db.$transaction(async (tx) => {
     // Match ingestion order Gateway -> Device -> Meter. GatewayCommand inserts
+    await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
     // also acquire a Gateway FK lock, including for STOP/READ commands.
     const targetGateway =
       value.operation === "CONFIGURE" ? value.gatewayId : "";
@@ -228,6 +230,7 @@ export async function writeModbus(
           409,
           "Polling vor einem Gateway-Wechsel stoppen.",
         );
+      if (!device) await requireTenantQuota(tx, tenantId, "devices");
       if (!device)
         device = await tx.device.create({
           data: {
@@ -521,6 +524,7 @@ export async function exportModbusCsv(
       413,
       "Mehr als 10.000 Werte. Bitte Zeitraum verkleinern.",
     );
+  await recordTenantUsage(tenantId, "EXPORT");
   return csvDocument(
     [
       "Zeitstempel UTC",

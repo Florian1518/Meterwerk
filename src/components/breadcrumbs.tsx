@@ -15,6 +15,7 @@ const labels: Record<string, string> = {
   onboarding: "Onboarding",
   "system-status": "Systemstatus",
   settings: "Einstellungen",
+  billing: "Plan und Nutzung",
   "platform-admin": "Plattformverwaltung",
 };
 export function Breadcrumbs() {

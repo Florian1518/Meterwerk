@@ -41,7 +41,7 @@ async function status(
   assert.equal(
     res.status,
     expected,
-    `${path}: expected ${expected}, got ${res.status}`,
+    `${path}: expected ${expected}, got ${res.status}: ${await res.clone().text()}`,
   );
   count++;
   return res;
@@ -63,6 +63,7 @@ try {
     "users",
     "alarms",
     "settings",
+    "billing",
   ]) {
     const response = await status(`/${section}`, 200, tenant);
     const html = await response.text();
@@ -87,6 +88,11 @@ try {
   );
   await status("/api/meters?tenantId=demo-tenant-1", 403, tenant);
   await status("/api/tenants", 403, tenant);
+  await status("/api/billing?tenantId=demo-tenant-0", 200, tenant);
+  await status("/api/billing?tenantId=demo-tenant-1", 403, tenant);
+  await status("/api/billing?tenantId=demo-tenant-0", 403, user);
+  await status("/api/billing", 400, platform);
+  await status("/api/billing?tenantId=demo-tenant-0", 200, platform);
   await status("/api/users", 403, user);
   const foreign = await db.meter.findFirstOrThrow({
     where: { tenantId: "demo-tenant-1" },

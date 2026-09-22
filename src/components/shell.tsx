@@ -16,6 +16,7 @@ import {
   Warehouse,
   Zap,
   FileText,
+  CreditCard,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -86,6 +87,12 @@ const navigation: { group: string; items: NavItem[] }[] = [
     items: [
       { href: "/users", label: "Benutzer", icon: Users, manage: true },
       { href: "/settings", label: "Einstellungen", icon: Settings },
+      {
+        href: "/billing",
+        label: "Plan und Nutzung",
+        icon: CreditCard,
+        manage: true,
+      },
       { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
       {
         href: "/platform-admin",

@@ -111,6 +111,41 @@ enum NotificationChannel {
   WEBHOOK
 }
 
+enum PlanCode {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum FeatureKey {
+  REPORTING
+  ANALYTICS
+  API
+  WEBHOOKS
+  ADVANCED_EXPORTS
+}
+
+enum SupportLevel {
+  STANDARD
+  PRIORITY
+  DEDICATED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+  PAUSED
+  EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
 model Tenant {
   id              String           @id @default(cuid())
   name            String
@@ -129,6 +164,100 @@ model Tenant {
   notes           Note[]
   attachments     Attachment[]
   invitations     Invitation[]
+  subscriptions   Subscription[]
+  featureOverrides TenantFeatureOverride[]
+  planOverride    TenantPlanOverride?
+  usageCounters   TenantUsageCounter[]
+}
+
+model TenantUsageCounter {
+  tenantId String
+  month String
+  kind String
+  count Int @default(0)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, month, kind])
+}
+
+model Plan {
+  id                 String       @id @default(cuid())
+  code               PlanCode     @unique
+  name               String
+  maxProperties      Int
+  maxMeters          Int
+  maxUsers           Int
+  maxGateways        Int
+  maxBuildings       Int @default(2147483647)
+  maxUnits           Int @default(2147483647)
+  maxDevices         Int @default(2147483647)
+  supportLevel       SupportLevel @default(STANDARD)
+  monthlyPrice       Decimal?     @db.Decimal(12, 2)
+  yearlyPrice        Decimal?     @db.Decimal(12, 2)
+  priceCurrency      String?      @db.VarChar(3)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  features           PlanFeature[]
+  subscriptions      Subscription[]
+}
+
+model PlanFeature {
+  planId   String
+  feature  FeatureKey
+  enabled  Boolean @default(false)
+  plan     Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([planId, feature])
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  tenantId   String
+  planId     String
+  status     SubscriptionStatus @default(ACTIVE)
+  startsAt   DateTime           @default(now())
+  endsAt     DateTime?
+  trialEndsAt DateTime?
+  billingInterval BillingInterval @default(MONTHLY)
+  priceAmount Decimal? @db.Decimal(12, 2)
+  priceCurrency String? @db.VarChar(3)
+  billingContactName String?
+  billingContactEmail String?
+  billingContactCompany String?
+  billingContactAddress String?
+  externalBillingId String? @unique
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan       Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status, startsAt])
+  @@index([planId])
+}
+
+model TenantFeatureOverride {
+  tenantId  String
+  feature   FeatureKey
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, feature])
+}
+
+model TenantPlanOverride {
+  tenantId      String   @id
+  maxProperties Int?
+  maxMeters     Int?
+  maxUsers      Int?
+  maxGateways   Int?
+  maxBuildings  Int?
+  maxUnits      Int?
+  maxDevices    Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model User {

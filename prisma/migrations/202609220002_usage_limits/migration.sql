@@ -1,0 +1,13 @@
+ALTER TABLE "Plan" ADD COLUMN "maxBuildings" INTEGER NOT NULL DEFAULT 2147483647,
+ADD COLUMN "maxUnits" INTEGER NOT NULL DEFAULT 2147483647,
+ADD COLUMN "maxDevices" INTEGER NOT NULL DEFAULT 2147483647;
+ALTER TABLE "TenantPlanOverride" ADD COLUMN "maxBuildings" INTEGER,
+ADD COLUMN "maxUnits" INTEGER, ADD COLUMN "maxDevices" INTEGER;
+CREATE TABLE "TenantUsageCounter" (
+  "tenantId" TEXT NOT NULL,
+  "month" TEXT NOT NULL,
+  "kind" TEXT NOT NULL,
+  "count" INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT "TenantUsageCounter_pkey" PRIMARY KEY ("tenantId", "month", "kind"),
+  CONSTRAINT "TenantUsageCounter_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);

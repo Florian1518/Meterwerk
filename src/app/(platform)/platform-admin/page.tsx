@@ -1,6 +1,7 @@
 export const metadata = { title: "Plattformverwaltung · Meterwerk" };
 import { requirePageActor } from "@/server/auth";
 import { platformOverview, listPlatformTenants } from "@/server/platform-admin";
+import { LicensingPanel } from "@/components/licensing-panel";
 export default async function PlatformAdminPage() {
   const actor = await requirePageActor();
   const [overview, tenants] = await Promise.all([
@@ -51,6 +52,7 @@ export default async function PlatformAdminPage() {
           </tbody>
         </table>
       </section>
+      <LicensingPanel tenants={tenants.map(({ id, name }) => ({ id, name }))} />
     </>
   );
 }

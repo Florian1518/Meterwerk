@@ -1,4 +1,5 @@
 import "server-only";
+import { requireTenantQuota } from "./licensing";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { db } from "./db";
@@ -150,6 +151,7 @@ export async function acceptInvitation(input: unknown) {
     throw new AccessError(409, "Diese E-Mail-Adresse ist bereits registriert.");
   const passwordHash = await hashPassword(value.password);
   const user = await db.$transaction(async (tx) => {
+    await requireTenantQuota(tx, invitation.tenantId, "users");
     const created = await tx.user.create({
       data: {
         tenantId: invitation.tenantId,

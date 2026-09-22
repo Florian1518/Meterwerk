@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { requireActor } from "./auth";
 import { AccessError, requireManage, tenantScope } from "./policy";
+import { requireTenantQuota } from "./licensing";
 const operation = z.discriminatedUnion("operation", [
   z
     .object({
@@ -37,6 +38,7 @@ export async function createPilotGateway(
     .strict()
     .parse(raw);
   return db.$transaction(async (tx) => {
+    await requireTenantQuota(tx, tenantId, "gateways");
     const gateway = await tx.gateway.create({
       data: {
         tenantId,

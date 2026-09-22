@@ -1,4 +1,5 @@
 import "server-only";
+import { recordTenantUsage } from "./licensing";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
@@ -8,6 +9,7 @@ import { comparisonPeriods, utilities, profiles, metrics } from "@/lib/utility";
 import { csvDocument } from "@/lib/modbus/csv";
 import { utilityReport } from "./utility";
 import type { MeterType, ReportType } from "@/generated/prisma/client";
+import { requireFeature } from "./licensing";
 
 const filterSchema = z.object({
   propertyId: z.string().min(1).optional(),
@@ -258,6 +260,7 @@ export async function benchmark(
   filters: unknown = {},
 ) {
   const { actor, tenantId } = await access(requested);
+  await requireFeature(actor, "ANALYTICS", tenantId);
   const parsed = filterSchema.parse(filters);
   const meters = await db.meter.findMany({
     where: meterWhere(tenantId, actor, parsed),
@@ -344,6 +347,7 @@ const reportInput = z.object({
 });
 export async function createReport(input: unknown, requested?: string | null) {
   const { actor, tenantId } = await access(requested);
+  await requireFeature(actor, "REPORTING", tenantId);
   const value = reportInput.parse(input);
   const where = meterWhere(tenantId, actor, value.filters);
   const meters = await db.meter.findMany({
@@ -414,6 +418,7 @@ export async function createReport(input: unknown, requested?: string | null) {
 
 export async function listReports(requested?: string | null) {
   const { actor, tenantId } = await access(requested);
+  await requireFeature(actor, "REPORTING", tenantId);
   return db.report.findMany({
     where: {
       tenantId,
@@ -439,6 +444,7 @@ export async function reportExport(
   requested?: string | null,
 ) {
   const { actor, tenantId } = await access(requested);
+  await requireFeature(actor, "ADVANCED_EXPORTS", tenantId);
   const report = await db.report.findFirst({
     where: {
       id,
@@ -447,6 +453,7 @@ export async function reportExport(
     },
   });
   if (!report) throw new AccessError(404, "Bericht nicht gefunden.");
+  await recordTenantUsage(tenantId, "EXPORT");
   const content = report.content as {
     readings?: Array<Record<string, string>>;
   };
@@ -554,6 +561,7 @@ export async function addNote(input: unknown, requested?: string | null) {
 
 export async function tenantExport(requested?: string | null) {
   const { actor, tenantId } = await access(requested);
+  await requireFeature(actor, "ADVANCED_EXPORTS", tenantId);
   if (actor.role !== "SUPER_ADMIN" && actor.role !== "TENANT_ADMIN")
     throw new AccessError(403, "Kein Exportrecht.");
   const [properties, meters, readings, alarms, reports] = await Promise.all([
@@ -575,6 +583,7 @@ export async function tenantExport(requested?: string | null) {
       select: { id: true, type: true, title: true, createdAt: true },
     }),
   ]);
+  await recordTenantUsage(tenantId, "EXPORT");
   return {
     tenantId,
     exportedAt: new Date().toISOString(),
