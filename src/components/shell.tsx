@@ -19,6 +19,8 @@ import {
   CreditCard,
   KeyRound,
   Webhook,
+  Upload,
+  ClipboardCheck,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -102,6 +104,13 @@ const navigation: { group: string; items: NavItem[] }[] = [
         manage: true,
       },
       { href: "/webhooks", label: "Webhooks", icon: Webhook, manage: true },
+      { href: "/imports", label: "Datenimport", icon: Upload, manage: true },
+      {
+        href: "/data-quality",
+        label: "Datenqualität",
+        icon: ClipboardCheck,
+        manage: true,
+      },
       { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
       {
         href: "/platform-admin",

@@ -166,3 +166,9 @@ Phase 5B führt eine gemeinsame Driver- und Ingestion-Grenze für MODBUS_RTU, MO
 `DeviceProfile` versioniert Hersteller, Modell, Medium, Protokoll, Messgrößen, Einheiten und Decoder-Konfiguration. Historische Messwerte behalten dadurch ihre ursprüngliche Profilversion. M-Bus/Wireless-M-Bus, Pulse und LoRaWAN sind als Decoder und Simulatoren vorbereitet; konkrete Herstellerhardware, Schlüssel und produktive Funk-/Busanbindungen bleiben offen. Wireless-Schlüssel werden nur als Referenz auf einen Secret Store modelliert und nicht in DTOs oder Logs ausgegeben.
 
 Ein `MeterReplacement` trennt den logischen Messpunkt von physischen Zählergenerationen. Ausbau-/Einbauzeitpunkte und Registerstände ermöglichen durchgehende Verbrauchs- und Tarifauswertungen ohne Änderung historischer Daten. Tarifintervalle werden zeitanteilig anhand von `validFrom`/`validTo` berechnet.
+
+CSV-Datenimporte verwenden eine kurzlebige mandantengebundene DataImport-Vorschau. Der Commit bindet Batch, User und Tenant, prüft Lizenzlimits unter Tenant-Sperre erneut und schreibt alle Ressourcen plus AuditEvent atomar. Zeitstempel benötigen einen expliziten Offset; Dezimalwerte werden verlustfrei als Decimal-Strings übernommen. Details und Feldverträge stehen in [DATA-IMPORT.md](DATA-IMPORT.md).
+
+# Datenqualität und CSV-Import
+
+CSV-Import und Datenqualitätsprüfung sind tenantgebundene Serverfunktionen in `src/server/`. Datenqualitätskorrekturen speichern immutable Before-/After-Snapshots, verpflichtende Begründung und AuditEvent innerhalb derselben Transaktion; ungültige Messwerte bleiben lesbar erhalten. Details und Erkennungsschwellen: [DATA-QUALITY.md](DATA-QUALITY.md) und [DATA-IMPORT.md](DATA-IMPORT.md).

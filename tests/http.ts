@@ -14,6 +14,8 @@ if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname))
 const ids: string[] = [];
 let publicApiKeyId: string | null = null;
 let apiKeyFromRouteId: string | null = null;
+let importedPropertyName: string | null = null;
+let importedBatchId: string | null = null;
 let count = 0;
 async function session(userId: string, expired = false) {
   const token = randomBytes(32).toString("hex");
@@ -81,6 +83,7 @@ try {
     "alarms",
     "settings",
     "billing",
+    "data-quality",
   ]) {
     const response = await status(`/${section}`, 200, tenant);
     const html = await response.text();
@@ -89,6 +92,51 @@ try {
       `${section} error boundary`,
     );
   }
+  await status("/imports", 200, tenant);
+  const userImportPage = await status("/imports", 200, user);
+  assert(
+    !(await userImportPage.text()).includes("CSV-Datenimport"),
+    "USER must not receive the import page",
+  );
+  importedPropertyName = `HTTP import ${randomBytes(4).toString("hex")}`;
+  const importForm = new FormData();
+  importForm.set("tenantId", "demo-tenant-0");
+  importForm.set("resource", "properties");
+  importForm.set(
+    "mapping",
+    JSON.stringify({ name: "name", address: "address", city: "city" }),
+  );
+  importForm.set(
+    "file",
+    new File(
+      [`name;address;city\n${importedPropertyName};HTTP 1;Berlin\n`],
+      "properties.csv",
+      { type: "text/csv" },
+    ),
+  );
+  const importPreviewResponse = await status(
+    "/api/imports/preview",
+    201,
+    tenant,
+    {
+      method: "POST",
+      headers: { origin: base },
+      body: importForm,
+    },
+  );
+  const importPreview = await importPreviewResponse.json();
+  importedBatchId = String(importPreview.id);
+  assert.equal(importPreview.canConfirm, true);
+  await status(
+    `/api/imports/${encodeURIComponent(importPreview.id)}/confirm`,
+    200,
+    tenant,
+    {
+      method: "POST",
+      headers: { origin: base, "content-type": "application/json" },
+      body: JSON.stringify({ tenantId: "demo-tenant-0" }),
+    },
+  );
   await status("/tenants", 200, platform);
   await status("/dashboard", 200, platform);
   await status("/dashboard?tenantId=demo-tenant-1", 200, platform);
@@ -309,6 +357,19 @@ try {
     `${count} HTTP checks passed: pages, authentication, expiry, revocation, tenant isolation, USER grants, CSRF, write authorization.`,
   );
 } finally {
+  if (importedPropertyName) {
+    const imported = await db.property.findFirst({
+      where: { tenantId: "demo-tenant-0", name: importedPropertyName },
+      select: { id: true },
+    });
+    if (imported) await db.property.delete({ where: { id: imported.id } });
+    await db.auditEvent.deleteMany({
+      where: { tenantId: "demo-tenant-0", entityId: importedBatchId ?? "" },
+    });
+    await db.dataImport.deleteMany({
+      where: { id: importedBatchId ?? "", tenantId: "demo-tenant-0" },
+    });
+  }
   if (publicApiKeyId) {
     await db.auditEvent.deleteMany({
       where: {

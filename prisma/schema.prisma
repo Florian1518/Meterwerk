@@ -69,6 +69,30 @@ enum Quality {
   SUSPECT
 }
 
+enum DataQualityStatus {
+  OK
+  WARNING
+  ERROR
+}
+
+enum DataQualityIssueType {
+  MISSING_READINGS
+  DUPLICATE_READINGS
+  TIMESTAMP_OUT_OF_RANGE
+  NEGATIVE_CONSUMPTION
+  UNUSUAL_JUMP
+  COUNTER_ROLLBACK
+  UNIT_MISMATCH
+  ORPHANED_ASSIGNMENT
+  DATA_GAP
+}
+
+enum DataCorrectionAction {
+  CORRECT
+  MARK_INVALID
+  REPLACE
+}
+
 enum Source {
   DEMO
   REST
@@ -171,6 +195,29 @@ model Tenant {
   publicApiKeys   PublicApiKey[]
   webhooks        WebhookEndpoint[]
   webhookDeliveries WebhookDelivery[]
+  dataImports     DataImport[]
+  dataQualityFindings DataQualityFinding[]
+  dataQualityCorrections DataQualityCorrection[]
+}
+
+model DataImport {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorId     String
+  resource    String
+  fingerprint String
+  stagedData  Json
+  errors      Json
+  rowCount    Int
+  status      String   @default("PREVIEWED")
+  expiresAt   DateTime
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, fingerprint])
 }
 
 model WebhookEndpoint {
@@ -525,6 +572,7 @@ model Meter {
   installedAt      DateTime
   demoPricePerUnit Decimal            @db.Decimal(10, 4)
   readings         Reading[]
+  qualityFindings  DataQualityFinding[]
   alarms           Alarm[]
   devices          Device[]
   utilityConfig    Json               @default("{}")
@@ -751,11 +799,55 @@ model Reading {
   quality         Quality       @default(VALID)
   receivedAt      DateTime      @default(now())
   measurements    Measurement[]
+  qualityFindings DataQualityFinding[]
+  corrections     DataQualityCorrection[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, deviceId, messageId])
   @@unique([tenantId, meterId, timestamp, source])
   @@index([tenantId, timestamp])
+}
+
+model DataQualityFinding {
+  id          String                @id @default(cuid())
+  tenantId    String
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meterId     String
+  meter       Meter                 @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  readingId   String?
+  reading     Reading?              @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  type        DataQualityIssueType
+  status      DataQualityStatus
+  fingerprint String
+  description String
+  details     Json                  @default("{}")
+  windowFrom  DateTime
+  windowTo    DateTime
+  detectedAt  DateTime              @default(now())
+  lastSeenAt  DateTime              @default(now())
+  resolvedAt  DateTime?
+
+  @@unique([tenantId, fingerprint])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, type, resolvedAt])
+  @@index([tenantId, meterId, windowFrom, windowTo])
+}
+
+model DataQualityCorrection {
+  id          String               @id @default(cuid())
+  tenantId    String
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  readingId   String
+  reading     Reading              @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorId     String
+  action      DataCorrectionAction
+  reason      String
+  beforeData  Json
+  afterData   Json
+  createdAt   DateTime             @default(now())
+
+  @@unique([id, tenantId])
+  @@index([tenantId, readingId, createdAt])
 }
 
 model Measurement {
