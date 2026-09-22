@@ -7,6 +7,7 @@ import { signedMessage } from "../../apps/edge-gateway/src/wire";
 import { mqttConnection } from "../lib/mqtt-connection";
 import { log } from "../lib/logger";
 import { recordWorkerHealth } from "./system-status";
+import { deliverNextWebhook } from "./webhooks";
 const receiptKey = await readFile(
   process.env.MQTT_RECEIPT_KEY_PATH ?? ".local/receipt-private.pem",
   "utf8",
@@ -90,9 +91,20 @@ const timer = setInterval(() => {
       detecting = false;
     });
 }, 2000);
+let deliveringWebhook = false;
+const webhookTimer = setInterval(() => {
+  if (deliveringWebhook) return;
+  deliveringWebhook = true;
+  void deliverNextWebhook()
+    .catch(() => log("WARN", "webhooks", "delivery.worker.failed"))
+    .finally(() => {
+      deliveringWebhook = false;
+    });
+}, 1000);
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () => {
     clearInterval(timer);
+    clearInterval(webhookTimer);
     void pending.finally(async () => {
       await recordWorkerHealth(
         false,

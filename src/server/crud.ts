@@ -10,6 +10,7 @@ import {
 } from "./policy";
 import { hashPassword } from "./password";
 import { requireTenantQuota } from "./licensing";
+import { enqueueWebhookEvent } from "./webhooks";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const editableResources = [
@@ -307,11 +308,36 @@ export async function writeResource(
         case "alarms": {
           const data = schemas.alarms.parse(raw);
           await existing(tx, "meters", data.meterId, tenantId);
-          resultId = (
-            operation === "create"
-              ? await tx.alarm.create({ data: { ...data, tenantId } })
-              : await tx.alarm.update({ where: { id, tenantId }, data })
-          ).id;
+          if (operation === "create") {
+            const created = await tx.alarm.create({
+              data: { ...data, tenantId },
+            });
+            resultId = created.id;
+            await enqueueWebhookEvent(tx, tenantId, "alarm.created", {
+              alarmId: created.id,
+              meterId: created.meterId,
+              severity: created.severity,
+              title: created.title,
+            });
+          } else {
+            const updated = await tx.alarm.update({
+              where: { id, tenantId },
+              data,
+            });
+            resultId = updated.id;
+            if (prior && "status" in prior && prior.status !== updated.status) {
+              if (updated.status === "ACKNOWLEDGED")
+                await enqueueWebhookEvent(tx, tenantId, "alarm.acknowledged", {
+                  alarmId: updated.id,
+                  meterId: updated.meterId,
+                });
+              if (updated.status === "RESOLVED")
+                await enqueueWebhookEvent(tx, tenantId, "alarm.resolved", {
+                  alarmId: updated.id,
+                  meterId: updated.meterId,
+                });
+            }
+          }
           break;
         }
       }

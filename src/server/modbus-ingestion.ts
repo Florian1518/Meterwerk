@@ -12,6 +12,7 @@ import {
   offlineAfter,
 } from "../lib/modbus/contracts";
 import { decodeRegister } from "../../apps/edge-gateway/src/registers";
+import { enqueueWebhookEvent } from "./webhooks";
 type Tx = Prisma.TransactionClient;
 export async function acceptTelemetry(
   tx: Tx,
@@ -133,6 +134,14 @@ export async function acceptTelemetry(
           quality: monotonic && !after ? "VALID" : "SUSPECT",
         },
       });
+      await enqueueWebhookEvent(tx, tenantId, "meter.reading.received", {
+        readingId: reading.id,
+        meterId: device.meterId,
+        timestamp: reading.timestamp.toISOString(),
+        value: reading.registerValue.toString(),
+        consumption: reading.consumption.toString(),
+        unit: reading.measurementUnit,
+      });
       await tx.measurement.createMany({
         data: value.values.map((item) => ({
           ...normalize("ELECTRICITY", {
@@ -198,6 +207,16 @@ export async function acceptTelemetry(
           ...(!value.error ? { lastContact: timestamp } : {}),
         },
       });
+      if (status === "OFFLINE" && device.status !== "OFFLINE")
+        await enqueueWebhookEvent(tx, tenantId, "meter.offline", {
+          meterId: device.meterId,
+          deviceId: device.id,
+        });
+      else if (status !== "OFFLINE" && device.status !== "ONLINE")
+        await enqueueWebhookEvent(tx, tenantId, "meter.online", {
+          meterId: device.meterId,
+          deviceId: device.id,
+        });
       if (value.error)
         await tx.modbusConfiguration.update({
           where: { deviceId: device.id },

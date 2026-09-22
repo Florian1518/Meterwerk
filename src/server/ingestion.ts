@@ -4,6 +4,7 @@ import { db } from "./db";
 import { AccessError } from "./policy";
 import { recordPrimaryMeasurement } from "./utility-measurements";
 import type { Device } from "@/generated/prisma/client";
+import { enqueueWebhookEvent } from "./webhooks";
 export const readingPayload = z
   .object({
     messageId: z.string().trim().min(1).max(160),
@@ -71,6 +72,14 @@ export async function ingestReading(
         receivedAt: new Date(),
       },
     });
+    await enqueueWebhookEvent(tx, device.tenantId, "meter.reading.received", {
+      readingId: created.id,
+      meterId: device.meterId,
+      timestamp: created.timestamp.toISOString(),
+      value: created.registerValue.toString(),
+      consumption: created.consumption.toString(),
+      unit: created.measurementUnit,
+    });
     await recordPrimaryMeasurement(tx, created);
     await tx.auditEvent.create({
       data: {
@@ -84,6 +93,11 @@ export async function ingestReading(
       where: { id: device.id },
       data: { lastSeenAt: new Date(), status: "ONLINE" },
     });
+    if (device.status !== "ONLINE")
+      await enqueueWebhookEvent(tx, device.tenantId, "meter.online", {
+        meterId: device.meterId,
+        deviceId: device.id,
+      });
     await tx.meter.update({
       where: { id: device.meterId },
       data: { lastContact: new Date() },

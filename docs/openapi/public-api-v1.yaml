@@ -1,0 +1,166 @@
+openapi: 3.1.0
+info:
+  title: Meterwerk Public API
+  version: 1.0.0
+  description: Tenant-gebundene, ausschließlich lesende API für Meterwerk.
+servers:
+  - url: /api/public/v1
+security:
+  - BearerApiKey: []
+paths:
+  /:
+    get:
+      operationId: getApiVersion
+      summary: Version und verfügbare Ressourcen
+      responses:
+        "200":
+          description: Version und die Ressourcen, die durch Scopes des Schlüssels lesbar sind.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apiVersion, resources, correlationId]
+                properties:
+                  apiVersion: { type: string, const: v1 }
+                  resources: { type: array, items: { type: string } }
+                  correlationId: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Error" }
+      description: Benötigt einen gültigen, nicht abgelaufenen und nicht widerrufenen API-Key.
+  /{resource}:
+    get:
+      operationId: listResource
+      summary: Mandantengefilterte Ressource lesen
+      description: >-
+        Erlaubte Werte sind properties, buildings, units, meters, readings,
+        alarms und reports. Erforderlicher Scope ist jeweils {resource}:read.
+        `from` und `to` filtern Messwerte nach timestamp sowie Alarme/Reports
+        nach createdAt; bei anderen Ressourcen werden diese Filter ignoriert.
+        Ein fremdes tenantId wird mit 403 abgelehnt. Die Tenant-ID des Schlüssels
+        ist immer maßgeblich.
+      parameters:
+        - name: resource
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              [properties, buildings, units, meters, readings, alarms, reports]
+        - name: limit
+          in: query
+          required: false
+          description: Seitengröße, Standard 50, Maximum 100.
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: cursor
+          in: query
+          required: false
+          description: "`pagination.nextCursor` aus der vorherigen Antwort."
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          description: Inklusiver ISO-8601-Zeitstempel mit Zeitzone.
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: false
+          description: Exklusiver ISO-8601-Zeitstempel mit Zeitzone.
+          schema: { type: string, format: date-time }
+        - name: tenantId
+          in: query
+          required: false
+          description: Nur derselbe Tenant wird akzeptiert. Nicht zur Tenant-Auswahl.
+          schema: { type: string }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Eine Seite mit mandantengefilterten Objekten.
+          headers:
+            X-Correlation-ID: { $ref: "#/components/headers/CorrelationId" }
+            X-RateLimit-Limit: { $ref: "#/components/headers/RateLimit" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+              examples:
+                propertyPage:
+                  value:
+                    data:
+                      - id: property-1
+                        name: Campus am Stadtpark
+                        address: Parkstraße 24
+                        city: Hamburg
+                        createdAt: "2026-09-23T12:00:00.000Z"
+                    pagination: { limit: 50, nextCursor: null }
+                    correlationId: 00df5e60-f6d6-4805-a87d-940632a934a7
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Error" }
+      security:
+        - BearerApiKey: []
+components:
+  securitySchemes:
+    BearerApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: Meterwerk API-Key
+      description: Tenantgebundener Schlüssel, der nur bei Erstellung vollständig angezeigt wird.
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      description: 8–128 Zeichen aus Buchstaben, Ziffern, Punkt, Unterstrich, Doppelpunkt oder Bindestrich.
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  headers:
+    CorrelationId:
+      description: Übernommene oder serverseitig erzeugte Korrelations-ID.
+      schema: { type: string }
+    RateLimit:
+      description: Maximale Anzahl Requests pro Schlüssel im 60-Sekunden-Fenster.
+      schema: { type: integer, const: 120 }
+    RetryAfter:
+      description: Sekunden bis zum nächsten erlaubten Aufruf.
+      schema: { type: integer }
+  schemas:
+    Page:
+      type: object
+      required: [data, pagination, correlationId]
+      properties:
+        data:
+          type: array
+          items: { type: object, additionalProperties: true }
+        pagination:
+          type: object
+          required: [limit, nextCursor]
+          properties:
+            limit: { type: integer, minimum: 1, maximum: 100 }
+            nextCursor: { type: [string, "null"] }
+        correlationId: { type: string }
+    Error:
+      type: object
+      required: [error, correlationId]
+      properties:
+        error: { type: string }
+        correlationId: { type: string }
+  responses:
+    Error:
+      description: Verständlicher Fehler mit Correlation-ID.
+      headers:
+        X-Correlation-ID: { $ref: "#/components/headers/CorrelationId" }
+        X-RateLimit-Limit: { $ref: "#/components/headers/RateLimit" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Das Limit von 120 Aufrufen je API-Key und 60 Sekunden wurde erreicht.
+      headers:
+        X-Correlation-ID: { $ref: "#/components/headers/CorrelationId" }
+        X-RateLimit-Limit: { $ref: "#/components/headers/RateLimit" }
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

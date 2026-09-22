@@ -16,6 +16,8 @@ const labels: Record<string, string> = {
   "system-status": "Systemstatus",
   settings: "Einstellungen",
   billing: "Plan und Nutzung",
+  "api-keys": "Public API-Keys",
+  webhooks: "Webhooks",
   "platform-admin": "Plattformverwaltung",
 };
 export function Breadcrumbs() {

@@ -17,6 +17,8 @@ import {
   Zap,
   FileText,
   CreditCard,
+  KeyRound,
+  Webhook,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -93,6 +95,13 @@ const navigation: { group: string; items: NavItem[] }[] = [
         icon: CreditCard,
         manage: true,
       },
+      {
+        href: "/api-keys",
+        label: "Public API-Keys",
+        icon: KeyRound,
+        manage: true,
+      },
+      { href: "/webhooks", label: "Webhooks", icon: Webhook, manage: true },
       { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
       {
         href: "/platform-admin",

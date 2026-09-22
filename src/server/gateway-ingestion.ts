@@ -9,6 +9,7 @@ import {
   envelopeSchema,
   verifyMessage,
 } from "../../apps/edge-gateway/src/wire";
+import { enqueueWebhookEvent } from "./webhooks";
 
 const decimal = z.string().regex(/^\d{1,14}(\.\d{1,6})?$/);
 const reading = z
@@ -96,6 +97,11 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
           queueDropped: value.queueDropped ?? 0,
         },
       });
+      if (credential.gateway.status !== "ONLINE")
+        await enqueueWebhookEvent(tx, tenantId, "gateway.online", {
+          gatewayId,
+          lastSeenAt: value.timestamp,
+        });
       await tx.auditEvent.create({
         data: {
           tenantId,
@@ -172,6 +178,14 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
         quality: "VALID",
       },
     });
+    await enqueueWebhookEvent(tx, tenantId, "meter.reading.received", {
+      readingId: createdReading.id,
+      meterId: device.meterId,
+      timestamp: createdReading.timestamp.toISOString(),
+      value: createdReading.registerValue.toString(),
+      consumption: createdReading.consumption.toString(),
+      unit: createdReading.measurementUnit,
+    });
     await recordPrimaryMeasurement(tx, createdReading);
     // Historical queue replay must not make a currently disconnected device ONLINE.
     if (!device.lastSeenAt || timestamp > device.lastSeenAt) {
@@ -184,6 +198,11 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
         where: { id: device.meterId },
         data: { lastContact: timestamp, status: online ? "ACTIVE" : "OFFLINE" },
       });
+      if (online && device.status !== "ONLINE")
+        await enqueueWebhookEvent(tx, tenantId, "meter.online", {
+          meterId: device.meterId,
+          deviceId: device.id,
+        });
     }
     await tx.auditEvent.create({
       data: {
@@ -209,7 +228,10 @@ export async function detectOffline() {
         where: { ...g, status: "ONLINE", lastSeenAt: { lt: cutoff } },
         data: { status: "OFFLINE" },
       });
-      if (changed.count)
+      if (changed.count) {
+        await enqueueWebhookEvent(tx, g.tenantId, "gateway.offline", {
+          gatewayId: g.id,
+        });
         await tx.auditEvent.create({
           data: {
             tenantId: g.tenantId,
@@ -218,6 +240,7 @@ export async function detectOffline() {
             entityId: g.id,
           },
         });
+      }
     }
     const devices = await tx.device.findMany({
       where: {
@@ -242,6 +265,10 @@ export async function detectOffline() {
         await tx.meter.updateMany({
           where: { id: d.meterId, tenantId: d.tenantId },
           data: { status: "OFFLINE" },
+        });
+        await enqueueWebhookEvent(tx, d.tenantId, "meter.offline", {
+          meterId: d.meterId,
+          deviceId: d.id,
         });
         await tx.auditEvent.create({
           data: {
@@ -277,6 +304,10 @@ export async function detectOffline() {
           await tx.meter.update({
             where: { id: d.meterId },
             data: { status: "OFFLINE" },
+          });
+          await enqueueWebhookEvent(tx, d.tenantId, "meter.offline", {
+            meterId: d.meterId,
+            deviceId: d.id,
           });
           await tx.auditEvent.create({
             data: {

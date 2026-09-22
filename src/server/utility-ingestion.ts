@@ -1,6 +1,7 @@
 import "server-only";
 import Decimal from "decimal.js";
 import { db } from "./db";
+import { enqueueWebhookEvent } from "./webhooks";
 import { authenticateDevice, consumeDeviceRateLimit } from "./device-auth";
 import { AccessError } from "./policy";
 import { normalize, profiles, utilityPayload } from "../lib/utility";
@@ -91,6 +92,14 @@ export async function ingestUtility(
         quality: primary.quality,
       },
     });
+    await enqueueWebhookEvent(tx, device.tenantId, "meter.reading.received", {
+      readingId: reading.id,
+      meterId: device.meterId,
+      timestamp: reading.timestamp.toISOString(),
+      value: reading.registerValue.toString(),
+      consumption: reading.consumption.toString(),
+      unit: reading.measurementUnit,
+    });
     await tx.measurement.createMany({
       data: rows.map((row) => ({
         ...row,
@@ -108,6 +117,11 @@ export async function ingestUtility(
         where: { id: device.meterId },
         data: { lastContact: timestamp, status: "ACTIVE" },
       });
+      if (device.status !== "ONLINE")
+        await enqueueWebhookEvent(tx, device.tenantId, "meter.online", {
+          meterId: device.meterId,
+          deviceId: device.id,
+        });
       const config = utilityConfigSchema.parse(device.meter.utilityConfig);
       const start = new Date(
         timestamp.getTime() - config.continuousHours * 3600000,

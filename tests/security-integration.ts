@@ -17,7 +17,9 @@ import {
 import { localMails } from "../src/server/mail";
 if (process.env.SEED_DEMO !== "true")
   throw new Error("Lokale Demo-Datenbank erforderlich.");
-const tenantId = "demo-multi-utility";
+// Keep this test independent of the multi-utility fixture, whose BASIC user
+// quota is intentionally filled by other usage-limit integration scenarios.
+const tenantId = "demo-tenant-0";
 const email = `security-${randomBytes(5).toString("hex")}@example.test`;
 const password = "Testpassword-123!";
 const tokenHash = (value: string) =>

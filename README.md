@@ -4,6 +4,8 @@ Phase 5A erweitert das bestehende System um ein gemeinsames Messgrößenmodell f
 
 Lauffähiges Smart-Metering-SaaS-Grundsystem mit Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL und Prisma. Deutsche Oberfläche, zwei Demo-Mandanten und serverseitiges Rollenmodell.
 
+Versionierte, tenantgebundene Read-only-API: [Public API v1](docs/PUBLIC-API.md). Tenant-gebundene, signierte Webhooks, Outbox, Retry und Dead-letter: [Webhook-Dokumentation](docs/WEBHOOKS.md). Der vorhandene `mqtt-worker` verarbeitet die Webhook-Outbox mit; in Produktion benötigt die Secret-Verschlüsselung einen unabhängigen `WEBHOOK_SECRET_ENCRYPTION_KEY` aus dem Secret Manager.
+
 ## Lokal starten
 
 Voraussetzungen: Node.js 22.12+ (getestet mit 24.19), pnpm 11.19 und PostgreSQL 17. Für Entwicklung ist eine lokale PostgreSQL-Laufzeit als Dev-Dependency enthalten; Docker ist optional.

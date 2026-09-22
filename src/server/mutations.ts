@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { db } from "./db";
 import { AccessError, requireManage, tenantScope, type Actor } from "./policy";
+import { enqueueWebhookEvent } from "./webhooks";
 import {
   editableResources,
   writeResource,
@@ -78,11 +79,24 @@ export async function mutate(
       .object({ id, status: z.enum(["ACKNOWLEDGED", "RESOLVED"]) })
       .parse(input);
     return db.$transaction(async (tx) => {
+      const prior = await tx.alarm.findFirst({
+        where: { id: value.id, tenantId },
+        select: { id: true, meterId: true, status: true },
+      });
       const result = await tx.alarm.updateMany({
         where: { id: value.id, tenantId },
         data: { status: value.status },
       });
       if (!result.count) throw new AccessError(404, "Alarm nicht gefunden.");
+      if (prior?.status !== value.status)
+        await enqueueWebhookEvent(
+          tx,
+          tenantId,
+          value.status === "ACKNOWLEDGED"
+            ? "alarm.acknowledged"
+            : "alarm.resolved",
+          { alarmId: value.id, meterId: prior?.meterId ?? null },
+        );
       await tx.auditEvent.create({
         data: {
           actorId: actor.id,

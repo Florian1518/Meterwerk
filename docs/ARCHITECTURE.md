@@ -145,6 +145,14 @@ Die Admin-Anzeige verwendet wirksame Limits und zeigt Warnungen ab 80, 90 und 10
 
 Phase 5f Teil 3 ergänzt Testphase, Abonnementstatus, Laufzeit und Monats-/Jahresintervall, optionale Dezimal-Preisfelder, Rechnungskontakt und externe Billing-ID. `src/server/billing/provider.ts` hält einen neutralen Adaptervertrag für eine spätere Integration bereit. Kein Provider ist ausgewählt oder implementiert; es gibt keine Rechnungsstellung oder Zahlung. Vertragsfelder sind von `Tariff` und Energiekosten getrennt. Details, Statusübergänge, Rollen und Prüfungen: [SaaS-Pläne](SAAS-PLANS.md).
 
+## ADR 014: Mandantengebundene öffentliche API
+
+Phase 5g stellt lesende Routen unter `/api/public/v1/` bereit. Bearer-Secrets werden einmalig angezeigt und ausschließlich als SHA-256-Hash gespeichert; die Schlüssel tragen Tenant und Scopes. Serverabfragen erzwingen Tenant-Isolation, Scopes und ein transaktional begrenztes Rate-Limit. Verträge und Beispiele: [Public API](PUBLIC-API.md).
+
+## ADR 015: Signierte tenantgebundene Webhooks
+
+Webhook-Ereignisse werden in derselben Transaktion wie Messwert-, Alarm-, Report- und Verbindungsstatusänderungen in einer tenantgebundenen Outbox gespeichert. Ein separater Worker claimt Aufträge atomar, signiert unveränderliche Payloads per HMAC-SHA256 und liefert mit Retry/Dead-letter. Secrets liegen AES-GCM-verschlüsselt; Replay-Schutz besteht aus Zeitfenster, signierter stabiler Delivery-ID und Empfänger-Idempotenz. Details: [Tenant Webhooks](WEBHOOKS.md).
+
 ## Referenzen
 
 - [Next.js Authentication Guide](https://nextjs.org/docs/app/guides/authentication)

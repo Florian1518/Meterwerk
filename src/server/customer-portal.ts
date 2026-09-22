@@ -1,5 +1,6 @@
 import "server-only";
 import { recordTenantUsage } from "./licensing";
+import { enqueueWebhookEvent } from "./webhooks";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
@@ -396,6 +397,13 @@ export async function createReport(input: unknown, requested?: string | null) {
         content,
       },
     });
+    await enqueueWebhookEvent(tx, tenantId, "report.ready", {
+      reportId: created.id,
+      type: created.type,
+      title: created.title,
+      periodFrom: created.periodFrom.toISOString(),
+      periodTo: created.periodTo.toISOString(),
+    });
     await tx.auditEvent.create({
       data: {
         tenantId,
@@ -538,6 +546,13 @@ export async function setAlarmStatus(
         entityId: id,
       },
     });
+    if (alarm.status !== status)
+      await enqueueWebhookEvent(
+        tx,
+        tenantId,
+        status === "ACKNOWLEDGED" ? "alarm.acknowledged" : "alarm.resolved",
+        { alarmId: id, meterId: alarm.meterId, status },
+      );
     return result;
   });
   return { id: updated.id, status: updated.status };

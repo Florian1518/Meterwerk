@@ -168,6 +168,84 @@ model Tenant {
   featureOverrides TenantFeatureOverride[]
   planOverride    TenantPlanOverride?
   usageCounters   TenantUsageCounter[]
+  publicApiKeys   PublicApiKey[]
+  webhooks        WebhookEndpoint[]
+  webhookDeliveries WebhookDelivery[]
+}
+
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  url            String
+  events         String[] @default([])
+  active         Boolean  @default(true)
+  secretCiphertext String
+  secretIv       String
+  secretTag      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastDeliveryAt DateTime?
+  deletedAt      DateTime?
+  deliveries     WebhookDelivery[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, active])
+}
+
+model WebhookDelivery {
+  id             String   @id @default(cuid())
+  tenantId       String
+  webhookId      String
+  webhook        WebhookEndpoint @relation(fields: [webhookId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event          String
+  eventId        String
+  payload        Json
+  status         String   @default("PENDING")
+  attempts       Int      @default(0)
+  nextAttemptAt  DateTime @default(now())
+  lastAttemptAt  DateTime?
+  lockedUntil    DateTime?
+  statusCode     Int?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([webhookId, eventId])
+  @@index([tenantId, status, nextAttemptAt])
+  @@index([webhookId, createdAt])
+}
+
+model PublicApiKey {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  keyHash     String   @unique
+  scopes      String[] @default([])
+  expiresAt   DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rateLimit   PublicApiRateLimit?
+
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+}
+
+model PublicApiRateLimit {
+  keyId     String      @id
+  tenantId  String
+  attempts  Int         @default(0)
+  resetAt   DateTime
+  apiKey    PublicApiKey @relation(fields: [keyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([keyId, tenantId])
+  @@index([tenantId])
 }
 
 model TenantUsageCounter {
