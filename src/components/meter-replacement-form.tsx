@@ -1,4 +1,5 @@
 "use client";
+import { utcInput } from "@/lib/format";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 export function MeterReplacementForm({
@@ -23,9 +24,9 @@ export function MeterReplacementForm({
     const payload = {
       oldMeterId,
       newMeterId: String(data.get("newMeterId")),
-      removedAt: new Date(String(data.get("removedAt"))).toISOString(),
+      removedAt: utcInput(String(data.get("removedAt"))),
       removedRegister: String(data.get("removedRegister")),
-      installedAt: new Date(String(data.get("installedAt"))).toISOString(),
+      installedAt: utcInput(String(data.get("installedAt"))),
       installedRegister: String(data.get("installedRegister")),
       reason: String(data.get("reason")),
       documentation: String(data.get("documentation") || ""),

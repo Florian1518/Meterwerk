@@ -1,4 +1,5 @@
 "use client";
+import { dateTime, decimal } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import type { systemStatus } from "@/server/system-status";
@@ -19,7 +20,15 @@ type Credential = {
   lastUsedAt: string | null;
   keyFingerprint: string | null;
 };
-export function SystemConsole({ initial }: { initial: Status }) {
+export function SystemConsole({
+  initial,
+  timeZone = "Europe/Berlin",
+}: {
+  initial: Status;
+  timeZone?: string;
+}) {
+  const stamp = (value?: string | null) =>
+    value ? dateTime(value, timeZone) : "Noch keine Daten";
   const [data, setData] = useState(initial),
     [error, setError] = useState(""),
     [gateway, setGateway] = useState(initial.gateways[0]?.id ?? ""),
@@ -141,7 +150,9 @@ export function SystemConsole({ initial }: { initial: Status }) {
           {error}
         </p>
       )}
-      <p>Stand: {data.asOf} · UTC · Aktualisierung alle 5 Sekunden</p>
+      <p>
+        Stand: {stamp(data.asOf)} · {timeZone} · Aktualisierung alle 5 Sekunden
+      </p>
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           ["PostgreSQL", data.postgres],
@@ -161,14 +172,19 @@ export function SystemConsole({ initial }: { initial: Status }) {
         ))}
       </div>
       <h2>Gateways</h2>
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Gateways, horizontal scrollbar"
+      >
         <table className="w-full text-left">
           <thead>
             <tr>
               {[
                 "Gateway",
                 "Status",
-                "Heartbeat UTC",
+                `Heartbeat (${timeZone})`,
                 "Version",
                 "Queue",
                 "Quarantäne / verworfen",
@@ -185,7 +201,7 @@ export function SystemConsole({ initial }: { initial: Status }) {
                   {g.status}
                   {g.queueWarning ? " · Queue-Warnung" : ""}
                 </td>
-                <td>{g.lastSeenAt ?? "Nie"}</td>
+                <td>{stamp(g.lastSeenAt)}</td>
                 <td>{g.firmwareVersion ?? "Unbekannt"}</td>
                 <td>{g.queueSize}</td>
                 <td>
@@ -197,15 +213,20 @@ export function SystemConsole({ initial }: { initial: Status }) {
         </table>
       </div>
       <h2>Geräte</h2>
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Geräte, horizontal scrollbar"
+      >
         <table className="w-full text-left">
           <thead>
             <tr>
               {[
                 "Gerät",
                 "Status",
-                "Letzter erfolgreicher Poll UTC",
-                "Letzte Messung UTC",
+                `Letzter erfolgreicher Poll (${timeZone})`,
+                `Letzte Messung (${timeZone})`,
                 "Fehlerrate",
               ].map((x) => (
                 <th key={x}>{x}</th>
@@ -219,11 +240,11 @@ export function SystemConsole({ initial }: { initial: Status }) {
                   {d.model} · {d.id}
                 </td>
                 <td>{d.status}</td>
-                <td>{d.diagnostic?.lastSuccessAt ?? d.lastSeenAt ?? "Nie"}</td>
-                <td>{d.telemetry[0]?.timestamp ?? "Keine"}</td>
+                <td>{stamp(d.diagnostic?.lastSuccessAt ?? d.lastSeenAt)}</td>
+                <td>{stamp(d.telemetry[0]?.timestamp)}</td>
                 <td>
                   {d.diagnostic
-                    ? `${((100 * d.diagnostic.errors) / Math.max(1, d.diagnostic.errors + d.diagnostic.successes)).toFixed(1)} % (${d.diagnostic.errors} Fehler)`
+                    ? `${decimal((100 * d.diagnostic.errors) / Math.max(1, d.diagnostic.errors + d.diagnostic.successes), 1)} % (${d.diagnostic.errors} Fehler)`
                     : "Keine Diagnose"}
                 </td>
               </tr>
@@ -236,7 +257,7 @@ export function SystemConsole({ initial }: { initial: Status }) {
         <ul>
           {data.alerts.map((a) => (
             <li key={a.id}>
-              {a.kind} · {a.entityId} · seit {a.openedAt} · Auftreten{" "}
+              {a.kind} · {a.entityId} · seit {stamp(a.openedAt)} · Auftreten{" "}
               {a.occurrences}
             </li>
           ))}
@@ -304,9 +325,10 @@ export function SystemConsole({ initial }: { initial: Status }) {
                 : c.status}
             </p>
             <p>
-              Erstellt: {c.createdAt} · Genutzt: {c.lastUsedAt ?? "Nie"} ·
-              Ablauf: {c.expiresAt ?? "Keiner"} · Widerruf:{" "}
-              {c.revokedAt ?? "Keiner"}
+              Erstellt: {stamp(c.createdAt)} · Genutzt:{" "}
+              {c.lastUsedAt ? stamp(c.lastUsedAt) : "Nie"} · Ablauf:{" "}
+              {c.expiresAt ? stamp(c.expiresAt) : "Keiner"} · Widerruf:{" "}
+              {c.revokedAt ? stamp(c.revokedAt) : "Keiner"}
             </p>
             <p>SHA-256: {c.keyFingerprint ?? "Bestandscredential"}</p>
             {c.status === "ACTIVE" && (

@@ -1,4 +1,6 @@
+export const metadata = { title: "Modbus-Diagnose · Meterwerk" };
 import Link from "next/link";
+import { presentation } from "@/server/presentation";
 import { readModbus } from "@/server/modbus";
 import { ModbusConsole, type ModbusView } from "@/components/modbus-console";
 export default async function ModbusPage({
@@ -22,6 +24,7 @@ export default async function ModbusPage({
       </Link>
       <h1>Modbus-Diagnose · {data.meter.serialNumber}</h1>
       <ModbusConsole
+        timeZone={(await presentation()).timeZone}
         diagnosis
         initial={JSON.parse(JSON.stringify(data)) as ModbusView}
       />

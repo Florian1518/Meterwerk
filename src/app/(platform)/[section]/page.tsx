@@ -1,3 +1,5 @@
+import { presentation } from "@/server/presentation";
+import { dateTime } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { requirePageActor } from "@/server/auth";
 import { pageContext } from "@/server/page-context";
@@ -221,10 +223,7 @@ const statuses: Record<string, string> = {
   WARNING: "Warnung",
   DISABLED: "Deaktiviert",
 };
-const date = (value?: string) =>
-  value
-    ? new Date(value).toLocaleString("de-DE", { timeZone: "UTC" })
-    : "Noch kein Kontakt";
+
 export default async function SectionPage({
   params,
   searchParams,
@@ -234,6 +233,9 @@ export default async function SectionPage({
 }) {
   const { section } = await params;
   const query = await searchParams;
+  const { timeZone } = await presentation();
+  const date = (value?: string) =>
+    value ? dateTime(value, timeZone) : "Noch kein Kontakt";
   if (!config[section] && section !== "settings") notFound();
   const actor = await requirePageActor();
   if (
@@ -448,7 +450,8 @@ export default async function SectionPage({
         />
       )}
       <DataTable
-        headers={def.headers}
+        headers={def.headers.map((h) => h.replace("UTC", timeZone))}
+        statusColumn={section === "alarms" ? 3 : undefined}
         rows={rows}
         editor={
           manage &&
@@ -531,4 +534,15 @@ export default async function SectionPage({
       </p>
     </>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}) {
+  const { section } = await params;
+  return {
+    title: `${section === "settings" ? "Einstellungen" : (config[section]?.title ?? "Nicht gefunden")} · Meterwerk`,
+  };
 }

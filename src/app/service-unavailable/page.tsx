@@ -1,3 +1,4 @@
+export const metadata = { title: "Dienst nicht verfügbar · Meterwerk" };
 import { StatusPage } from "@/components/status-page";
 export default function ServiceUnavailable() {
   return (

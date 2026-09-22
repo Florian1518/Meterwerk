@@ -1,3 +1,4 @@
+export const metadata = { title: "Onboarding · Meterwerk" };
 import Link from "next/link";
 import { pageContext } from "@/server/page-context";
 import { getOnboardingStatus } from "@/server/onboarding";

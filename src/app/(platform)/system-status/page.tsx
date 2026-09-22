@@ -1,3 +1,5 @@
+export const metadata = { title: "Systemstatus · Meterwerk" };
+import { presentation } from "@/server/presentation";
 import { systemStatus } from "@/server/system-status";
 import { SystemConsole } from "@/components/system-console";
 export default async function Page({
@@ -9,7 +11,10 @@ export default async function Page({
   return (
     <>
       <h1>Systemstatus</h1>
-      <SystemConsole initial={JSON.parse(JSON.stringify(status))} />
+      <SystemConsole
+        timeZone={(await presentation()).timeZone}
+        initial={JSON.parse(JSON.stringify(status))}
+      />
     </>
   );
 }

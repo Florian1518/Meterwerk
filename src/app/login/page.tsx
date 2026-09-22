@@ -1,3 +1,4 @@
+export const metadata = { title: "Anmelden · Meterwerk" };
 import { LoginForm } from "@/components/login-form";
 import { Zap, ShieldCheck, Activity, Building2 } from "lucide-react";
 export default function LoginPage() {

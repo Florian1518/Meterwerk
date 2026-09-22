@@ -77,11 +77,11 @@ export async function storeAttachment(
       503,
       "Produktiver Object Storage ist nicht konfiguriert.",
     );
-  await mkdir(/* turbopackIgnore: true */ join(root, tenantId), {
+  await mkdir(join(/* turbopackIgnore: true */ root, tenantId), {
     recursive: true,
   });
   await writeFile(
-    /* turbopackIgnore: true */ join(root, key.split("/").pop()!),
+    join(/* turbopackIgnore: true */ root, key.split("/").pop()!),
     Buffer.from(await file.arrayBuffer()),
     { flag: "wx", mode: 0o600 },
   );
@@ -127,7 +127,7 @@ export async function readAttachment(id: string, requested?: string | null) {
     throw new AccessError(404, "Datei nicht gefunden.");
   const root = process.env.ATTACHMENT_LOCAL_ROOT ?? ".local/attachments";
   const data = await readFile(
-    /* turbopackIgnore: true */ join(root, attachment.storageKey),
+    join(/* turbopackIgnore: true */ root, attachment.storageKey),
   );
   await db.auditEvent.create({
     data: {

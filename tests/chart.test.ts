@@ -3,6 +3,20 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { ConsumptionChart } from "../src/components/chart";
 describe("SVG chart hydration regression", () => {
+  it.each([0, 1, 7, 90])(
+    "renders %i days without invalid coordinates or missing ticks",
+    (count) => {
+      const days = Array.from({ length: count }, (_, i) => ({
+        date: new Date(Date.UTC(2026, 0, i + 1)).toISOString().slice(0, 10),
+        value: i,
+      }));
+      const html = renderToString(
+        createElement(ConsumptionChart, { days, unit: "kWh" }),
+      );
+      expect(html).not.toMatch(/NaN|Infinity|undefined/);
+      expect(html).toContain(`${count} Tage`);
+    },
+  );
   it("renders every SVG title as one complete server-side string without React warnings", () => {
     const warnings = vi.spyOn(console, "error").mockImplementation(() => {});
     try {

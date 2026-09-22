@@ -1,4 +1,14 @@
+export const metadata = { title: "Zählerdetails · Meterwerk" };
+import { presentation } from "@/server/presentation";
+import {
+  dateTime,
+  calendarDate,
+  decimal,
+  measurement,
+  unitLabel,
+} from "@/lib/format";
 import { notFound } from "next/navigation";
+import { RecentMeters } from "@/components/recent-meters";
 import Link from "next/link";
 import { getMeter } from "@/server/data";
 import { pageContext } from "@/server/page-context";
@@ -20,6 +30,7 @@ export default async function MeterPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tenantId?: string }>;
 }) {
+  const { timeZone } = await presentation();
   const ctx = await pageContext((await searchParams).tenantId);
   const meter = await getMeter(
     ctx.actor,
@@ -49,6 +60,12 @@ export default async function MeterPage({
         </div>
       </div>
       <section className="panel">
+        <RecentMeters
+          key={`${ctx.actor.id}:${ctx.tenantId}:${meter.id}`}
+          userId={ctx.actor.id}
+          tenantId={ctx.tenantId}
+          meterId={meter.id}
+        />
         <dl className="meter-details">
           <div>
             <dt>Geräte-ID</dt>
@@ -56,11 +73,11 @@ export default async function MeterPage({
           </div>
           <div>
             <dt>Einheit</dt>
-            <dd>{meter.measurementUnit}</dd>
+            <dd>{unitLabel(meter.measurementUnit)}</dd>
           </div>
           <div>
             <dt>Installation</dt>
-            <dd>{meter.installedAt.toISOString().slice(0, 10)}</dd>
+            <dd>{calendarDate(meter.installedAt, timeZone)}</dd>
           </div>
           <div>
             <dt>Status</dt>
@@ -91,10 +108,12 @@ export default async function MeterPage({
         {detail.tariffs.length ? (
           detail.tariffs.map((t) => (
             <p key={t.id}>
-              {t.scope}: {t.from} bis {t.to ?? "offen"} UTC · {t.price} €/
-              {t.unit} + {t.basePerDay} €/Tag{" "}
+              {t.scope}: {dateTime(t.from, timeZone)} bis{" "}
+              {t.to ? dateTime(t.to, timeZone) : "offen"} ({timeZone}) ·{" "}
+              {decimal(t.price, 6)} €/{unitLabel(t.unit)} +{" "}
+              {decimal(t.basePerDay, 6)} €/Tag{" "}
               {t.condition
-                ? `· Zustandszahl ${t.condition}, Brennwert ${t.calorific} kWh/m3`
+                ? `· Zustandszahl ${t.condition}, Brennwert ${t.calorific} kWh/m³`
                 : ""}
             </p>
           ))
@@ -105,15 +124,19 @@ export default async function MeterPage({
       <section className="panel">
         <h2>Messgrößen · {typeLabels[meter.type]}</h2>
         <p>
-          Letzter Messzeitpunkt (UTC):{" "}
-          {detail.timestamp ?? "Noch keine Messwerte"}
+          Letzter Messzeitpunkt ({timeZone}):{" "}
+          {detail.timestamp
+            ? dateTime(detail.timestamp, timeZone)
+            : "Noch keine Messwerte"}
         </p>
         <dl className="meter-details">
           {detail.values.map((v) => (
             <div key={v.metric}>
               <dt>{v.label}</dt>
               <dd>
-                {v.value ?? "Nicht verfügbar"} {v.value !== null ? v.unit : ""}{" "}
+                {v.value !== null
+                  ? measurement(v.value, v.unit)
+                  : "Nicht verfügbar"}{" "}
                 {v.value !== null ? `· ${v.quality}` : ""}
               </dd>
             </div>
@@ -121,7 +144,7 @@ export default async function MeterPage({
         </dl>
         {detail.alerts.map((a) => (
           <p key={a.kind}>
-            {a.kind} · seit {a.openedAt.toISOString()}
+            {a.kind} · seit {dateTime(a.openedAt, timeZone)}
           </p>
         ))}
         <Link
@@ -132,12 +155,13 @@ export default async function MeterPage({
       </section>
       {modbus.devices.length > 0 && (
         <ModbusConsole
+          timeZone={timeZone}
           initial={JSON.parse(JSON.stringify(modbus)) as ModbusView}
         />
       )}
       <DataTable
         headers={[
-          "Zeitpunkt (UTC)",
+          `Zeitpunkt (${timeZone})`,
           "Zählerstand",
           "Verbrauch",
           "Einheit",
@@ -147,10 +171,10 @@ export default async function MeterPage({
         rows={meter.readings.map((r) => ({
           id: r.id,
           cells: [
-            r.timestamp.toISOString().replace("T", " ").slice(0, 16),
-            r.registerValue.toString(),
-            r.consumption.toString(),
-            r.measurementUnit,
+            dateTime(r.timestamp, timeZone),
+            decimal(r.registerValue.toString()),
+            decimal(r.consumption.toString()),
+            unitLabel(r.measurementUnit),
             r.source,
             r.quality,
           ],

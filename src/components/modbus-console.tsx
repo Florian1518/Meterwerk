@@ -1,4 +1,5 @@
 "use client";
+import { dateTime } from "@/lib/format";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -17,15 +18,18 @@ type Serialized<T> = T extends Date
       ? { [K in keyof T]: Serialized<T[K]> }
       : T;
 export type ModbusView = Serialized<Awaited<ReturnType<typeof readModbus>>>;
-const stamp = (v?: string | null) =>
-  v ? new Date(v).toISOString() : "Noch keine Daten";
+
 export function ModbusConsole({
   initial,
   diagnosis = false,
+  timeZone = "Europe/Berlin",
 }: {
   initial: ModbusView;
   diagnosis?: boolean;
+  timeZone?: string;
 }) {
+  const stamp = (v?: string | null) =>
+    v ? dateTime(v, timeZone) : "Noch keine Daten";
   const [data, setData] = useState(initial);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -167,7 +171,10 @@ export function ModbusConsole({
       )}
       <section className="panel p-5">
         <h2>Technische Live-Werte</h2>
-        <p>Automatische Aktualisierung alle 5 Sekunden · Zeitstempel UTC</p>
+        <p>
+          Automatische Aktualisierung alle 5 Sekunden · Anzeigezeitzone{" "}
+          {timeZone}
+        </p>
         <p>
           Gerät: <strong>{device?.status ?? "NOT_CONFIGURED"}</strong> ·
           Inbetriebnahme: <strong>{config?.state ?? "NOT_CONFIGURED"}</strong> ·
@@ -185,7 +192,12 @@ export function ModbusConsole({
             lesen.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto"
+            tabIndex={0}
+            role="region"
+            aria-label="Messgrößen, horizontal scrollbar"
+          >
             <table className="w-full text-left">
               <caption className="sr-only">
                 Technische Messwerte mit Einheiten
@@ -226,11 +238,11 @@ export function ModbusConsole({
           <h2>Technische Diagnose</h2>
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
-              <dt>Letzter erfolgreicher Poll (UTC)</dt>
+              <dt>Letzter erfolgreicher Poll ({timeZone})</dt>
               <dd>{stamp(diagnostic?.lastSuccessAt)}</dd>
             </div>
             <div>
-              <dt>Letzter Poll (UTC)</dt>
+              <dt>Letzter Poll ({timeZone})</dt>
               <dd>{stamp(diagnostic?.lastPollAt)}</dd>
             </div>
             <div>
@@ -338,7 +350,12 @@ export function ModbusConsole({
                 Administrator-Debug: letzte Rohwerte (maximal 32 Register)
               </summary>
               <p>Zeitstempel: {stamp(diagnostic?.lastPollAt)}</p>
-              <div className="overflow-x-auto">
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Diagnosewerte, horizontal scrollbar"
+              >
                 <table className="w-full text-left">
                   <thead>
                     <tr>

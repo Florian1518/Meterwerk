@@ -13,14 +13,10 @@ export async function pageContext(requested?: string) {
           take: 200,
         })
       : [];
-  if (actor.role === "SUPER_ADMIN" && !requested && !tenants.length)
-    redirect("/tenants");
+  if (actor.role === "SUPER_ADMIN" && !requested) redirect("/tenants");
   let tenantId: string;
   try {
-    tenantId = tenantScope(
-      actor,
-      requested ?? (actor.role === "SUPER_ADMIN" ? tenants[0]?.id : undefined),
-    );
+    tenantId = tenantScope(actor, requested);
   } catch (error) {
     if (error instanceof AccessError) notFound();
     throw error;

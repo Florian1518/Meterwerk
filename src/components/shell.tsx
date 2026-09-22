@@ -21,6 +21,7 @@ import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
 import { Breadcrumbs } from "./breadcrumbs";
 import { GlobalSearch } from "./global-search";
+import { DisplayPreferences } from "./display-preferences";
 type NavItem = {
   href: string;
   label: string;
@@ -97,9 +98,11 @@ const navigation: { group: string; items: NavItem[] }[] = [
 ];
 export function Shell({
   actor,
+  preferences,
   children,
 }: {
   actor: Actor;
+  preferences: { theme: string; timeZone: string };
   children: React.ReactNode;
 }) {
   const path = usePathname();
@@ -108,6 +111,9 @@ export function Shell({
   const suffix = tenant ? `?tenantId=${encodeURIComponent(tenant)}` : "";
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Zum Inhalt springen
+      </a>
       <aside className="sidebar">
         <Link href={`/dashboard${suffix}`} className="brand">
           <span className="brand-icon">
@@ -142,16 +148,25 @@ export function Shell({
                 <p className="nav-heading">{section.group}</p>
                 {items.map((item) => (
                   <Link
-                    aria-current={path === item.href ? "page" : undefined}
+                    aria-current={
+                      path === item.href || path.startsWith(`${item.href}/`)
+                        ? "page"
+                        : undefined
+                    }
                     className={
-                      path === item.href ? "nav-link active" : "nav-link"
+                      path === item.href || path.startsWith(`${item.href}/`)
+                        ? "nav-link active"
+                        : "nav-link"
                     }
                     href={`${item.href}${suffix}`}
                     key={item.href}
                   >
                     <item.icon size={17} />
                     {item.label}
-                    {path === item.href && <span className="nav-dot" />}
+                    {(path === item.href ||
+                      path.startsWith(`${item.href}/`)) && (
+                      <span className="nav-dot" />
+                    )}
                   </Link>
                 ))}
               </div>
@@ -159,6 +174,7 @@ export function Shell({
           })}
         </nav>
         <div className="sidebar-bottom">
+          <DisplayPreferences {...preferences} />
           <div className="demo-card">
             <Activity size={18} />
             <strong>Demo-Umgebung</strong>
@@ -199,10 +215,12 @@ export function Shell({
             </span>
           </div>
         </header>
-        <main className="page-content">{children}</main>
+        <main id="main-content" tabIndex={-1} className="page-content">
+          {children}
+        </main>
         <footer>
           © {new Date().getFullYear()} Meterwerk{" "}
-          <span>Demo-Daten · Berichtszeitzone UTC</span>
+          <span>Anzeige: {preferences.timeZone} · Berichtszeiträume: UTC</span>
         </footer>
       </div>
     </div>

@@ -33,7 +33,15 @@ export function proxy(request: NextRequest) {
     url.protocol = "https:";
     return NextResponse.redirect(url, 308);
   }
-  return NextResponse.next();
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
+  const csp = `default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}; style-src 'self' 'nonce-${nonce}'; style-src-attr 'unsafe-inline'`;
+  const headers = new Headers(request.headers);
+  headers.set("Content-Security-Policy", csp);
+  headers.set("x-nonce", nonce);
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
 }
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],

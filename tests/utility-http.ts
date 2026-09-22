@@ -1,6 +1,6 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 import { db } from "../src/server/db";
 const base = process.env.APP_URL ?? "http://localhost:3000";
 if (
@@ -16,7 +16,12 @@ const actor = await db.user.findFirstOrThrow({
   select: { id: true },
 });
 const token = randomBytes(32).toString("hex"),
-  sessionId = createHash("sha256").update(token).digest("hex");
+  sessionId = createHmac(
+    "sha256",
+    process.env.SESSION_SECRET ?? "development-session-secret",
+  )
+    .update(token)
+    .digest("hex");
 await db.session.create({
   data: {
     id: sessionId,

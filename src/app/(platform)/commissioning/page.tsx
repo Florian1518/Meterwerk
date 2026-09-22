@@ -1,3 +1,4 @@
+export const metadata = { title: "Inbetriebnahme · Meterwerk" };
 import Link from "next/link";
 import { requirePageActor } from "@/server/auth";
 import { tenantScope, requireManage } from "@/server/policy";

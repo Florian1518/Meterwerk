@@ -1,3 +1,6 @@
+export const metadata = { title: "Dashboard · Meterwerk" };
+import { presentation } from "@/server/presentation";
+import { dateTime, currency } from "@/lib/format";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -31,6 +34,7 @@ export default async function DashboardPage({
   }>;
 }) {
   const params = await searchParams;
+  const { timeZone } = await presentation();
   const ctx = await pageContext(params.tenantId);
   const type: MeterType =
     params.type && Object.hasOwn(typeLabels, params.type)
@@ -71,8 +75,8 @@ export default async function DashboardPage({
     },
     {
       label: "Geschätzte Kosten",
-      value: cost === null ? "—" : cost,
-      unit: "€",
+      value: cost === null ? "—" : currency(cost),
+      unit: cost === null ? "€" : "",
       note: "Monat · historische Tarife; — bei Tariflücken",
       icon: CircleDollarSign,
     },
@@ -91,7 +95,10 @@ export default async function DashboardPage({
             <p key={device.serialNumber}>
               {device.gateway.name}: <strong>{device.gateway.status}</strong> ·{" "}
               {device.serialNumber}: <strong>{device.status}</strong> · Letzter
-              Messwert: {device.lastSeenAt?.toISOString() ?? "Noch keine Daten"}
+              Messwert:{" "}
+              {device.lastSeenAt
+                ? dateTime(device.lastSeenAt, timeZone)
+                : "Noch keine Daten"}
             </p>
           ))}
         </section>
@@ -112,7 +119,7 @@ export default async function DashboardPage({
               day: "numeric",
               month: "long",
               year: "numeric",
-              timeZone: "UTC",
+              timeZone,
             })}
           </span>
         </div>
@@ -133,7 +140,7 @@ export default async function DashboardPage({
         <span className="status-dot-label">
           <i />{" "}
           {data.lastDataReceived
-            ? `${data.hasActualData ? "Echte Ingestion-Daten" : "Demo-Messwerte"} · Letzter Empfang ${new Date(data.lastDataReceived).toLocaleString("de-DE", { timeZone: "UTC" })} UTC`
+            ? `${data.hasActualData ? "Echte Ingestion-Daten" : "Demo-Messwerte"} · Letzter Empfang ${dateTime(data.lastDataReceived, timeZone)} (${timeZone})`
             : "Keine Messung empfangen"}
         </span>
         <span
@@ -154,7 +161,7 @@ export default async function DashboardPage({
             key={key}
             aria-current={key === type ? "page" : undefined}
             className={key === type ? "type-tab selected" : "type-tab"}
-            href={`/dashboard${suffix}&type=${key}`}
+            href={`/dashboard${suffix}&type=${key}&days=${days}${params.propertyId ? `&propertyId=${encodeURIComponent(params.propertyId)}` : ""}`}
           >
             {label}
           </Link>
@@ -324,7 +331,10 @@ export default async function DashboardPage({
           <p>Aktueller Monat · Einheiten separat ausgewiesen</p>
         </div>
         {data.typeTotals.map((item) => (
-          <Link href={`/dashboard${suffix}&type=${item.type}`} key={item.type}>
+          <Link
+            href={`/dashboard${suffix}&type=${item.type}&days=${days}${params.propertyId ? `&propertyId=${encodeURIComponent(params.propertyId)}` : ""}`}
+            key={item.type}
+          >
             <span>{typeLabels[item.type]}</span>
             <strong>
               {number(item.value)}{" "}

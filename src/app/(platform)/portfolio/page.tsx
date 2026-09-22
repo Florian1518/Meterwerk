@@ -1,3 +1,5 @@
+export const metadata = { title: "Portfolio · Meterwerk" };
+import { decimal, unitLabel } from "@/lib/format";
 import Link from "next/link";
 import { pageContext } from "@/server/page-context";
 import { portfolio } from "@/server/customer-portal";
@@ -39,7 +41,12 @@ export default async function PortfolioPage({
             <p>Einheiten werden nicht zusammenaddiert.</p>
           </div>
         </div>
-        <div className="table-wrap">
+        <div
+          className="table-wrap"
+          tabIndex={0}
+          role="region"
+          aria-label="Medienvergleich, horizontal scrollbar"
+        >
           <table>
             <thead>
               <tr>
@@ -61,9 +68,9 @@ export default async function PortfolioPage({
                   <td>
                     {row.changePercent === null
                       ? "—"
-                      : `${row.changePercent.toFixed(1)} %`}
+                      : `${number(row.changePercent)} %`}
                   </td>
-                  <td>{row.unit}</td>
+                  <td>{unitLabel(row.unit)}</td>
                 </tr>
               ))}
             </tbody>
@@ -76,8 +83,10 @@ export default async function PortfolioPage({
           <ul>
             {data.largest.map((item) => (
               <li key={`${item.meterId}-${item.timestamp}`}>
-                <Link href={`/meters/${item.meterId}`}>{item.meterId}</Link> ·{" "}
-                {item.value}
+                <Link href={`/meters/${item.meterId}?tenantId=${ctx.tenantId}`}>
+                  {item.meterId}
+                </Link>{" "}
+                · {decimal(item.value)}
               </li>
             ))}
           </ul>

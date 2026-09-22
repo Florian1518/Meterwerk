@@ -1,3 +1,6 @@
+export const metadata = { title: "Berichte · Meterwerk" };
+import { presentation } from "@/server/presentation";
+import { dateTime, calendarDate } from "@/lib/format";
 import Link from "next/link";
 import { pageContext } from "@/server/page-context";
 import { listReports } from "@/server/customer-portal";
@@ -6,6 +9,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ tenantId?: string }>;
 }) {
+  const { timeZone } = await presentation();
   const ctx = await pageContext((await searchParams).tenantId);
   const reports = await listReports(ctx.tenantId);
   return (
@@ -33,7 +37,7 @@ export default async function ReportsPage({
                 <tr>
                   <th>Titel</th>
                   <th>Typ</th>
-                  <th>Zeitraum</th>
+                  <th>Zeitraum (UTC)</th>
                   <th>Erstellt</th>
                   <th>Export</th>
                 </tr>
@@ -44,15 +48,11 @@ export default async function ReportsPage({
                     <td>{report.title}</td>
                     <td>{report.type}</td>
                     <td>
-                      {report.periodFrom.toISOString().slice(0, 10)} –{" "}
-                      {report.periodTo.toISOString().slice(0, 10)}
+                      {calendarDate(report.periodFrom)} –{" "}
+                      {calendarDate(report.periodTo)}
                     </td>
                     <td>
-                      {report.createdAt
-                        .toISOString()
-                        .slice(0, 16)
-                        .replace("T", " ")}{" "}
-                      UTC
+                      {dateTime(report.createdAt, timeZone)} ({timeZone})
                     </td>
                     <td>
                       <Link

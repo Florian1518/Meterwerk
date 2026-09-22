@@ -1,35 +1,44 @@
 "use client";
-import { useState } from "react";
+import { useState, useId } from "react";
 import { number } from "@/lib/utils";
+import { unitLabel } from "@/lib/format";
 export function ConsumptionChart({
   days,
-  unit,
+  unit: rawUnit,
 }: {
   days: { date: string; value: number }[];
   unit: string;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
+  const unit = unitLabel(rawUnit);
+  const gradientId = useId();
+  const divisor = Math.max(1, days.length - 1);
+  const ticks = [
+    ...new Set(
+      [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (days.length - 1))),
+    ),
+  ].filter((i) => i >= 0 && i < days.length);
   const max = Math.max(...days.map((day) => day.value), 1) * 1.15;
   const points = days
     .map(
       (day, i) =>
-        `${40 + (i * 720) / (days.length - 1)},${210 - (day.value / max) * 175}`,
+        `${40 + (i * 720) / divisor},${210 - (day.value / max) * 175}`,
     )
     .join(" ");
   return (
     <div className="chart">
       <div className="chart-tooltip" aria-live="polite">
         {selected === null
-          ? "Tageswerte · letzte 30 Tage"
+          ? `Tageswerte · ${days.length} Tage · UTC`
           : `${new Date(days[selected].date).toLocaleDateString("de-DE", { timeZone: "UTC" })}: ${number(days[selected].value)} ${unit}`}
       </div>
       <svg
         viewBox="0 0 800 250"
         role="img"
-        aria-label={`Verbrauchsverlauf der letzten 30 Tage in ${unit}`}
+        aria-label={`Verbrauchsverlauf über ${days.length} Tage (UTC) in ${unit}`}
       >
         <defs>
-          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop stopColor="#10b981" stopOpacity=".2" />
             <stop offset="1" stopColor="#10b981" stopOpacity=".01" />
           </linearGradient>
@@ -49,7 +58,10 @@ export function ConsumptionChart({
             </text>
           </g>
         ))}
-        <polygon points={`40,210 ${points} 760,210`} fill="url(#fill)" />
+        <polygon
+          points={`40,210 ${points} 760,210`}
+          fill={`url(#${gradientId})`}
+        />
         <polyline
           points={points}
           fill="none"
@@ -60,7 +72,7 @@ export function ConsumptionChart({
         {days.map((day, i) => (
           <circle
             key={day.date}
-            cx={40 + (i * 720) / (days.length - 1)}
+            cx={40 + (i * 720) / divisor}
             cy={210 - (day.value / max) * 175}
             r={selected === i ? 6 : 3}
             fill={selected === i ? "#065f46" : "#10b981"}
@@ -69,10 +81,10 @@ export function ConsumptionChart({
             <title>{`${day.date}: ${number(day.value)} ${unit}`}</title>
           </circle>
         ))}
-        {[0, 7, 14, 21, 29].map((i) => (
+        {ticks.map((i) => (
           <text
             key={i}
-            x={40 + (i * 720) / 29}
+            x={40 + (i * 720) / divisor}
             y="238"
             textAnchor="middle"
             fill="#87948d"
@@ -89,7 +101,11 @@ export function ConsumptionChart({
           <tbody>
             {days.map((day) => (
               <tr key={day.date}>
-                <td>{day.date}</td>
+                <th scope="row">
+                  {new Date(day.date).toLocaleDateString("de-DE", {
+                    timeZone: "UTC",
+                  })}
+                </th>
                 <td>{number(day.value, 3)}</td>
               </tr>
             ))}

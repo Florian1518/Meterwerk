@@ -1,3 +1,4 @@
+import { decimal, currency, dateTime, unitLabel } from "@/lib/format";
 import { utilityReport } from "@/server/utility";
 export async function UtilityOverview({
   tenantId,
@@ -16,7 +17,12 @@ export async function UtilityOverview({
         Berichtszeitzone UTC · Verbrauch ohne ungültige/verdächtige Messwerte.
         Kosten sind eine Orientierung, keine Abrechnung.
       </p>
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Medienübersicht, horizontal scrollbar"
+      >
         <table>
           <caption>Verbrauch, Vergleichszeiträume und Kosten je Medium</caption>
           <thead>
@@ -35,26 +41,27 @@ export async function UtilityOverview({
               .filter((r) => !meterId || r.meters > 0)
               .map((r) => (
                 <tr key={r.utility}>
-                  <th>
-                    {r.label} ({r.unit})
+                  <th scope="row" className="utility-name">
+                    {r.label} ({unitLabel(r.unit)})
                     {r.meters === 0 && (
                       <small> · Keine freigegebenen Zähler</small>
                     )}
                   </th>
                   <td>
-                    {r.totals.today} / {r.totals.yesterday}
+                    {decimal(r.totals.today)} / {decimal(r.totals.yesterday)}
                   </td>
                   <td>
-                    {r.totals.month} / {r.totals.previousMonth} /{" "}
-                    {r.totals.previousYearMonth}
+                    {decimal(r.totals.month)} /{" "}
+                    {decimal(r.totals.previousMonth)} /{" "}
+                    {decimal(r.totals.previousYearMonth)}
                   </td>
                   <td>
-                    {r.totals.year} / {r.totals.previousYear}
+                    {decimal(r.totals.year)} / {decimal(r.totals.previousYear)}
                   </td>
                   <td>
                     {r.cost === null
                       ? "Tarifdeckung unvollständig"
-                      : `${r.cost} €`}
+                      : currency(r.cost)}
                   </td>
                   <td>
                     {r.active} / {r.offline}
@@ -82,7 +89,7 @@ export async function UtilityOverview({
                 } as Record<string, string>
               )[k]
             }
-            : {v.join(" bis ")}
+            : {v.map((value) => dateTime(value, "UTC")).join(" bis ")}
           </p>
         ))}
         <p>

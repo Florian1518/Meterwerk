@@ -27,6 +27,7 @@ export function DashboardControls({
       <label>
         Medium
         <select
+          aria-label="Medium"
           value={type}
           onChange={(event) => update("type", event.target.value)}
         >
@@ -39,6 +40,7 @@ export function DashboardControls({
       <label>
         Zeitraum
         <select
+          aria-label="Zeitraum"
           value={String(days)}
           onChange={(event) => update("days", event.target.value)}
         >
@@ -50,6 +52,7 @@ export function DashboardControls({
       <label>
         Liegenschaft
         <select
+          aria-label="Liegenschaft"
           value={propertyId ?? "all"}
           onChange={(event) =>
             update(

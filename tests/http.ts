@@ -1,6 +1,6 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 import { db } from "../src/server/db";
 if (process.env.SEED_DEMO !== "true" || process.env.NODE_ENV === "production")
   throw new Error("Nur auf lokaler Demo-Umgebung ausführen.");
@@ -11,7 +11,12 @@ const ids: string[] = [];
 let count = 0;
 async function session(userId: string, expired = false) {
   const token = randomBytes(32).toString("hex");
-  const id = createHash("sha256").update(token).digest("hex");
+  const id = createHmac(
+    "sha256",
+    process.env.SESSION_SECRET ?? "development-session-secret",
+  )
+    .update(token)
+    .digest("hex");
   ids.push(id);
   await db.session.create({
     data: {
@@ -67,6 +72,19 @@ try {
     );
   }
   await status("/tenants", 200, platform);
+  await status("/dashboard", 200, platform);
+  await status("/dashboard?tenantId=demo-tenant-1", 200, platform);
+  const firstLogin = await status("/login", 200);
+  const secondLogin = await status("/login", 200);
+  const firstPolicy = firstLogin.headers.get("content-security-policy") ?? "";
+  const secondPolicy = secondLogin.headers.get("content-security-policy") ?? "";
+  assert(firstPolicy.includes("'strict-dynamic'"));
+  assert(firstPolicy.includes("'nonce-"));
+  assert.notEqual(
+    firstPolicy,
+    secondPolicy,
+    "CSP nonce must be fresh per response",
+  );
   await status("/api/meters?tenantId=demo-tenant-1", 403, tenant);
   await status("/api/tenants", 403, tenant);
   await status("/api/users", 403, user);

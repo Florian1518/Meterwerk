@@ -1,3 +1,4 @@
+export const metadata = { title: "Zu viele Anfragen · Meterwerk" };
 import { StatusPage } from "@/components/status-page";
 export default function RateLimited() {
   return (

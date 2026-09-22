@@ -111,7 +111,7 @@ export function UtilitySettings({
                 />
               </label>
               <label>
-                Mindestdurchfluss m3/h{" "}
+                Mindestdurchfluss m³/h{" "}
                 <input
                   name="minimumFlow"
                   inputMode="decimal"
