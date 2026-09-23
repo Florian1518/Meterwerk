@@ -137,6 +137,12 @@ enum AnalyticsAnomalyStatus {
   DISMISSED
 }
 
+enum DashboardVisibility {
+  PRIVATE
+  TENANT
+  ROLE_BASED
+}
+
 enum ReportType {
   MONTHLY
   YEARLY
@@ -228,6 +234,7 @@ model Tenant {
   ruleActionJobs  RuleActionJob[]
   ruleVersions RuleVersion[]
   analyticsAnomalies AnalyticsAnomaly[]
+  dashboards Dashboard[]
 }
 
 model DataImport {
@@ -446,9 +453,54 @@ model User {
   invitationsAccepted Invitation[] @relation("InvitationAcceptor")
   notificationPreferences NotificationPreference[]
   loginHistory LoginHistory[]
+  ownedDashboards Dashboard[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
+}
+
+model Dashboard {
+  id          String             @id @default(cuid())
+  tenantId    String
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId     String
+  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  name        String
+  description String
+  visibility  DashboardVisibility @default(PRIVATE)
+  roles       Role[]
+  widgets     DashboardWidget[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  @@unique([id, tenantId])
+  @@index([tenantId, visibility])
+  @@index([tenantId, ownerId])
+}
+
+model DashboardWidget {
+  id          String    @id @default(cuid())
+  tenantId    String
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  title       String
+  type        String
+  dataSource  String
+  medium      MeterType?
+  meterId     String?
+  propertyId  String?
+  period      String
+  aggregation String
+  unit        String?
+  display     Json      @default("{}")
+  filters     Json      @default("{}")
+  positionX   Int       @default(0)
+  positionY   Int       @default(0)
+  width       Int       @default(4)
+  height      Int       @default(3)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@unique([id, tenantId])
+  @@index([tenantId, dashboardId, positionY, positionX])
 }
 
 model Session {
