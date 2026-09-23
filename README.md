@@ -1,5 +1,7 @@
 # Meterwerk
 
+Phase 5h ergänzt CSV-Import, Qualitätsprüfung und Korrekturen um gefilterten Streaming-Export, atomare Sammelaktionen und eine paginierte Import-Historie. Einstieg: `/imports` und `/data-quality`. Verträge, unterstützte Felder und Grenzen: [Datenimport/-export](docs/DATA-IMPORT.md) und [Datenqualität](docs/DATA-QUALITY.md). Vor dem Start `pnpm db:generate` und `pnpm db:migrate` ausführen; die Erweiterung benötigt die Migration `202609240003_data_management`. Bestehende Daten oder Passwörter werden nicht neu geseedet. Großimporte bleiben auf 2.000 Zeilen/5 MiB pro Datei begrenzt; Messwert-Exporte streamen ohne stille Zeilenbegrenzung. Es wird keine reale Hardware angebunden.
+
 Phase 5A erweitert das bestehende System um ein gemeinsames Messgrößenmodell für Strom, Wasser, Gas und Wärme, Einheiten-Normalisierung, historische Tarife, profilabhängige Detailseiten und vier virtuelle Simulatoren. Start, API-Verträge, Demo und Grenzen: [Multi-Utility-Anleitung](docs/MULTI-UTILITY.md). Nach den Migrationen erzeugt `pnpm db:seed:utility` mit `SEED_DEMO=true` auf der lokalen Entwicklungsdatenbank den separaten Demo-Mandanten; `pnpm test:utility` prüft die neuen Datenbankzugriffe. Keine reale Hardware oder M-Bus-/wM-Bus-Anbindung wurde ergänzt.
 
 Lauffähiges Smart-Metering-SaaS-Grundsystem mit Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, PostgreSQL und Prisma. Deutsche Oberfläche, zwei Demo-Mandanten und serverseitiges Rollenmodell.

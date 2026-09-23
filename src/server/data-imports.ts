@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import Decimal from "decimal.js";
 import { db } from "./db";
 import { AccessError, requireManage, tenantScope, type Actor } from "./policy";
 import { getTenantEntitlements, quotaLabels, type Quota } from "./licensing";
@@ -10,6 +11,157 @@ import {
   parseImportTimestamp,
 } from "@/lib/csv-import";
 import type { Prisma } from "@/generated/prisma/client";
+const defaultDb = db;
+
+function countErrorRows(errors: { row: number }[], rowCount: number) {
+  return errors.some((error) => error.row === 0)
+    ? rowCount
+    : new Set(errors.map((error) => error.row)).size;
+}
+
+export async function importHistory(
+  actor: Actor,
+  requested: string | null,
+  input: unknown,
+) {
+  requireManage(actor);
+  const tenantId = tenantScope(actor, requested);
+  const { cursor } = z
+    .object({ cursor: z.string().min(1).max(160).optional() })
+    .parse(input);
+  const rows = await db.dataImport.findMany({
+    where: { tenantId, ...(cursor ? { id: { lt: cursor } } : {}) },
+    orderBy: { id: "desc" },
+    take: 26,
+    select: {
+      id: true,
+      fileName: true,
+      actorId: true,
+      actorName: true,
+      resource: true,
+      createdAt: true,
+      rowCount: true,
+      successCount: true,
+      errorCount: true,
+      skippedCount: true,
+      status: true,
+      expiresAt: true,
+    },
+  });
+  return {
+    items: rows.slice(0, 25).map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+      status:
+        row.status === "PREVIEWED" && row.expiresAt <= new Date()
+          ? "EXPIRED"
+          : row.status,
+    })),
+    nextCursor: rows.length > 25 ? rows[24]!.id : null,
+  };
+}
+
+export async function skipImportErrors(
+  actor: Actor,
+  requested: string | null,
+  id: string,
+  input: unknown,
+) {
+  requireManage(actor);
+  const tenantId = tenantScope(actor, requested);
+  const parsedId = z.string().min(1).max(160).parse(id);
+  const value = z
+    .object({
+      rows: z.array(z.number().int().min(2).max(2001)).min(1).max(2000),
+      reason: z.string().trim().min(10).max(1000),
+    })
+    .parse(input);
+  const selected = new Set(value.rows);
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
+    const batch = await tx.dataImport.findFirst({
+      where: { id: parsedId, tenantId, actorId: actor.id },
+    });
+    if (!batch) throw new AccessError(404, "Importvorschau nicht gefunden.");
+    if (batch.status !== "PREVIEWED" || batch.expiresAt <= new Date())
+      throw new AccessError(409, "Vorschau ist verarbeitet oder abgelaufen.");
+    const errors = z
+      .array(
+        z.object({
+          row: z.number(),
+          field: z.string().optional(),
+          message: z.string(),
+        }),
+      )
+      .parse(batch.errors);
+    if (errors.some((error) => error.row === 0))
+      throw new AccessError(
+        409,
+        "Datei- oder Zuordnungsfehler müssen zuerst korrigiert werden.",
+      );
+    if ([...selected].some((row) => !errors.some((error) => error.row === row)))
+      throw new AccessError(
+        409,
+        "Nur vorhandene fehlerhafte Zeilen können übersprungen werden.",
+      );
+    const skipped = [
+      ...new Set([...(batch.skippedRows as number[]), ...selected]),
+    ];
+    const allRows = z
+      .array(z.record(z.string(), z.unknown()))
+      .parse(batch.stagedData);
+    const remaining = allRows
+      .map((data, index) => ({ data, row: index + 2 }))
+      .filter(({ row }) => !skipped.includes(row));
+    const referenceErrors = await checkTenantReferences(
+      tenantId,
+      z.enum(importResources).parse(batch.resource),
+      remaining.map((row) => row.data),
+      tx,
+    );
+    const nextErrors = [
+      ...errors.filter((error) => !selected.has(error.row)),
+      ...referenceErrors.map((error) => ({
+        ...error,
+        row: remaining[error.row - 2]!.row,
+      })),
+    ].filter(
+      (error, index, all) =>
+        all.findIndex(
+          (other) =>
+            other.row === error.row &&
+            other.field === error.field &&
+            other.message === error.message,
+        ) === index,
+    );
+    await tx.dataImport.update({
+      where: { id_tenantId: { id: parsedId, tenantId } },
+      data: {
+        skippedRows: skipped,
+        skippedCount: skipped.length,
+        errors: nextErrors,
+        errorCount: countErrorRows(nextErrors, remaining.length),
+      },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        action: "data_import.rows_skipped",
+        entityId: batch.id,
+        details: { rows: [...selected], reason: value.reason },
+      },
+    });
+    return {
+      skippedCount: skipped.length,
+      errors: nextErrors.slice(0, 100),
+      errorCount: nextErrors.length,
+      canConfirm: nextErrors.length === 0 && remaining.length > 0,
+      preview: remaining.slice(0, 10).map((row) => row.data),
+    };
+  });
+}
 
 export const importResources = [
   "properties",
@@ -142,7 +294,24 @@ export function fieldsForImport(resource: ImportResource) {
 function normalizeValue(value: string, field: string, spec: Field): unknown {
   const input = value.trim();
   if (!input) return spec.required ? undefined : null;
-  if (spec.type === "decimal") return parseGermanDecimal(input) ?? undefined;
+  if (spec.type === "decimal") {
+    const plain = parseGermanDecimal(input);
+    if (plain === null) return undefined;
+    const decimal = new Decimal(plain);
+    if (field !== "meterValue" && decimal.isNegative()) return undefined;
+    const [precision, scale] =
+      field === "area"
+        ? [12, 2]
+        : field === "demoPricePerUnit"
+          ? [10, 4]
+          : [20, 6];
+    if (
+      decimal.decimalPlaces() > scale! ||
+      decimal.abs().gte(new Decimal(10).pow(precision! - scale!))
+    )
+      return undefined;
+    return plain;
+  }
   if (spec.type === "date")
     return parseImportTimestamp(input)?.toISOString() ?? undefined;
   if (spec.type === "enum") return input.toUpperCase();
@@ -204,14 +373,12 @@ function validateRows(
         });
       else if (value !== undefined) data[field] = value;
     }
-    if (resource === "meters" && data.status === undefined)
-      data.status = "ACTIVE";
-    if (resource === "devices" && data.status === undefined)
+    if (resource === "meters" && data.status == null) data.status = "ACTIVE";
+    if (resource === "devices" && data.status == null)
       data.status = "MAINTENANCE";
-    if (resource === "gateways" && data.status === undefined)
+    if (resource === "gateways" && data.status == null)
       data.status = "MAINTENANCE";
-    if (resource === "readings" && data.source === undefined)
-      data.source = "MANUAL";
+    if (resource === "readings" && data.source == null) data.source = "MANUAL";
     return data;
   });
   return { rows, errors };
@@ -221,6 +388,7 @@ async function checkTenantReferences(
   tenantId: string,
   resource: ImportResource,
   rows: Record<string, unknown>[],
+  db: Prisma.TransactionClient = defaultDb,
 ) {
   const errors: { row: number; field?: string; message: string }[] = [];
   const ids = (field: string) => [
@@ -520,7 +688,14 @@ async function checkTenantReferences(
       where: {
         tenantId,
         meterId: { in: meters },
-        timestamp: { in: rows.map((row) => new Date(String(row.timestamp))) },
+        timestamp: {
+          in: rows.flatMap((row) =>
+            typeof row.timestamp === "string" &&
+            parseImportTimestamp(row.timestamp)
+              ? [new Date(row.timestamp)]
+              : [],
+          ),
+        },
         source: {
           in: [...new Set(rows.map((row) => String(row.source)))] as (
             | "DEMO"
@@ -680,9 +855,6 @@ export async function previewCsvImport(
     ...validation.errors,
     ...(await checkTenantReferences(tenantId, resource, validation.rows)),
   ];
-  await db.dataImport.deleteMany({
-    where: { tenantId, status: "PREVIEWED", expiresAt: { lt: new Date() } },
-  });
   const fingerprint = createHash("sha256")
     .update(fileBytes)
     .update(JSON.stringify(Object.fromEntries(Object.entries(mapping).sort())))
@@ -696,17 +868,35 @@ export async function previewCsvImport(
       409,
       "Diese Datei mit derselben Spaltenzuordnung wurde bereits importiert.",
     );
-  const batch = await db.dataImport.create({
-    data: {
-      tenantId,
-      actorId: actor.id,
-      resource,
-      fingerprint,
-      stagedData: validation.rows as Prisma.InputJsonValue,
-      errors: errors as Prisma.InputJsonValue,
-      rowCount: validation.rows.length,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-    },
+  const batch = await db.$transaction(async (tx) => {
+    const batch = await tx.dataImport.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        actorName: actor.name,
+        fileName: file.name
+          .replaceAll("\\", "/")
+          .split("/")
+          .at(-1)!
+          .slice(0, 255),
+        resource,
+        fingerprint,
+        stagedData: validation.rows as Prisma.InputJsonValue,
+        errors: errors as Prisma.InputJsonValue,
+        rowCount: parsed.rows.length,
+        errorCount: countErrorRows(errors, parsed.rows.length),
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        action: "data_import.previewed",
+        entityId: batch.id,
+      },
+    });
+    return batch;
   });
   return {
     id: batch.id,
@@ -765,8 +955,27 @@ export async function confirmCsvImport(
         );
       const rows = z
         .array(z.record(z.string(), z.unknown()))
-        .parse(batch.stagedData);
+        .parse(batch.stagedData)
+        .filter(
+          (_, index) => !(batch.skippedRows as number[]).includes(index + 2),
+        );
       const resource = z.enum(importResources).parse(batch.resource);
+      if (!rows.length)
+        throw new AccessError(
+          409,
+          "Keine Datenzeilen zur Übernahme vorhanden.",
+        );
+      const referenceErrors = await checkTenantReferences(
+        tenantId,
+        resource,
+        rows,
+        tx,
+      );
+      if (referenceErrors.length)
+        throw new AccessError(
+          409,
+          "Datenbestand hat sich geändert. Bitte neue Vorschau erstellen.",
+        );
       if (resource === "readings") {
         // Confirm-time checks close the gap if a meter changed after preview.
         const meterIds = [...new Set(rows.map((row) => String(row.meterId)))];
@@ -858,7 +1067,13 @@ export async function confirmCsvImport(
         await createImportedRow(tx, tenantId, resource, row);
       await tx.dataImport.update({
         where: { id_tenantId: { id: batch.id, tenantId } },
-        data: { status: "COMPLETED", completedAt: new Date() },
+        data: {
+          status: "COMPLETED",
+          successCount: rows.length,
+          errorCount: 0,
+          completedAt: new Date(),
+          stagedData: [],
+        },
       });
       await tx.auditEvent.create({
         data: {
@@ -958,7 +1173,7 @@ async function createImportedRow(
           ...data,
           timestamp: new Date(String(data.timestamp)),
           registerValue: String(data.registerValue),
-          ...(data.meterValue === null
+          ...(data.meterValue == null
             ? { meterValue: null }
             : { meterValue: String(data.meterValue) }),
           consumption: String(data.consumption),

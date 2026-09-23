@@ -15,15 +15,34 @@ import {
   resetPassword,
 } from "../src/server/account-security";
 import { localMails } from "../src/server/mail";
-if (process.env.SEED_DEMO !== "true")
+import { changePlan } from "../src/server/licensing";
+if (
+  process.env.SEED_DEMO !== "true" ||
+  process.env.NODE_ENV === "production" ||
+  !["localhost", "127.0.0.1"].includes(
+    new URL(process.env.DATABASE_URL ?? "").hostname,
+  )
+)
   throw new Error("Lokale Demo-Datenbank erforderlich.");
-// Keep this test independent of tenants whose BASIC user quota is filled by
-// other persistent local usage-limit scenarios.
-const tenantId = "demo-tenant-1";
+// Dedicated fixture avoids coupling security tests to demo subscription usage.
+const tenantId = `security-${randomBytes(12).toString("hex")}`;
 const email = `security-${randomBytes(5).toString("hex")}@example.test`;
 const password = "Testpassword-123!";
 const tokenHash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
+await db.tenant.create({
+  data: { id: tenantId, name: "Security fixture", slug: tenantId },
+});
+await changePlan(
+  {
+    id: "platform-admin",
+    tenantId: null,
+    role: "SUPER_ADMIN",
+    name: "Security fixture",
+    email: "fixture@example.invalid",
+  },
+  { tenantId, plan: "BASIC" },
+);
 const user = await db.user.create({
   data: {
     tenantId,
@@ -87,8 +106,11 @@ try {
     "security integration passed: MFA, recovery codes, reset replay, invitation replay",
   );
 } finally {
-  await db.user.delete({ where: { id: user.id } }).catch(() => undefined);
+  await db.invitation.deleteMany({ where: { tenantId } });
+  await db.user.delete({ where: { id: user.id } });
   if (invitedEmail)
     await db.user.deleteMany({ where: { email: invitedEmail } });
+  await db.auditEvent.deleteMany({ where: { tenantId } });
+  await db.tenant.delete({ where: { id: tenantId } });
   await db.$disconnect();
 }

@@ -205,6 +205,12 @@ model DataImport {
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actorId     String
+  actorName   String   @default("")
+  fileName    String   @default("Unbekannt (Altbestand)")
+  successCount Int     @default(0)
+  errorCount  Int      @default(0)
+  skippedCount Int     @default(0)
+  skippedRows Json     @default("[]")
   resource    String
   fingerprint String
   stagedData  Json
@@ -806,6 +812,7 @@ model Reading {
   @@unique([tenantId, deviceId, messageId])
   @@unique([tenantId, meterId, timestamp, source])
   @@index([tenantId, timestamp])
+  @@index([tenantId, id])
 }
 
 model DataQualityFinding {
@@ -826,6 +833,9 @@ model DataQualityFinding {
   detectedAt  DateTime              @default(now())
   lastSeenAt  DateTime              @default(now())
   resolvedAt  DateTime?
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  acknowledgementReason String?
 
   @@unique([tenantId, fingerprint])
   @@unique([id, tenantId])
@@ -978,6 +988,7 @@ model AuditEvent {
   actorId   String
   action    String
   entityId  String
+  details   Json     @default("{}")
   correlationId String?
   createdAt DateTime @default(now())
 

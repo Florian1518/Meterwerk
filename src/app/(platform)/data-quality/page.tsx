@@ -31,7 +31,11 @@ export default async function DataQualityPage({
       {context.actor.role === "SUPER_ADMIN" && (
         <TenantSelect tenants={context.tenants} tenantId={context.tenantId} />
       )}
-      <DataQuality tenantId={context.tenantId} initial={data} />
+      <DataQuality
+        key={`${context.tenantId}:${params.cursor ?? ""}`}
+        tenantId={context.tenantId}
+        initial={data}
+      />
     </>
   );
 }

@@ -4,7 +4,12 @@ import { randomUUID } from "node:crypto";
 import { db } from "../src/server/db";
 import { changePlan } from "../src/server/licensing";
 import { AccessError, type Actor } from "../src/server/policy";
-import { confirmCsvImport, previewCsvImport } from "../src/server/data-imports";
+import {
+  confirmCsvImport,
+  previewCsvImport,
+  importHistory,
+  skipImportErrors,
+} from "../src/server/data-imports";
 
 if (process.env.SEED_DEMO !== "true" || process.env.NODE_ENV === "production")
   throw new Error("Lokale Demo-Datenbank erforderlich.");
@@ -227,6 +232,49 @@ try {
         await db.reading.count({ where: { tenantId, meterId: meter.id } }),
         0,
       );
+      const malformed = await previewCsvImport(
+        actor,
+        new File(
+          [
+            `meterId;timestamp;registerValue;consumption;measurementUnit;source\n${meter.id};2026-01-01T00:00:00Z;10;0.5;kWh;\n${meter.id};kein-datum;11;1;kWh;MANUAL\n${meter.id};2026-01-03T00:00:00Z;12.1234567;1;kWh;MANUAL`,
+          ],
+          "invalid-values.csv",
+        ),
+        null,
+        "readings",
+        {
+          meterId: "meterId",
+          timestamp: "timestamp",
+          registerValue: "registerValue",
+          consumption: "consumption",
+          measurementUnit: "measurementUnit",
+          source: "source",
+        },
+      );
+      assert.equal(malformed.canConfirm, false);
+      assert.ok(
+        malformed.errors.some(
+          (error) => error.row === 3 && error.field === "timestamp",
+        ),
+      );
+      assert.ok(
+        malformed.errors.some(
+          (error) => error.row === 4 && error.field === "registerValue",
+        ),
+      );
+      assert.equal(
+        (
+          await skipImportErrors(actor, null, malformed.id, {
+            rows: [3, 4],
+            reason: "Ungültige Zeit und Präzision auslassen",
+          })
+        ).canConfirm,
+        true,
+      );
+      assert.equal(
+        (await confirmCsvImport(actor, malformed.id, null)).imported,
+        1,
+      );
     },
   );
 
@@ -240,6 +288,126 @@ try {
         {},
       ),
     (error: unknown) => error instanceof AccessError && error.status === 403,
+  );
+  await check(
+    "bulk error processing is owner-bound, audited and retained in history",
+    async () => {
+      const preview = await previewCsvImport(
+        actor,
+        new File(
+          [
+            "name;address;city\nHistory valid;Road 1;Berlin\n;Road 2;Berlin\n;Road 3;Berlin\n",
+          ],
+          "history.csv",
+        ),
+        null,
+        "properties",
+        { name: "name", address: "address", city: "city" },
+      );
+      const input = {
+        rows: [3, 4],
+        reason: "Fehlende Namen gesammelt auslassen",
+      };
+      await assert.rejects(() =>
+        skipImportErrors(actor, foreignTenantId, preview.id, input),
+      );
+      await assert.rejects(() =>
+        skipImportErrors(actor, null, "foreign-id", input),
+      );
+      await assert.rejects(() =>
+        skipImportErrors(
+          { ...actor, id: "another-admin" },
+          null,
+          preview.id,
+          input,
+        ),
+      );
+      for (const role of ["USER", "MANAGER"] as const) {
+        await assert.rejects(() =>
+          skipImportErrors({ ...actor, role }, null, preview.id, input),
+        );
+        await assert.rejects(() => importHistory({ ...actor, role }, null, {}));
+      }
+      await assert.rejects(() => importHistory(actor, foreignTenantId, {}));
+      await assert.rejects(() => importHistory(platform, null, {}));
+      await assert.rejects(() =>
+        skipImportErrors(actor, null, preview.id, { ...input, rows: [2, 3] }),
+      );
+      assert.equal(
+        (await db.dataImport.findUniqueOrThrow({ where: { id: preview.id } }))
+          .skippedCount,
+        0,
+      );
+      const result = await skipImportErrors(actor, null, preview.id, input);
+      assert.equal(result.canConfirm, true);
+      assert.equal(result.skippedCount, 2);
+      await confirmCsvImport(actor, preview.id, null);
+      const history = await importHistory(actor, null, {});
+      const entry = history.items.find((item) => item.id === preview.id)!;
+      assert.equal(entry.fileName, "history.csv");
+      assert.equal(entry.actorName, actor.name);
+      assert.equal(entry.rowCount, 3);
+      assert.equal(entry.successCount, 1);
+      assert.equal(entry.errorCount, 0);
+      assert.equal(entry.skippedCount, 2);
+      assert.equal(entry.status, "COMPLETED");
+      assert.equal("stagedData" in entry, false);
+      assert.equal(
+        (
+          await db.auditEvent.findFirstOrThrow({
+            where: {
+              tenantId,
+              entityId: preview.id,
+              action: "data_import.rows_skipped",
+            },
+          })
+        ).actorId,
+        actor.id,
+      );
+    },
+  );
+  await check(
+    "history is paginated and expired previews survive new uploads",
+    async () => {
+      await db.dataImport.createMany({
+        data: Array.from({ length: 27 }, (_, index) => ({
+          tenantId,
+          actorId: actor.id,
+          resource: "properties",
+          fingerprint: `history-${index}`,
+          stagedData: [],
+          errors: [],
+          rowCount: 0,
+          expiresAt: new Date(0),
+        })),
+      });
+      const first = await importHistory(actor, null, {});
+      assert.equal(first.items.length, 25);
+      assert.ok(first.nextCursor);
+      const second = await importHistory(actor, null, {
+        cursor: first.nextCursor,
+      });
+      assert.ok(second.items.length > 0);
+      assert.ok(
+        second.items.every(
+          (entry) => !first.items.some((item) => item.id === entry.id),
+        ),
+      );
+      assert.ok(first.items.some((entry) => entry.status === "EXPIRED"));
+      await previewCsvImport(
+        actor,
+        new File(["name;address;city\nRetained;A 1;Berlin"], "retained.csv"),
+        null,
+        "properties",
+        { name: "name", address: "address", city: "city" },
+      );
+      assert.equal(
+        await db.dataImport.count({
+          where: { tenantId, fingerprint: { startsWith: "history-" } },
+        }),
+        27,
+      );
+    },
   );
   console.log(`${checks.length + 1} CSV import integration checks passed.`);
 } finally {

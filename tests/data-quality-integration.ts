@@ -8,7 +8,11 @@ import {
   correctReading,
   readingCorrectionHistory,
   scanDataQuality,
+  bulkDataQuality,
+  getDataQuality,
 } from "../src/server/data-quality";
+import { exportReadings } from "../src/server/data-export";
+import { parseCsv } from "../src/lib/csv-import";
 
 if (process.env.SEED_DEMO !== "true" || process.env.NODE_ENV === "production")
   throw new Error("Lokale Demo-Datenbank erforderlich.");
@@ -262,6 +266,274 @@ try {
         await db.dataQualityCorrection.count({ where: { tenantId } }),
         1,
       );
+    },
+  );
+  await check(
+    "bulk actions reject mixed tenants and privilege escalation atomically",
+    async () => {
+      const payload = {
+        action: "SET_STATUS",
+        ids: readingIds,
+        status: "SUSPECT",
+        reason: "Sammelprüfung durch Verwaltung",
+      };
+      const before = await db.reading.findMany({
+        where: { tenantId },
+        select: { id: true, quality: true },
+        orderBy: { id: "asc" },
+      });
+      const correctionsBefore = await db.dataQualityCorrection.count({
+        where: { tenantId },
+      });
+      for (const role of ["USER", "MANAGER"] as const)
+        await assert.rejects(() =>
+          bulkDataQuality({ ...actor, role }, null, payload),
+        );
+      await assert.rejects(() => bulkDataQuality(platform, null, payload));
+      await assert.rejects(() =>
+        bulkDataQuality(actor, foreignTenantId, payload),
+      );
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, {
+          ...payload,
+          ids: [readingIds[0], foreignReadingId],
+        }),
+      );
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, {
+          ...payload,
+          ids: [readingIds[0], "missing"],
+        }),
+      );
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, { ...payload, status: "SUPER_ADMIN" }),
+      );
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, {
+          ...payload,
+          ids: Array(101).fill(readingIds[0]),
+        }),
+      );
+      assert.deepEqual(
+        await db.reading.findMany({
+          where: { tenantId },
+          select: { id: true, quality: true },
+          orderBy: { id: "asc" },
+        }),
+        before,
+      );
+      assert.equal(
+        await db.dataQualityCorrection.count({ where: { tenantId } }),
+        correctionsBefore,
+      );
+      assert.equal(
+        (await bulkDataQuality(actor, null, payload)).affected,
+        readingIds.length,
+      );
+      assert.equal(
+        await db.dataQualityCorrection.count({ where: { tenantId } }),
+        correctionsBefore + readingIds.length,
+      );
+      assert.equal(
+        await db.auditEvent.count({
+          where: { tenantId, action: "data_quality.bulk_set_status" },
+        }),
+        1,
+      );
+      const findings = await db.dataQualityFinding.findMany({
+        where: { tenantId, resolvedAt: null },
+        take: 2,
+      });
+      assert.equal(findings.length, 2);
+      const ack = {
+        action: "ACKNOWLEDGE",
+        ids: findings.map((row) => row.id),
+        reason: "Befunde gemeinsam fachlich gesichtet",
+      };
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, {
+          ...ack,
+          ids: [ack.ids[0], "foreign-finding"],
+        }),
+      );
+      await bulkDataQuality(actor, null, ack);
+      assert.equal(
+        await db.dataQualityFinding.count({
+          where: {
+            tenantId,
+            id: { in: ack.ids },
+            acknowledgedBy: actor.id,
+            resolvedAt: null,
+          },
+        }),
+        2,
+      );
+      await assert.rejects(() => bulkDataQuality(actor, null, ack));
+    },
+  );
+  await check(
+    "finding pagination remains scoped and foreign acknowledgements are atomic",
+    async () => {
+      const window = {
+        windowFrom: new Date("2026-01-01T00:00:00Z"),
+        windowTo: new Date("2026-03-01T00:00:00Z"),
+      };
+      await db.dataQualityFinding.createMany({
+        data: Array.from({ length: 52 }, (_, index) => ({
+          tenantId,
+          meterId: meter.id,
+          type: "UNUSUAL_JUMP" as const,
+          status: "WARNING" as const,
+          fingerprint: `paged-${index}`,
+          description: "Pagination fixture",
+          ...window,
+        })),
+      });
+      const foreignFinding = await db.dataQualityFinding.create({
+        data: {
+          tenantId: foreignTenantId,
+          meterId: foreignMeter.id,
+          type: "UNUSUAL_JUMP",
+          status: "WARNING",
+          fingerprint: "foreign-finding",
+          description: "Foreign fixture",
+          ...window,
+        },
+      });
+      const filter = { from: "2026-01-01", to: "2026-02-28" };
+      const first = await getDataQuality(actor, null, filter);
+      assert.equal(first.findings.length, 50);
+      assert.ok(first.nextCursor);
+      const second = await getDataQuality(actor, null, {
+        ...filter,
+        cursor: first.nextCursor,
+      });
+      assert.ok(second.findings.length > 0);
+      assert.ok(
+        second.findings.every(
+          (entry) => !first.findings.some((item) => item.id === entry.id),
+        ),
+      );
+      assert.ok(
+        [...first.findings, ...second.findings].every(
+          (entry) => entry.id !== foreignFinding.id,
+        ),
+      );
+      for (const role of ["USER", "MANAGER"] as const)
+        await assert.rejects(() =>
+          getDataQuality({ ...actor, role }, null, filter),
+        );
+      await assert.rejects(() =>
+        getDataQuality(actor, foreignTenantId, filter),
+      );
+      await assert.rejects(() => getDataQuality(platform, null, filter));
+      const own = first.findings.find((entry) => !entry.acknowledgedAt)!;
+      await assert.rejects(() =>
+        bulkDataQuality(actor, null, {
+          action: "ACKNOWLEDGE",
+          ids: [own.id, foreignFinding.id],
+          reason: "Fremden Befund nicht mitbestätigen",
+        }),
+      );
+      assert.equal(
+        (
+          await db.dataQualityFinding.findUniqueOrThrow({
+            where: { id: own.id },
+          })
+        ).acknowledgedAt,
+        null,
+      );
+    },
+  );
+  await check(
+    "streaming export applies every filter and USER property grants",
+    async () => {
+      const filter = {
+        from: "2026-01-01T00:00:00Z",
+        to: "2026-03-01T00:00:00Z",
+      };
+      const csv = async (who: Actor, options: unknown = filter) =>
+        parseCsv(
+          await new Response(await exportReadings(who, null, options)).text(),
+        );
+      const own = await csv(actor);
+      assert.equal(own.rows.length, readingIds.length);
+      assert.ok(own.rows.every((row) => !row.includes(foreignReadingId)));
+      const property = await db.property.findFirstOrThrow({
+        where: { tenantId },
+      });
+      assert.equal(
+        (
+          await csv(actor, {
+            ...filter,
+            propertyId: property.id,
+            meterId: meter.id,
+            medium: "WATER",
+          })
+        ).rows.length,
+        readingIds.length,
+      );
+      assert.equal(
+        (await csv(actor, { ...filter, medium: "GAS" })).rows.length,
+        0,
+      );
+      assert.equal(
+        (await csv(actor, { ...filter, to: "2026-02-01T00:00:00Z" })).rows
+          .length,
+        2,
+      );
+      await assert.rejects(() =>
+        exportReadings(actor, foreignTenantId, filter),
+      );
+      await assert.rejects(() =>
+        csv(actor, { ...filter, meterId: foreignMeter.id }),
+      );
+      await assert.rejects(() =>
+        csv(actor, { ...filter, propertyId: "foreign-property" }),
+      );
+      await assert.rejects(() => exportReadings(platform, null, filter));
+      const user = await db.user.create({
+        data: {
+          tenantId,
+          name: "Export User",
+          email: `${tenantId}@example.invalid`,
+          passwordHash: "disabled-test-account",
+          role: "USER",
+          active: false,
+        },
+      });
+      const reader: Actor = { ...actor, id: user.id, role: "USER" };
+      assert.equal((await csv(reader)).rows.length, 0);
+      await assert.rejects(() => csv(reader, { ...filter, meterId: meter.id }));
+      await assert.rejects(() =>
+        csv(reader, { ...filter, propertyId: property.id }),
+      );
+      await db.propertyGrant.create({
+        data: { tenantId, userId: user.id, propertyId: property.id },
+      });
+      assert.equal((await csv(reader)).rows.length, readingIds.length);
+      await db.reading.createMany({
+        data: Array.from({ length: 1005 }, (_, index) => ({
+          tenantId,
+          meterId: meter.id,
+          timestamp: new Date(Date.UTC(2026, 0, 2, 0, 0, index)),
+          registerValue: "12345678901234.123456",
+          consumption: "0.123456",
+          measurementUnit: "m³",
+          source: "MANUAL" as const,
+        })),
+      });
+      const paged = await csv(reader);
+      assert.equal(paged.rows.length, 1008);
+      assert.equal(new Set(paged.rows.map((row) => row[0])).size, 1008);
+      assert.ok(
+        paged.rows.some((row) => row.includes("12345678901234.123456")),
+      );
+      await db.propertyGrant.deleteMany({
+        where: { tenantId, userId: user.id },
+      });
+      assert.equal((await csv(reader)).rows.length, 0);
+      await db.user.delete({ where: { id: user.id } });
     },
   );
   console.log(`${checks.length} Data quality integration checks passed.`);

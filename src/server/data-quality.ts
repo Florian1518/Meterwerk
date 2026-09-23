@@ -39,6 +39,7 @@ const filterSchema = z.object({
   meter: z.string().trim().max(100).optional(),
   type: z.enum(issueTypes).optional(),
   status: z.enum(["OK", "WARNING", "ERROR"]).optional(),
+  cursor: z.string().min(1).max(160).optional(),
 });
 export type DataQualityFilter = z.input<typeof filterSchema>;
 const range = (input: unknown) => {
@@ -92,7 +93,7 @@ export async function scanDataQuality(
   const meters = await db.meter.findMany({
     where: meterWhere(tenantId, filter.meter),
     orderBy: { serialNumber: "asc" },
-    take: 5000,
+    take: 5001,
     select: {
       id: true,
       serialNumber: true,
@@ -102,6 +103,11 @@ export async function scanDataQuality(
       status: true,
     },
   });
+  if (meters.length > 5000)
+    throw new AccessError(
+      400,
+      "Mehr als 5.000 Zähler: Bitte Zählerfilter eingrenzen.",
+    );
   const readings = meters.length
     ? await db.reading.findMany({
         where: {
@@ -110,7 +116,7 @@ export async function scanDataQuality(
           timestamp: { gte: filter.from, lt: filter.to },
         },
         orderBy: [{ meterId: "asc" }, { timestamp: "asc" }],
-        take: 100_000,
+        take: 100_001,
         select: {
           id: true,
           meterId: true,
@@ -123,12 +129,17 @@ export async function scanDataQuality(
         },
       })
     : [];
+  if (readings.length > 100_000)
+    throw new AccessError(
+      400,
+      "Mehr als 100.000 Messwerte: Bitte Zeitraum oder Zählerfilter eingrenzen.",
+    );
   const grouped = new Map<string, typeof readings>();
-  for (const reading of readings)
-    grouped.set(reading.meterId, [
-      ...(grouped.get(reading.meterId) ?? []),
-      reading,
-    ]);
+  for (const reading of readings) {
+    const group = grouped.get(reading.meterId) ?? [];
+    group.push(reading);
+    grouped.set(reading.meterId, group);
+  }
   const candidates: {
     meterId: string;
     issue: QualityIssue;
@@ -159,6 +170,7 @@ export async function scanDataQuality(
   }
   const now = new Date();
   await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
     for (const candidate of candidates) {
       await tx.dataQualityFinding.upsert({
         where: {
@@ -254,7 +266,7 @@ export async function getDataQuality(
   const meters = await db.meter.findMany({
     where: meterWhere(tenantId, filter.meter),
     orderBy: { serialNumber: "asc" },
-    take: 5000,
+    take: 5001,
     select: {
       id: true,
       serialNumber: true,
@@ -263,6 +275,11 @@ export async function getDataQuality(
       status: true,
     },
   });
+  if (meters.length > 5000)
+    throw new AccessError(
+      400,
+      "Mehr als 5.000 Zähler: Bitte Zählerfilter eingrenzen.",
+    );
   const meterIds = meters.map((meter) => meter.id);
   const baseWhere = {
     tenantId,
@@ -272,13 +289,14 @@ export async function getDataQuality(
     windowTo: { gte: filter.from },
   };
   const [allFindings, findings] = await Promise.all([
-    db.dataQualityFinding.findMany({
+    db.dataQualityFinding.groupBy({
       where: baseWhere,
-      select: { meterId: true, status: true },
+      by: ["meterId", "status"],
     }),
     db.dataQualityFinding.findMany({
       where: {
         ...baseWhere,
+        ...(filter.cursor ? { id: { lt: filter.cursor } } : {}),
         ...(filter.type ? { type: filter.type } : {}),
         ...(filter.status && filter.status !== "OK"
           ? { status: filter.status }
@@ -286,8 +304,8 @@ export async function getDataQuality(
             ? { id: "__no-ok-findings__" }
             : {}),
       },
-      orderBy: [{ status: "desc" }, { detectedAt: "desc" }],
-      take: 1000,
+      orderBy: { id: "desc" },
+      take: 51,
       include: {
         meter: {
           select: {
@@ -323,6 +341,7 @@ export async function getDataQuality(
     status: severity.get(meter.id) ?? "OK",
   }));
   return {
+    nextCursor: findings.length > 50 ? findings[49]!.id : null,
     filters: {
       from:
         (input as DataQualityFilter)?.from ??
@@ -339,7 +358,7 @@ export async function getDataQuality(
     meters: meterStatuses.filter(
       (meter) => !filter.status || meter.status === filter.status,
     ),
-    findings: findings.map((finding) => ({
+    findings: findings.slice(0, 50).map((finding) => ({
       id: finding.id,
       type: finding.type,
       status: finding.status,
@@ -357,8 +376,105 @@ export async function getDataQuality(
         : null,
       detectedAt: finding.detectedAt.toISOString(),
       lastSeenAt: finding.lastSeenAt.toISOString(),
+      acknowledgedAt: finding.acknowledgedAt?.toISOString() ?? null,
     })),
   };
+}
+
+export async function bulkDataQuality(
+  actor: Actor,
+  requested: string | null,
+  input: unknown,
+) {
+  requireManage(actor);
+  const tenantId = tenantScope(actor, requested);
+  const base = {
+    ids: z.array(z.string().min(1).max(160)).min(1).max(100),
+    reason: z.string().trim().min(10).max(1000),
+  };
+  const value = z
+    .discriminatedUnion("action", [
+      z.object({
+        ...base,
+        action: z.literal("SET_STATUS"),
+        status: z.enum(["VALID", "INVALID", "ESTIMATED", "SUSPECT"]),
+      }),
+      z.object({ ...base, action: z.literal("ACKNOWLEDGE") }),
+    ])
+    .parse(input);
+  const ids = [...new Set(value.ids)];
+  return db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
+      if (value.action === "ACKNOWLEDGE") {
+        const findings = await tx.dataQualityFinding.findMany({
+          where: { tenantId, id: { in: ids }, resolvedAt: null },
+          select: { id: true, acknowledgedAt: true },
+        });
+        if (findings.length !== ids.length)
+          throw new AccessError(
+            404,
+            "Mindestens ein offener Befund wurde nicht gefunden.",
+          );
+        if (findings.some((finding) => finding.acknowledgedAt))
+          throw new AccessError(
+            409,
+            "Mindestens ein Befund wurde bereits bestätigt.",
+          );
+        await tx.dataQualityFinding.updateMany({
+          where: { tenantId, id: { in: ids }, resolvedAt: null },
+          data: {
+            acknowledgedAt: new Date(),
+            acknowledgedBy: actor.id,
+            acknowledgementReason: value.reason,
+          },
+        });
+      } else {
+        const readings = await tx.reading.findMany({
+          where: { tenantId, id: { in: ids } },
+          include: { measurements: true },
+        });
+        if (readings.length !== ids.length)
+          throw new AccessError(
+            404,
+            "Mindestens ein Messwert wurde nicht gefunden.",
+          );
+        for (const reading of readings) {
+          const updated = await tx.reading.update({
+            where: { id_tenantId: { id: reading.id, tenantId } },
+            data: { quality: value.status },
+            include: { measurements: true },
+          });
+          await tx.dataQualityCorrection.create({
+            data: {
+              tenantId,
+              actorId: actor.id,
+              readingId: reading.id,
+              action: value.status === "INVALID" ? "MARK_INVALID" : "CORRECT",
+              reason: value.reason,
+              beforeData: serializableReading(reading),
+              afterData: serializableReading(updated),
+            },
+          });
+        }
+      }
+      await tx.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: actor.id,
+          action: `data_quality.bulk_${value.action.toLowerCase()}`,
+          entityId: ids[0]!,
+          details: {
+            ids,
+            reason: value.reason,
+            ...(value.action === "SET_STATUS" ? { status: value.status } : {}),
+          },
+        },
+      });
+      return { affected: ids.length };
+    },
+    { timeout: 30_000 },
+  );
 }
 
 const decimalField = z

@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 
 type Resource =
@@ -33,6 +34,9 @@ const options: { value: Resource; label: string }[] = [
 ];
 
 export function DataImport({ tenantId }: { tenantId: string }) {
+  const router = useRouter();
+  const [skipRows, setSkipRows] = useState<number[]>([]);
+  const [skipReason, setSkipReason] = useState("");
   const [resource, setResource] = useState<Resource>("properties");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -74,6 +78,8 @@ export function DataImport({ tenantId }: { tenantId: string }) {
       if (!response.ok)
         throw new Error(data.error ?? "Vorschau konnte nicht erstellt werden.");
       setPreview(data);
+      setSkipRows([]);
+      router.refresh();
       const auto = Object.fromEntries(
         data.fields.map((field: { field: string }) => [
           field.field,
@@ -115,6 +121,7 @@ export function DataImport({ tenantId }: { tenantId: string }) {
       if (!response.ok) throw new Error(data.error ?? "Import fehlgeschlagen.");
       setMessage(`${data.imported} Datensätze wurden atomar importiert.`);
       setPreview(null);
+      router.refresh();
       setFile(null);
       setMapping({});
       const input = document.getElementById(
@@ -124,6 +131,40 @@ export function DataImport({ tenantId }: { tenantId: string }) {
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Import fehlgeschlagen.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function skipErrors() {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/imports/${encodeURIComponent(preview.id)}/errors`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            tenantId,
+            rows: skipRows,
+            reason: skipReason,
+          }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error ?? "Bearbeitung fehlgeschlagen.");
+      setPreview({ ...preview, ...body });
+      setSkipRows([]);
+      setMessage(
+        `${body.skippedCount} Zeilen übersprungen. Verbleibende Daten vor dem Bestätigen prüfen.`,
+      );
+      router.refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Bearbeitung fehlgeschlagen.",
       );
     } finally {
       setBusy(false);
@@ -258,11 +299,47 @@ export function DataImport({ tenantId }: { tenantId: string }) {
               <ul>
                 {preview.errors.map((error, index) => (
                   <li key={index}>
+                    {error.row > 0 && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Fehlerzeile ${error.row} überspringen`}
+                        checked={skipRows.includes(error.row)}
+                        onChange={(event) =>
+                          setSkipRows((rows) =>
+                            event.target.checked
+                              ? [...new Set([...rows, error.row])]
+                              : rows.filter((row) => row !== error.row),
+                          )
+                        }
+                      />
+                    )}
                     Zeile {error.row}
                     {error.field ? ` · ${error.field}` : ""}: {error.message}
                   </li>
                 ))}
               </ul>
+              <p>
+                Es werden höchstens 100 Fehlermeldungen angezeigt. Nach der
+                Bearbeitung erscheinen verbleibende Fehler.
+              </p>
+              <label className="field">
+                Begründung für das Überspringen (mindestens 10 Zeichen)
+                <textarea
+                  value={skipReason}
+                  onChange={(event) => setSkipReason(event.target.value)}
+                  minLength={10}
+                  maxLength={1000}
+                />
+              </label>
+              <Button
+                type="button"
+                disabled={
+                  busy || !skipRows.length || skipReason.trim().length < 10
+                }
+                onClick={skipErrors}
+              >
+                Ausgewählte Fehlerzeilen überspringen
+              </Button>
             </div>
           )}
           <Button

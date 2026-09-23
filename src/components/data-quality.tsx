@@ -2,8 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "./ui/button";
+import { DataExport } from "./data-export";
+import Link from "next/link";
 
 type Initial = {
+  nextCursor: string | null;
   filters: {
     from: string;
     to: string;
@@ -26,6 +30,7 @@ type Initial = {
     status: "OK" | "WARNING" | "ERROR";
     description: string;
     detectedAt: string;
+    acknowledgedAt: string | null;
     meter: {
       id: string;
       serialNumber: string;
@@ -65,6 +70,55 @@ export function DataQuality({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkStatus, setBulkStatus] = useState("SUSPECT");
+  async function bulk(action: "ACKNOWLEDGE" | "SET_STATUS") {
+    const findings = initial.findings.filter((finding) =>
+      selected.includes(finding.id),
+    );
+    const ids =
+      action === "ACKNOWLEDGE"
+        ? findings.map((finding) => finding.id)
+        : [
+            ...new Set(
+              findings.flatMap((finding) =>
+                finding.reading ? [finding.reading.id] : [],
+              ),
+            ),
+          ];
+    if (!ids.length) {
+      setMessage("Keine passenden Messwerte ausgewählt.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/data-quality/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          action,
+          ids,
+          status: bulkStatus,
+          reason: bulkReason,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error ?? "Sammelaktion fehlgeschlagen.");
+      setMessage(`${body.affected} Datensätze bearbeitet.`);
+      setSelected([]);
+      setHistory({});
+      router.refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Sammelaktion fehlgeschlagen.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   const [history, setHistory] = useState<
     Record<
       string,
@@ -120,7 +174,7 @@ export function DataQuality({
       };
       if (action !== "MARK_INVALID") {
         payload.timestamp = new Date(
-          String(form.get("timestamp")),
+          `${String(form.get("timestamp"))}Z`,
         ).toISOString();
         payload.registerValue = String(form.get("registerValue") ?? "");
         payload.consumption = String(form.get("consumption") ?? "");
@@ -284,6 +338,55 @@ export function DataQuality({
       </section>
       <section aria-labelledby="findings-title">
         <h2 id="findings-title">Befunde</h2>
+        <div className="panel space-y-3">
+          <p>
+            {selected.length} Befunde ausgewählt (maximal 100). Eine Bestätigung
+            dokumentiert die Kenntnisnahme; der Fehler bleibt sichtbar.
+          </p>
+          <label className="field">
+            Begründung
+            <textarea
+              value={bulkReason}
+              onChange={(event) => setBulkReason(event.target.value)}
+              minLength={10}
+              maxLength={1000}
+            />
+          </label>
+          <label className="field">
+            Status der zugehörigen Messwerte
+            <select
+              value={bulkStatus}
+              onChange={(event) => setBulkStatus(event.target.value)}
+            >
+              <option value="SUSPECT">Verdächtig</option>
+              <option value="INVALID">Ungültig</option>
+              <option value="ESTIMATED">Geschätzt</option>
+              <option value="VALID">Gültig</option>
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={
+                busy || !selected.length || bulkReason.trim().length < 10
+              }
+              onClick={() => bulk("ACKNOWLEDGE")}
+            >
+              Ausgewählte Befunde bestätigen
+            </Button>
+            <Button
+              disabled={
+                busy || !selected.length || bulkReason.trim().length < 10
+              }
+              onClick={() => bulk("SET_STATUS")}
+            >
+              Messwertstatus zuweisen
+            </Button>
+          </div>
+          <p className="muted">
+            Statusänderungen betreffen nur Befunde mit Messwert. Sie ändern
+            keine Messzahlen und ersetzen keine erneute Qualitätsprüfung.
+          </p>
+        </div>
         {initial.findings.length === 0 ? (
           <p className="empty-state">
             Keine offenen Befunde. Starten Sie eine Prüfung, um den aktuellen
@@ -293,6 +396,27 @@ export function DataQuality({
           <div className="stack-md">
             {initial.findings.map((finding) => (
               <article className="card stack-md" key={finding.id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(finding.id)}
+                    disabled={
+                      busy ||
+                      (!selected.includes(finding.id) && selected.length >= 100)
+                    }
+                    onChange={(event) =>
+                      setSelected((ids) =>
+                        event.target.checked
+                          ? [...ids, finding.id]
+                          : ids.filter((id) => id !== finding.id),
+                      )
+                    }
+                  />{" "}
+                  Befund auswählen: {finding.meter.serialNumber}
+                </label>
+                {finding.acknowledgedAt && (
+                  <p>Bestätigt am {finding.acknowledgedAt} (UTC)</p>
+                )}
                 <div>
                   <span
                     className={`status-badge ${finding.status.toLowerCase()}`}
@@ -320,7 +444,7 @@ export function DataQuality({
                       className="form-grid"
                     >
                       <label>
-                        Zeitstempel
+                        Zeitstempel (UTC)
                         <input
                           type="datetime-local"
                           name="timestamp"
@@ -421,6 +545,21 @@ export function DataQuality({
           </div>
         )}
       </section>
+      <nav aria-label="Befundseiten" className="flex gap-4">
+        <Link
+          href={`/data-quality?${new URLSearchParams({ tenantId, from: initial.filters.from, to: initial.filters.to, ...(initial.filters.meter ? { meter: initial.filters.meter } : {}), ...(initial.filters.type ? { type: initial.filters.type } : {}), ...(initial.filters.status ? { status: initial.filters.status } : {}) })}`}
+        >
+          Neueste Befunde
+        </Link>
+        {initial.nextCursor && (
+          <Link
+            href={`/data-quality?${new URLSearchParams({ tenantId, cursor: initial.nextCursor, from: initial.filters.from, to: initial.filters.to, ...(initial.filters.meter ? { meter: initial.filters.meter } : {}), ...(initial.filters.type ? { type: initial.filters.type } : {}), ...(initial.filters.status ? { status: initial.filters.status } : {}) })}`}
+          >
+            Weitere Befunde
+          </Link>
+        )}
+      </nav>
+      <DataExport tenantId={tenantId} />
     </section>
   );
 }
