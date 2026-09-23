@@ -5,6 +5,7 @@ import { AccessError } from "./policy";
 import { recordPrimaryMeasurement } from "./utility-measurements";
 import type { Device } from "@/generated/prisma/client";
 import { enqueueWebhookEvent } from "./webhooks";
+import { emitRuleEvent } from "./rules";
 export const readingPayload = z
   .object({
     messageId: z.string().trim().min(1).max(160),
@@ -104,5 +105,32 @@ export async function ingestReading(
     });
     return created;
   });
+  try {
+    await emitRuleEvent(device.tenantId, {
+      trigger: "READING_CREATED",
+      eventKey: `reading:${row.id}`,
+      correlationId: value.messageId,
+      occurredAt: row.timestamp,
+      meter: {
+        id: device.meterId,
+        propertyId: "",
+        type: device.meter.measurementUnit,
+        status: "ACTIVE",
+        lastContact: row.timestamp,
+        installedAt: row.timestamp,
+      },
+      reading: {
+        consumption: row.consumption.toString(),
+        registerValue: row.registerValue.toString(),
+        meterValue: row.meterValue?.toString() ?? null,
+        timestamp: row.timestamp,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Rules event failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
   return { duplicate: false, id: row.id };
 }

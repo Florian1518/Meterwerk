@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { AccessError, requireManage, tenantScope, type Actor } from "./policy";
 import { enqueueWebhookEvent } from "./webhooks";
+import { emitRuleEvent } from "./rules";
 import {
   editableResources,
   writeResource,
@@ -44,7 +45,7 @@ export async function mutate(
   const tenantId = tenantScope(actor, requested);
   if (request.kind === "grant") {
     const value = z.object({ userId: id, propertyId: id }).parse(input);
-    return db.$transaction(async (tx) => {
+    const updated = await db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
       const [user, property] = await Promise.all([
         tx.user.findFirst({
@@ -72,13 +73,14 @@ export async function mutate(
       });
       return { id: property.id };
     });
+    return updated;
   }
   // Backward compatible status-only action; full alarm CRUD uses kind=alarms.
   if (request.kind === "alarm") {
     const value = z
       .object({ id, status: z.enum(["ACKNOWLEDGED", "RESOLVED"]) })
       .parse(input);
-    return db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const prior = await tx.alarm.findFirst({
         where: { id: value.id, tenantId },
         select: { id: true, meterId: true, status: true },
@@ -107,6 +109,20 @@ export async function mutate(
       });
       return { id: value.id };
     });
+    try {
+      await emitRuleEvent(tenantId, {
+        trigger: "ALARM_STATUS_CHANGED",
+        eventKey: `alarm:${value.id}:${value.status}`,
+        correlationId: value.id,
+        alarm: { id: value.id, status: value.status, meterId: "" },
+      });
+    } catch (error) {
+      console.error(
+        "Rules event failed",
+        error instanceof Error ? error.message : error,
+      );
+    }
+    return result;
   }
   throw new AccessError(404, "Schnittstelle nicht gefunden.");
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { recordTenantUsage } from "./licensing";
 import { enqueueWebhookEvent } from "./webhooks";
+import { emitRuleEvent } from "./rules";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
@@ -555,6 +556,21 @@ export async function setAlarmStatus(
       );
     return result;
   });
+  if (alarm.status !== status) {
+    try {
+      await emitRuleEvent(tenantId, {
+        trigger: "ALARM_STATUS_CHANGED",
+        eventKey: `alarm:${id}:${status}`,
+        correlationId: id,
+        alarm: { id, status, meterId: alarm.meterId },
+      });
+    } catch (error) {
+      console.error(
+        "Rules event failed",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
   return { id: updated.id, status: updated.status };
 }
 

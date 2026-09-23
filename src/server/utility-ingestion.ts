@@ -2,6 +2,7 @@ import "server-only";
 import Decimal from "decimal.js";
 import { db } from "./db";
 import { enqueueWebhookEvent } from "./webhooks";
+import { emitRuleEvent } from "./rules";
 import { authenticateDevice, consumeDeviceRateLimit } from "./device-auth";
 import { AccessError } from "./policy";
 import { normalize, profiles, utilityPayload } from "../lib/utility";
@@ -38,7 +39,7 @@ export async function ingestUtility(
     (m) => m.metric === profiles[device.meter.type].primary,
   );
   if (!primary) throw new AccessError(400, "Primärer Zählerstand fehlt.");
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id"=${device.tenantId} FOR UPDATE`;
     const active = await tx.deviceCredential.findFirst({
       where: {
@@ -223,4 +224,20 @@ export async function ingestUtility(
     });
     return { id: reading.id, duplicate: false };
   });
+  if (!result.duplicate) {
+    try {
+      await emitRuleEvent(device.tenantId, {
+        trigger: "READING_CREATED",
+        eventKey: `reading:${result.id}`,
+        correlationId: correlationId ?? payload.messageId,
+        occurredAt: timestamp,
+      });
+    } catch (error) {
+      console.error(
+        "Rules event failed",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  return result;
 }

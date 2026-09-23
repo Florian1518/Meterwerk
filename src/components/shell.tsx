@@ -21,6 +21,7 @@ import {
   Webhook,
   Upload,
   ClipboardCheck,
+  Workflow,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -111,6 +112,7 @@ const navigation: { group: string; items: NavItem[] }[] = [
         icon: ClipboardCheck,
         manage: true,
       },
+      { href: "/rules", label: "Regeln", icon: Workflow, manage: true },
       { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
       {
         href: "/platform-admin",
