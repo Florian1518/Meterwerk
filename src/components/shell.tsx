@@ -67,6 +67,7 @@ const navigation: { group: string; items: NavItem[] }[] = [
     group: "ANALYSE",
     items: [
       { href: "/reports", label: "Berichte", icon: FileText },
+      { href: "/analytics", label: "Analytics", icon: Activity },
       { href: "/alarms", label: "Alarme", icon: Bell },
     ],
   },

@@ -130,6 +130,13 @@ enum RuleExecutionStatus {
   FAILED
 }
 
+enum AnalyticsAnomalyStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
 enum ReportType {
   MONTHLY
   YEARLY
@@ -220,6 +227,7 @@ model Tenant {
   ruleExecutions  RuleExecution[]
   ruleActionJobs  RuleActionJob[]
   ruleVersions RuleVersion[]
+  analyticsAnomalies AnalyticsAnomaly[]
 }
 
 model DataImport {
@@ -603,6 +611,7 @@ model Meter {
   readings         Reading[]
   qualityFindings  DataQualityFinding[]
   alarms           Alarm[]
+  analyticsAnomalies AnalyticsAnomaly[]
   rules            Rule[]
   devices          Device[]
   utilityConfig    Json               @default("{}")
@@ -937,6 +946,34 @@ model Alarm {
 
   @@index([tenantId, status])
   @@unique([id, tenantId])
+}
+
+model AnalyticsAnomaly {
+  id              String                @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meterId         String
+  meter           Meter                 @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  propertyId      String
+  type            String
+  medium          MeterType
+  severity        String
+  windowFrom      DateTime
+  windowTo        DateTime
+  measuredValue   Decimal               @db.Decimal(20, 6)
+  expectedValue   Decimal               @db.Decimal(20, 6)
+  deviationPercent Decimal?             @db.Decimal(20, 6)
+  description     String
+  detectedAt      DateTime              @default(now())
+  status          AnalyticsAnomalyStatus @default(OPEN)
+  comment         String?
+  resolvedAt      DateTime?
+  acknowledgedAt DateTime?
+  fingerprint     String
+  @@unique([tenantId, fingerprint])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, detectedAt])
+  @@index([tenantId, meterId, windowFrom, windowTo])
 }
 
 model Rule {
