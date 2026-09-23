@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import {
   Activity,
   Bell,
@@ -138,12 +139,34 @@ export function Shell({
   const params = useSearchParams();
   const tenant = params.get("tenantId");
   const suffix = tenant ? `?tenantId=${encodeURIComponent(tenant)}` : "";
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileItems = navigation
+    .flatMap((section) => section.items)
+    .filter((item) =>
+      ["/dashboard", "/analytics", "/meters", "/alarms", "/settings"].includes(
+        item.href,
+      ),
+    )
+    .filter(
+      (item) =>
+        (!item.manage ||
+          ["SUPER_ADMIN", "TENANT_ADMIN"].includes(actor.role)) &&
+        (!item.platform || actor.role === "SUPER_ADMIN"),
+    );
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
         Zum Inhalt springen
       </a>
-      <aside className="sidebar">
+      <button
+        className="mobile-menu-button"
+        aria-expanded={mobileOpen}
+        aria-controls="mobile-navigation"
+        onClick={() => setMobileOpen((value) => !value)}
+      >
+        Menü
+      </button>
+      <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
         <Link href={`/dashboard${suffix}`} className="brand">
           <span className="brand-icon">
             <Zap size={23} />
@@ -233,6 +256,22 @@ export function Shell({
           </div>
         </div>
       </aside>
+      <nav
+        id="mobile-navigation"
+        className="mobile-bottom-nav"
+        aria-label="Mobile Navigation"
+      >
+        {mobileItems.map((item) => (
+          <Link
+            key={item.href}
+            href={`${item.href}${suffix}`}
+            aria-current={path === item.href ? "page" : undefined}
+          >
+            <item.icon size={18} />
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
       <div className="main-shell">
         <header className="topbar">
           <Breadcrumbs />

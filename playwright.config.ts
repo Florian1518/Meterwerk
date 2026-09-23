@@ -39,5 +39,22 @@ export default defineConfig({
       },
     },
     { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "mobile-landscape",
+      use: {
+        ...devices["Pixel 7"],
+        viewport: { width: 915, height: 412 },
+        isMobile: true,
+      },
+    },
+    {
+      name: "tablet",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1024, height: 768 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
 });

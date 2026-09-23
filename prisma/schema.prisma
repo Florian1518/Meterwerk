@@ -235,6 +235,7 @@ model Tenant {
   ruleVersions RuleVersion[]
   analyticsAnomalies AnalyticsAnomaly[]
   dashboards Dashboard[]
+  pushSubscriptions PushSubscription[]
 }
 
 model DataImport {
@@ -452,11 +453,27 @@ model User {
   invitationsCreated Invitation[] @relation("InvitationCreator")
   invitationsAccepted Invitation[] @relation("InvitationAcceptor")
   notificationPreferences NotificationPreference[]
+  pushSubscriptions PushSubscription[]
   loginHistory LoginHistory[]
   ownedDashboards Dashboard[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String
+  key       String
+  auth      String
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@unique([tenantId, endpoint])
+  @@index([tenantId, userId, revokedAt])
 }
 
 model Dashboard {
