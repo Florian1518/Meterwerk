@@ -76,6 +76,8 @@ const navigation: { group: string; items: NavItem[] }[] = [
   {
     group: "BETRIEB",
     items: [
+      { href: "/work-orders", label: "Einsätze", icon: ClipboardCheck },
+      { href: "/technician", label: "Meine Einsätze", icon: ListChecks },
       {
         href: "/system-status",
         label: "Systemstatus",

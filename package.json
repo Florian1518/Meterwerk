@@ -21,6 +21,7 @@
     "test:pilot": "tsx --conditions=react-server tests/pilot-integration.ts",
     "test:mqtt-tls": "tsx tests/mqtt-tls.ts",
     "test:integration": "tsx --conditions=react-server tests/integration.ts && tsx --conditions=react-server tests/import-integration.ts && tsx --conditions=react-server tests/data-quality-integration.ts && tsx --conditions=react-server tests/rules-integration.ts",
+    "test:field-service": "vitest run --config vitest.field-service.config.ts",
     "rules-worker": "tsx --conditions=react-server src/server/rules-worker.ts",
     "test:licensing": "tsx --conditions=react-server tests/licensing-integration.ts",
     "test:usage": "tsx --conditions=react-server tests/usage-integration.ts",

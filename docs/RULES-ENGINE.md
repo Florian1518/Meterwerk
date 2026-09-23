@@ -21,8 +21,8 @@ Grenzen von Teil 1: Es gibt noch keinen persistenten Scheduler, keine Regelversi
 
 ## Teil-3-Erweiterungen
 
-REST- und Utility-Ingestion melden neue Messwerte nach erfolgreicher Transaktion an die Engine. Alarm-Acknowledge und Resolve erzeugen ALARM_STATUS_CHANGED-Ereignisse. AND-/OR-Gruppen sind strukturiert validiert und auf drei Verschachtelungsebenen begrenzt. Regeländerungen erzeugen unveränderliche RuleVersion-Datensätze; RuleExecution.ruleVersion dokumentiert die verwendete Definition.
+REST- und Utility-Ingestion melden neue Messwerte nach erfolgreicher Transaktion an die Engine. Alarm-Acknowledge und Resolve erzeugen ALARM_STATUS_CHANGED-Ereignisse. AND-/OR-Gruppen sind strukturiert validiert und auf drei Verschachtelungsebenen begrenzt. Regelï¿½nderungen erzeugen unverï¿½nderliche RuleVersion-Datensï¿½tze; RuleExecution.ruleVersion dokumentiert die verwendete Definition.
 
-Aktionen umfassen Alarmanlage und -aktualisierung, Webhook-Outbox, persistente E-Mail-Jobs, Zähler- und Gatewaystatus. Cooldown, maximale Frequenz, Replay-Schutz, Deduplizierung und begrenzte Eventtiefe verhindern Mehrfachausführung und Endlosschleifen. E-Mail-Jobs verwenden persistente Retry-/Backoff-Felder.
+Aktionen umfassen Alarmanlage und -aktualisierung, Webhook-Outbox, persistente E-Mail-Jobs, Zï¿½hler- und Gatewaystatus. Cooldown, maximale Frequenz, Replay-Schutz, Deduplizierung und begrenzte Eventtiefe verhindern Mehrfachausfï¿½hrung und Endlosschleifen. E-Mail-Jobs verwenden persistente Retry-/Backoff-Felder.
 
-Der Worker läuft separat mit pnpm rules-worker. Fälligkeit, Sperren, Versuche, nextAttemptAt, lastError und Jobstatus liegen in PostgreSQL, daher überlebt der Scheduler Neustarts. Den Worker als eigenen Prozess oder Container starten und Prozesslebenszeichen, Datenbankzugriff sowie den ältesten fälligen Job überwachen. Es wird keine reale Hardware angebunden.
+Der Worker lï¿½uft separat mit pnpm rules-worker. Fï¿½lligkeit, Sperren, Versuche, nextAttemptAt, lastError und Jobstatus liegen in PostgreSQL, daher ï¿½berlebt der Scheduler Neustarts. Den Worker als eigenen Prozess oder Container starten und Prozesslebenszeichen, Datenbankzugriff sowie den ï¿½ltesten fï¿½lligen Job ï¿½berwachen. Es wird keine reale Hardware angebunden.

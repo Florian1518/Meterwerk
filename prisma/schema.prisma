@@ -202,6 +202,7 @@ enum BillingInterval {
 }
 
 model Tenant {
+  workOrders WorkOrder[]
   id              String           @id @default(cuid())
   name            String
   slug            String           @unique
@@ -430,6 +431,10 @@ model TenantPlanOverride {
 }
 
 model User {
+  technicianAssignments TechnicianAssignment[]
+  workOrderContacts WorkOrder[] @relation("WorkOrderContact")
+  workOrderComments WorkOrderComment[]
+  completedChecklistItems ChecklistItem[]
   id           String          @id @default(cuid())
   tenantId     String?
   tenant       Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -609,6 +614,7 @@ model DeviceRateLimit {
 }
 
 model Property {
+  workOrders WorkOrder[]
   id        String          @id @default(cuid())
   tenantId  String
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -636,6 +642,7 @@ model PropertyGrant {
 }
 
 model Building {
+  workOrders WorkOrder[]
   id         String   @id @default(cuid())
   tenantId   String
   propertyId String
@@ -648,6 +655,7 @@ model Building {
 }
 
 model Unit {
+  workOrders WorkOrder[]
   id         String   @id @default(cuid())
   tenantId   String
   buildingId String
@@ -662,6 +670,7 @@ model Unit {
 }
 
 model Meter {
+  workOrders WorkOrder[]
   id               String             @id @default(cuid())
   tenantId         String
   unitId           String
@@ -695,6 +704,7 @@ model Meter {
 }
 
 model Gateway {
+  workOrders WorkOrder[]
   id                String              @id @default(cuid())
   tenantId          String
   tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -1317,4 +1327,119 @@ model GatewayCommand {
   completedAt DateTime?
 
   @@index([tenantId, gatewayId, status])
+}
+
+enum WorkOrderType {
+  INSTALLATION
+  COMMISSIONING
+  MAINTENANCE
+  METER_REPLACEMENT
+  FAULT
+  INSPECTION
+  OTHER
+}
+enum WorkOrderStatus {
+  DRAFT
+  PLANNED
+  ASSIGNED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELED
+}
+enum WorkOrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+model WorkOrder {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  number String
+  title String
+  description String @default("")
+  type WorkOrderType
+  priority WorkOrderPriority @default(NORMAL)
+  status WorkOrderStatus @default(DRAFT)
+  propertyId String
+  property Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  buildingId String?
+  building Building? @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  unitId String?
+  unit Unit? @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  meterId String?
+  meter Meter? @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  gatewayId String?
+  gateway Gateway? @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  scheduledAt DateTime? @db.Timestamptz(3)
+  startedAt DateTime? @db.Timestamptz(3)
+  endedAt DateTime? @db.Timestamptz(3)
+  internalContactId String?
+  internalContact User? @relation("WorkOrderContact", fields: [internalContactId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  customerContact String @default("")
+  notes String @default("")
+  assignments TechnicianAssignment[]
+  checklists WorkOrderChecklist[]
+  comments WorkOrderComment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  @@unique([id, tenantId])
+  @@unique([tenantId, number])
+  @@index([tenantId, status, scheduledAt])
+  @@index([tenantId, propertyId])
+}
+model TechnicianAssignment {
+  id String @id @default(cuid())
+  tenantId String
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  userId String
+  user User @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([workOrderId, userId])
+  @@index([tenantId, userId])
+}
+model WorkOrderChecklist {
+  id String @id @default(cuid())
+  tenantId String
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title String
+  items ChecklistItem[]
+  createdAt DateTime @default(now())
+  @@unique([id, tenantId])
+  @@index([tenantId, workOrderId])
+}
+model ChecklistItem {
+  id String @id @default(cuid())
+  tenantId String
+  checklistId String
+  checklist WorkOrderChecklist @relation(fields: [checklistId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title String
+  description String @default("")
+  required Boolean @default(false)
+  completed Boolean @default(false)
+  order Int @default(0)
+  comment String @default("")
+  completedById String?
+  completedBy User? @relation(fields: [completedById, tenantId], references: [id, tenantId], onDelete: Restrict)
+  completedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([id, tenantId])
+  @@index([tenantId, checklistId, order])
+}
+model WorkOrderComment {
+  id String @id @default(cuid())
+  tenantId String
+  workOrderId String
+  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  authorId String
+  author User @relation(fields: [authorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  body String
+  createdAt DateTime @default(now())
+  @@index([tenantId, workOrderId, createdAt])
 }
