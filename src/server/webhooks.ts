@@ -438,6 +438,7 @@ async function resolvePublicTarget(url: URL) {
 }
 
 async function claimNextWebhookDelivery(now = new Date()) {
+  const leaseOwner = randomUUID();
   const candidates = await db.webhookDelivery.findMany({
     where: {
       nextAttemptAt: { lte: now },
@@ -465,11 +466,12 @@ async function claimNextWebhookDelivery(now = new Date()) {
         attempts: { increment: 1 },
         lastAttemptAt: now,
         lockedUntil: new Date(now.getTime() + lockMs),
+        leaseOwner,
       },
     });
     if (claim.count)
       return db.webhookDelivery.findFirst({
-        where: candidate,
+        where: { ...candidate, leaseOwner },
         include: { webhook: true },
       });
   }
@@ -496,11 +498,12 @@ export async function deliverNextWebhook(
   const delivery = await claimNextWebhookDelivery(now);
   if (!delivery) return false;
   if (!delivery.webhook.active) {
-    await db.webhookDelivery.update({
-      where: { id: delivery.id },
+    await db.webhookDelivery.updateMany({
+      where: { id: delivery.id, leaseOwner: delivery.leaseOwner },
       data: {
         status: "CANCELLED",
         error: "Webhook disabled",
+        leaseOwner: null,
         lockedUntil: null,
       },
     });
@@ -509,12 +512,13 @@ export async function deliverNextWebhook(
   try {
     await requireTenantFeature(delivery.tenantId, "WEBHOOKS");
   } catch {
-    await db.webhookDelivery.update({
-      where: { id: delivery.id },
+    await db.webhookDelivery.updateMany({
+      where: { id: delivery.id, leaseOwner: delivery.leaseOwner },
       data: {
         status: "RETRYING",
         error: "Webhook feature unavailable",
         nextAttemptAt: new Date(now.getTime() + 60_000),
+        leaseOwner: null,
         lockedUntil: null,
       },
     });
@@ -560,12 +564,17 @@ export async function deliverNextWebhook(
     2_000 * 2 ** Math.max(0, delivery.attempts - 1),
   );
   await db.$transaction(async (tx) => {
-    await tx.webhookDelivery.update({
-      where: { id: delivery.id },
+    await tx.webhookDelivery.updateMany({
+      where: {
+        id: delivery.id,
+        tenantId: delivery.tenantId,
+        leaseOwner: delivery.leaseOwner,
+      },
       data: {
         status: succeeded ? "DELIVERED" : dead ? "DEAD_LETTER" : "RETRYING",
         statusCode,
         error,
+        leaseOwner: null,
         lockedUntil: null,
         ...(succeeded || dead
           ? {}

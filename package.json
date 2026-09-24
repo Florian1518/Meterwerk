@@ -37,6 +37,8 @@
     "test:protocol": "vitest run tests/protocol.test.ts",
     "test:protocol:integration": "tsx --conditions=react-server tests/protocol-integration.ts",
     "test:load": "tsx --conditions=react-server tests/protocol-load.ts",
+    "performance:fixture": "node scripts/performance-fixture.mjs",
+    "performance:gate": "node scripts/performance-regression.mjs",
     "db:local": "tsx scripts/local-db.ts",
     "test:http": "tsx --conditions=react-server tests/http.ts",
     "virtual-meter": "tsx scripts/virtual-meter.ts",

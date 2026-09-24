@@ -505,6 +505,7 @@ model WebhookDelivery {
   attempts      Int             @default(0)
   nextAttemptAt DateTime        @default(now())
   lastAttemptAt DateTime?
+  leaseOwner    String?
   lockedUntil   DateTime?
   statusCode    Int?
   error         String?
@@ -1094,6 +1095,7 @@ model FirmwareRollout {
   targets         FirmwareRolloutTarget[]
 
   @@index([tenantId, status])
+  @@index([tenantId, status, createdAt])
 }
 
 model FirmwareRolloutTarget {
@@ -1109,6 +1111,7 @@ model FirmwareRolloutTarget {
 
   @@unique([tenantId, rolloutId, deviceId])
   @@index([tenantId, deviceId, status])
+  @@index([tenantId, rolloutId, status])
 }
 
 model MaintenanceWindow {
@@ -1273,6 +1276,8 @@ model Reading {
   @@unique([id, tenantId])
   @@unique([tenantId, deviceId, messageId])
   @@unique([tenantId, meterId, timestamp, source])
+  @@index([tenantId, meterId, timestamp])
+  @@index([tenantId, deviceId, timestamp])
   @@index([tenantId, timestamp])
   @@index([tenantId, id])
 }
@@ -1374,6 +1379,7 @@ model Alarm {
 
   @@unique([id, tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, status, createdAt])
 }
 
 model AnalyticsAnomaly {
@@ -1495,6 +1501,7 @@ model RuleActionJob {
   attempts      Int           @default(0)
   maxAttempts   Int           @default(5)
   nextAttemptAt DateTime      @default(now())
+  leaseOwner    String?
   lockedUntil   DateTime?
   lastError     String?
   correlationId String

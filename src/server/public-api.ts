@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { AccessError, tenantScope, type Actor } from "./policy";
 import { requireTenantFeature, recordTenantUsage } from "./licensing";
+import { exceedsReadingWindow, MAX_PAGE_SIZE } from "@/lib/performance";
 
 export const publicApiScopes = [
   "properties:read",
@@ -231,7 +232,7 @@ export function publicCorrelationId(header: string | null) {
 }
 
 const listQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(50),
   cursor: z.string().min(1).max(160).optional(),
   tenantId: z.string().optional(),
   from: z.iso.datetime({ offset: true }).optional(),
@@ -266,6 +267,11 @@ export async function readPublicResource(
   const to = query.to ? new Date(query.to) : undefined;
   if (from && to && from >= to)
     throw new AccessError(400, "Der Zeitfilter 'from' muss vor 'to' liegen.");
+  if (resource === "readings" && from && to && exceedsReadingWindow(from, to))
+    throw new AccessError(
+      413,
+      "Das Reading-Zeitfenster ist auf 366 Tage begrenzt; bitte in Abschnitte teilen.",
+    );
   const tenantId = credential.tenantId;
   if (resource === "reports") await requireTenantFeature(tenantId, "REPORTING");
   const cursor = query.cursor ? { id: { gt: query.cursor } } : {};

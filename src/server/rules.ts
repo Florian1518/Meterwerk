@@ -590,10 +590,14 @@ export async function ruleExecutions(
 }
 
 export async function processRuleActionJobs(now = new Date(), limit = 50) {
+  const leaseOwner = randomUUID();
   const jobs = await db.ruleActionJob.findMany({
     where: {
-      status: { in: ["PENDING", "RETRYING"] },
       nextAttemptAt: { lte: now },
+      OR: [
+        { status: { in: ["PENDING", "RETRYING"] } },
+        { status: "PROCESSING", lockedUntil: { lte: now } },
+      ],
     },
     orderBy: { nextAttemptAt: "asc" },
     take: limit,
@@ -604,6 +608,7 @@ export async function processRuleActionJobs(now = new Date(), limit = 50) {
       where: { id: job.id, tenantId: job.tenantId, status: job.status },
       data: {
         status: "PROCESSING",
+        leaseOwner,
         lockedUntil: new Date(now.getTime() + 60000),
         attempts: { increment: 1 },
       },
@@ -624,19 +629,25 @@ export async function processRuleActionJobs(now = new Date(), limit = 50) {
       }
       if (failed)
         throw new Error("Mail-Provider hat die Nachricht nicht angenommen.");
-      await db.ruleActionJob.update({
-        where: { id_tenantId: { id: job.id, tenantId: job.tenantId } },
-        data: { status: "COMPLETED", lockedUntil: null, lastError: null },
+      const completed = await db.ruleActionJob.updateMany({
+        where: { id: job.id, tenantId: job.tenantId, leaseOwner },
+        data: {
+          status: "COMPLETED",
+          leaseOwner: null,
+          lockedUntil: null,
+          lastError: null,
+        },
       });
-      results.push({ id: job.id, status: "COMPLETED" });
+      if (completed.count) results.push({ id: job.id, status: "COMPLETED" });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Aktionsjob fehlgeschlagen.";
       const terminal = job.attempts + 1 >= job.maxAttempts;
-      await db.ruleActionJob.update({
-        where: { id_tenantId: { id: job.id, tenantId: job.tenantId } },
+      const failedUpdate = await db.ruleActionJob.updateMany({
+        where: { id: job.id, tenantId: job.tenantId, leaseOwner },
         data: {
           status: terminal ? "FAILED" : "RETRYING",
+          leaseOwner: null,
           lockedUntil: null,
           lastError: message.slice(0, 2000),
           nextAttemptAt: new Date(
@@ -644,7 +655,7 @@ export async function processRuleActionJobs(now = new Date(), limit = 50) {
           ),
         },
       });
-      if (terminal)
+      if (failedUpdate.count && terminal)
         await db.ruleExecution.updateMany({
           where: { id: job.executionId, tenantId: job.tenantId },
           data: {
@@ -653,7 +664,8 @@ export async function processRuleActionJobs(now = new Date(), limit = 50) {
             finishedAt: now,
           },
         });
-      results.push({ id: job.id, status: terminal ? "FAILED" : "RETRYING" });
+      if (failedUpdate.count)
+        results.push({ id: job.id, status: terminal ? "FAILED" : "RETRYING" });
     }
   }
   return results;
