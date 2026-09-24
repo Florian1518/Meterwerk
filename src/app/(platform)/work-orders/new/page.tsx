@@ -1,6 +1,9 @@
 import { pageContext } from "@/server/page-context";
 import { fieldServiceOptions } from "@/server/field-service";
-import { WorkOrderEditor } from "@/components/field-service-controls";
+import {
+  WorkOrderEditor,
+  ChecklistEditor,
+} from "@/components/field-service-controls";
 import { canManageWorkOrders } from "@/lib/field-service";
 import { notFound } from "next/navigation";
 export const metadata = { title: "Einsatz erstellen · Meterwerk" };
@@ -20,6 +23,10 @@ export default async function Page({
         zuweisen.
       </p>
       <WorkOrderEditor tenantId={context.tenantId} options={options} />
+      <details>
+        <summary>Checklistenvorlage erstellen</summary>
+        <ChecklistEditor tenantId={context.tenantId} id="templates" template />
+      </details>
     </div>
   );
 }

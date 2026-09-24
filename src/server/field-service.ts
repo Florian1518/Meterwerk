@@ -1,5 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { completionError } from "./field-documentation";
+import { templateSchema } from "@/lib/field-documentation";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
 import { requireActor } from "./auth";
@@ -22,6 +24,34 @@ import {
 
 const person = { id: true, name: true } as const;
 const include = {
+  entries: {
+    include: { actor: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  },
+  replacement: {
+    include: {
+      oldMeter: {
+        select: { serialNumber: true, type: true, measurementUnit: true },
+      },
+      newMeter: { select: { serialNumber: true } },
+    },
+  },
+  attachments: {
+    select: {
+      id: true,
+      fileName: true,
+      contentType: true,
+      sizeBytes: true,
+      description: true,
+      category: true,
+      uploadedById: true,
+      createdAt: true,
+    },
+  },
+  addenda: {
+    include: { createdBy: { select: person } },
+    orderBy: { createdAt: "asc" },
+  },
   property: { select: { id: true, name: true, address: true, city: true } },
   building: { select: { id: true, name: true } },
   unit: { select: { id: true, name: true } },
@@ -110,7 +140,7 @@ async function audit(
 function snapshot(value: unknown): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
 }
-async function mutate<T>(
+export async function mutate<T>(
   requested: string | null | undefined,
   id: string,
   fn: (
@@ -298,20 +328,80 @@ export async function fieldServiceOptions(requested?: string | null) {
       },
     }),
   ]);
-  return { properties, gateways, users };
+  const templates = await db.checklistTemplate.findMany({
+    where: { tenantId },
+    select: { id: true, title: true, type: true, medium: true },
+  });
+  return { properties, gateways, users, templates };
 }
 export async function createWorkOrder(raw: unknown, requested?: string | null) {
   const { actor, tenantId } = await context(requested);
   manage(actor);
-  const value = workOrderSchema.parse(raw);
+  const { templateId, ...value } = workOrderSchema.parse(raw);
   return db.$transaction(async (tx) => {
     await verifyReferences(tx, actor, tenantId, value);
+    const template = templateId
+      ? await tx.checklistTemplate.findFirst({
+          where: { id: templateId, tenantId, type: value.type },
+        })
+      : null;
+    if (templateId && !template)
+      throw new AccessError(404, "Passende Vorlage nicht gefunden.");
+    const definition = template
+      ? templateSchema.parse(template.definition)
+      : null;
+    if (
+      definition &&
+      value.meterId &&
+      !(await tx.meter.findFirst({
+        where: {
+          id: value.meterId,
+          tenantId,
+          type: definition.medium,
+          ...(definition.deviceProfileId
+            ? {
+                devices: {
+                  some: { profileId: definition.deviceProfileId, tenantId },
+                },
+              }
+            : {}),
+        },
+        select: { id: true },
+      }))
+    )
+      throw new AccessError(
+        400,
+        "Vorlage passt nicht zu Medium / Geräteprofil.",
+      );
+    if (definition?.deviceProfileId && !value.meterId)
+      throw new AccessError(
+        400,
+        "Profilvorlage benötigt einen zugeordneten Zähler.",
+      );
     const row = await tx.workOrder.create({
       data: {
         ...value,
         tenantId,
         number: `EA-${randomUUID()}`,
         scheduledAt: value.scheduledAt ? new Date(value.scheduledAt) : null,
+        requireTechnicianSignature:
+          definition?.requireTechnicianSignature ?? false,
+        requireCustomerSignature: definition?.requireCustomerSignature ?? false,
+        ...(definition
+          ? {
+              checklists: {
+                create: {
+                  title: `${definition.title} (Vorlage v${template!.version})`,
+                  items: {
+                    create: definition.items.map((item) => ({
+                      ...item,
+                      tenantId,
+                    })),
+                  },
+                },
+              },
+            }
+          : {}),
       },
     });
     await audit(tx, actor, tenantId, row.id, "created", {
@@ -328,7 +418,35 @@ export async function updateWorkOrder(
   return mutate(requested, id, async (tx, row, actor, tenantId) => {
     manage(actor);
     open(row.status);
+    if (row.entries.some((e) => e.kind === "signature"))
+      throw new AccessError(
+        409,
+        "Bestätigte Einsatzdaten sind unveränderlich.",
+      );
     const value = workOrderPatchSchema.parse(raw);
+    if (
+      (row.documentation ||
+        row.commissioning ||
+        row.replacementId ||
+        row.entries.length ||
+        row.attachments.length) &&
+      [
+        "propertyId",
+        "buildingId",
+        "unitId",
+        "meterId",
+        "gatewayId",
+        "type",
+      ].some(
+        (key) =>
+          key in value &&
+          value[key as keyof typeof value] !== row[key as keyof typeof row],
+      )
+    )
+      throw new AccessError(
+        409,
+        "Einsatzbereich und Typ sind nach Beginn der Dokumentation gesperrt.",
+      );
     await verifyReferences(tx, actor, tenantId, { ...row, ...value });
     if (
       value.propertyId &&
@@ -399,6 +517,11 @@ export async function assignTechnician(
   return mutate(requested, id, async (tx, row, actor, tenantId) => {
     manage(actor);
     open(row.status);
+    if (row.entries.some((e) => e.kind === "signature"))
+      throw new AccessError(
+        409,
+        "Bestätigte Einsatzdaten sind unveränderlich.",
+      );
     const { userId } = assignmentSchema.parse(raw);
     let technicianName =
       row.assignments.find((assignment) => assignment.userId === userId)?.user
@@ -484,6 +607,10 @@ export async function changeWorkOrderStatus(
       ),
     });
     if (error) throw new AccessError(409, error);
+    if (status === "COMPLETED") {
+      const error = completionError(row);
+      if (error) throw new AccessError(409, error);
+    }
     const updated = await tx.workOrder.update({
       where: { id_tenantId: { id, tenantId } },
       data: {
@@ -518,6 +645,11 @@ export async function addChecklist(
   return mutate(requested, id, async (tx, row, actor, tenantId) => {
     manage(actor);
     open(row.status);
+    if (row.entries.some((e) => e.kind === "signature"))
+      throw new AccessError(
+        409,
+        "Bestätigte Einsatzdaten sind unveränderlich.",
+      );
     const value = checklistSchema.parse(raw);
     const checklist = await tx.workOrderChecklist.create({
       data: {
@@ -542,6 +674,11 @@ export async function completeChecklistItem(
 ) {
   return mutate(requested, id, async (tx, row, actor, tenantId) => {
     open(row.status);
+    if (row.entries.some((e) => e.kind === "signature"))
+      throw new AccessError(
+        409,
+        "Bestätigte Einsatzdaten sind unveränderlich.",
+      );
     if (row.status !== "IN_PROGRESS")
       throw new AccessError(
         409,
@@ -587,6 +724,11 @@ export async function addWorkOrderComment(
 ) {
   return mutate(requested, id, async (tx, row, actor, tenantId) => {
     open(row.status);
+    if (row.entries.some((e) => e.kind === "signature"))
+      throw new AccessError(
+        409,
+        "Bestätigte Einsatzdaten sind unveränderlich.",
+      );
     const { body } = commentSchema.parse(raw);
     const comment = await tx.workOrderComment.create({
       data: { tenantId, workOrderId: id, authorId: actor.id, body },

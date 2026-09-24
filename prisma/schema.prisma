@@ -202,63 +202,64 @@ enum BillingInterval {
 }
 
 model Tenant {
-  workOrders WorkOrder[]
-  id              String           @id @default(cuid())
-  name            String
-  slug            String           @unique
-  createdAt       DateTime         @default(now())
-  users           User[]
-  properties      Property[]
-  gateways        Gateway[]
-  devices         Device[]
-  workerHealth    WorkerHealth[]
-  technicalAlerts TechnicalAlert[]
-  tariffs         Tariff[]
-  profiles        DeviceProfile[]
-  reports         Report[]
-  reportSchedules ReportSchedule[]
-  notes           Note[]
-  attachments     Attachment[]
-  invitations     Invitation[]
-  subscriptions   Subscription[]
-  featureOverrides TenantFeatureOverride[]
-  planOverride    TenantPlanOverride?
-  usageCounters   TenantUsageCounter[]
-  publicApiKeys   PublicApiKey[]
-  webhooks        WebhookEndpoint[]
-  webhookDeliveries WebhookDelivery[]
-  dataImports     DataImport[]
-  dataQualityFindings DataQualityFinding[]
+  checklistTemplates     ChecklistTemplate[]
+  workOrders             WorkOrder[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  slug                   String                  @unique
+  createdAt              DateTime                @default(now())
+  users                  User[]
+  properties             Property[]
+  gateways               Gateway[]
+  devices                Device[]
+  workerHealth           WorkerHealth[]
+  technicalAlerts        TechnicalAlert[]
+  tariffs                Tariff[]
+  profiles               DeviceProfile[]
+  reports                Report[]
+  reportSchedules        ReportSchedule[]
+  notes                  Note[]
+  attachments            Attachment[]
+  invitations            Invitation[]
+  subscriptions          Subscription[]
+  featureOverrides       TenantFeatureOverride[]
+  planOverride           TenantPlanOverride?
+  usageCounters          TenantUsageCounter[]
+  publicApiKeys          PublicApiKey[]
+  webhooks               WebhookEndpoint[]
+  webhookDeliveries      WebhookDelivery[]
+  dataImports            DataImport[]
+  dataQualityFindings    DataQualityFinding[]
   dataQualityCorrections DataQualityCorrection[]
-  rules           Rule[]
-  ruleExecutions  RuleExecution[]
-  ruleActionJobs  RuleActionJob[]
-  ruleVersions RuleVersion[]
-  analyticsAnomalies AnalyticsAnomaly[]
-  dashboards Dashboard[]
-  pushSubscriptions PushSubscription[]
+  rules                  Rule[]
+  ruleExecutions         RuleExecution[]
+  ruleActionJobs         RuleActionJob[]
+  ruleVersions           RuleVersion[]
+  analyticsAnomalies     AnalyticsAnomaly[]
+  dashboards             Dashboard[]
+  pushSubscriptions      PushSubscription[]
 }
 
 model DataImport {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorId     String
-  actorName   String   @default("")
-  fileName    String   @default("Unbekannt (Altbestand)")
-  successCount Int     @default(0)
-  errorCount  Int      @default(0)
-  skippedCount Int     @default(0)
-  skippedRows Json     @default("[]")
-  resource    String
-  fingerprint String
-  stagedData  Json
-  errors      Json
-  rowCount    Int
-  status      String   @default("PREVIEWED")
-  expiresAt   DateTime
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorId      String
+  actorName    String    @default("")
+  fileName     String    @default("Unbekannt (Altbestand)")
+  successCount Int       @default(0)
+  errorCount   Int       @default(0)
+  skippedCount Int       @default(0)
+  skippedRows  Json      @default("[]")
+  resource     String
+  fingerprint  String
+  stagedData   Json
+  errors       Json
+  rowCount     Int
+  status       String    @default("PREVIEWED")
+  expiresAt    DateTime
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
 
   @@unique([id, tenantId])
   @@index([tenantId, createdAt])
@@ -266,44 +267,44 @@ model DataImport {
 }
 
 model WebhookEndpoint {
-  id             String   @id @default(cuid())
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name           String
-  url            String
-  events         String[] @default([])
-  active         Boolean  @default(true)
+  id               String            @id @default(cuid())
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  url              String
+  events           String[]          @default([])
+  active           Boolean           @default(true)
   secretCiphertext String
-  secretIv       String
-  secretTag      String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  lastDeliveryAt DateTime?
-  deletedAt      DateTime?
-  deliveries     WebhookDelivery[]
+  secretIv         String
+  secretTag        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  lastDeliveryAt   DateTime?
+  deletedAt        DateTime?
+  deliveries       WebhookDelivery[]
 
   @@unique([id, tenantId])
   @@index([tenantId, active])
 }
 
 model WebhookDelivery {
-  id             String   @id @default(cuid())
-  tenantId       String
-  webhookId      String
-  webhook        WebhookEndpoint @relation(fields: [webhookId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  event          String
-  eventId        String
-  payload        Json
-  status         String   @default("PENDING")
-  attempts       Int      @default(0)
-  nextAttemptAt  DateTime @default(now())
-  lastAttemptAt  DateTime?
-  lockedUntil    DateTime?
-  statusCode     Int?
-  error          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String          @id @default(cuid())
+  tenantId      String
+  webhookId     String
+  webhook       WebhookEndpoint @relation(fields: [webhookId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event         String
+  eventId       String
+  payload       Json
+  status        String          @default("PENDING")
+  attempts      Int             @default(0)
+  nextAttemptAt DateTime        @default(now())
+  lastAttemptAt DateTime?
+  lockedUntil   DateTime?
+  statusCode    Int?
+  error         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@unique([webhookId, eventId])
   @@index([tenantId, status, nextAttemptAt])
@@ -311,18 +312,18 @@ model WebhookDelivery {
 }
 
 model PublicApiKey {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   tenantId    String
   name        String
   description String?
-  keyHash     String   @unique
-  scopes      String[] @default([])
+  keyHash     String              @unique
+  scopes      String[]            @default([])
   expiresAt   DateTime?
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime            @default(now())
   lastUsedAt  DateTime?
   revokedAt   DateTime?
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rateLimit   PublicApiRateLimit?
 
   @@unique([id, tenantId])
@@ -330,11 +331,11 @@ model PublicApiKey {
 }
 
 model PublicApiRateLimit {
-  keyId     String      @id
-  tenantId  String
-  attempts  Int         @default(0)
-  resetAt   DateTime
-  apiKey    PublicApiKey @relation(fields: [keyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  keyId    String       @id
+  tenantId String
+  attempts Int          @default(0)
+  resetAt  DateTime
+  apiKey   PublicApiKey @relation(fields: [keyId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   @@unique([keyId, tenantId])
   @@index([tenantId])
@@ -342,64 +343,64 @@ model PublicApiRateLimit {
 
 model TenantUsageCounter {
   tenantId String
-  month String
-  kind String
-  count Int @default(0)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  month    String
+  kind     String
+  count    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@id([tenantId, month, kind])
 }
 
 model Plan {
-  id                 String       @id @default(cuid())
-  code               PlanCode     @unique
-  name               String
-  maxProperties      Int
-  maxMeters          Int
-  maxUsers           Int
-  maxGateways        Int
-  maxBuildings       Int @default(2147483647)
-  maxUnits           Int @default(2147483647)
-  maxDevices         Int @default(2147483647)
-  supportLevel       SupportLevel @default(STANDARD)
-  monthlyPrice       Decimal?     @db.Decimal(12, 2)
-  yearlyPrice        Decimal?     @db.Decimal(12, 2)
-  priceCurrency      String?      @db.VarChar(3)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  features           PlanFeature[]
-  subscriptions      Subscription[]
+  id            String         @id @default(cuid())
+  code          PlanCode       @unique
+  name          String
+  maxProperties Int
+  maxMeters     Int
+  maxUsers      Int
+  maxGateways   Int
+  maxBuildings  Int            @default(2147483647)
+  maxUnits      Int            @default(2147483647)
+  maxDevices    Int            @default(2147483647)
+  supportLevel  SupportLevel   @default(STANDARD)
+  monthlyPrice  Decimal?       @db.Decimal(12, 2)
+  yearlyPrice   Decimal?       @db.Decimal(12, 2)
+  priceCurrency String?        @db.VarChar(3)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  features      PlanFeature[]
+  subscriptions Subscription[]
 }
 
 model PlanFeature {
-  planId   String
-  feature  FeatureKey
-  enabled  Boolean @default(false)
-  plan     Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  planId  String
+  feature FeatureKey
+  enabled Boolean    @default(false)
+  plan    Plan       @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@id([planId, feature])
 }
 
 model Subscription {
-  id         String             @id @default(cuid())
-  tenantId   String
-  planId     String
-  status     SubscriptionStatus @default(ACTIVE)
-  startsAt   DateTime           @default(now())
-  endsAt     DateTime?
-  trialEndsAt DateTime?
-  billingInterval BillingInterval @default(MONTHLY)
-  priceAmount Decimal? @db.Decimal(12, 2)
-  priceCurrency String? @db.VarChar(3)
-  billingContactName String?
-  billingContactEmail String?
+  id                    String             @id @default(cuid())
+  tenantId              String
+  planId                String
+  status                SubscriptionStatus @default(ACTIVE)
+  startsAt              DateTime           @default(now())
+  endsAt                DateTime?
+  trialEndsAt           DateTime?
+  billingInterval       BillingInterval    @default(MONTHLY)
+  priceAmount           Decimal?           @db.Decimal(12, 2)
+  priceCurrency         String?            @db.VarChar(3)
+  billingContactName    String?
+  billingContactEmail   String?
   billingContactCompany String?
   billingContactAddress String?
-  externalBillingId String? @unique
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan       Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  externalBillingId     String?            @unique
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                  Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, status, startsAt])
   @@index([planId])
@@ -409,9 +410,9 @@ model TenantFeatureOverride {
   tenantId  String
   feature   FeatureKey
   enabled   Boolean
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@id([tenantId, feature])
 }
@@ -431,79 +432,83 @@ model TenantPlanOverride {
 }
 
 model User {
-  technicianAssignments TechnicianAssignment[]
-  workOrderContacts WorkOrder[] @relation("WorkOrderContact")
-  workOrderComments WorkOrderComment[]
+  fieldEntries            WorkOrderEntry[]
+  addendaCreated          WorkOrderAddendum[]
+  technicianAssignments   TechnicianAssignment[]
+  workOrderContacts       WorkOrder[]              @relation("WorkOrderContact")
+  workOrderComments       WorkOrderComment[]
   completedChecklistItems ChecklistItem[]
-  id           String          @id @default(cuid())
-  tenantId     String?
-  tenant       Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name         String
-  email        String          @unique
-  passwordHash String
-  role         Role            @default(USER)
-  active       Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  sessions     Session[]
-  grants       PropertyGrant[]
-  reports      Report[] @relation("ReportCreator")
-  reportSchedules ReportSchedule[]
-  notes        Note[]
-  attachments  Attachment[]
-  mfaEnabled Boolean @default(false)
-  mfaSecretEncrypted String?
-  mfaConfiguredAt DateTime?
-  mfaRecoveryCodes MfaRecoveryCode[]
-  passwordResetTokens PasswordResetToken[]
-  invitationsCreated Invitation[] @relation("InvitationCreator")
-  invitationsAccepted Invitation[] @relation("InvitationAcceptor")
+  id                      String                   @id @default(cuid())
+  tenantId                String?
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name                    String
+  email                   String                   @unique
+  passwordHash            String
+  role                    Role                     @default(USER)
+  active                  Boolean                  @default(true)
+  createdAt               DateTime                 @default(now())
+  sessions                Session[]
+  grants                  PropertyGrant[]
+  reports                 Report[]                 @relation("ReportCreator")
+  reportSchedules         ReportSchedule[]
+  notes                   Note[]
+  attachments             Attachment[]
+  mfaEnabled              Boolean                  @default(false)
+  mfaSecretEncrypted      String?
+  mfaConfiguredAt         DateTime?
+  mfaRecoveryCodes        MfaRecoveryCode[]
+  passwordResetTokens     PasswordResetToken[]
+  invitationsCreated      Invitation[]             @relation("InvitationCreator")
+  invitationsAccepted     Invitation[]             @relation("InvitationAcceptor")
   notificationPreferences NotificationPreference[]
-  pushSubscriptions PushSubscription[]
-  loginHistory LoginHistory[]
-  ownedDashboards Dashboard[]
+  pushSubscriptions       PushSubscription[]
+  loginHistory            LoginHistory[]
+  ownedDashboards         Dashboard[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
 }
 
 model PushSubscription {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   userId    String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoint  String
   key       String
   auth      String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   revokedAt DateTime?
+
   @@unique([tenantId, endpoint])
   @@index([tenantId, userId, revokedAt])
 }
 
 model Dashboard {
-  id          String             @id @default(cuid())
+  id          String              @id @default(cuid())
   tenantId    String
-  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ownerId     String
-  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  owner       User                @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   name        String
   description String
   visibility  DashboardVisibility @default(PRIVATE)
   roles       Role[]
   widgets     DashboardWidget[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
   @@unique([id, tenantId])
   @@index([tenantId, visibility])
   @@index([tenantId, ownerId])
 }
 
 model DashboardWidget {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   tenantId    String
   dashboardId String
-  dashboard   Dashboard @relation(fields: [dashboardId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  dashboard   Dashboard  @relation(fields: [dashboardId, tenantId], references: [id, tenantId], onDelete: Cascade)
   title       String
   type        String
   dataSource  String
@@ -513,77 +518,82 @@ model DashboardWidget {
   period      String
   aggregation String
   unit        String?
-  display     Json      @default("{}")
-  filters     Json      @default("{}")
-  positionX   Int       @default(0)
-  positionY   Int       @default(0)
-  width       Int       @default(4)
-  height      Int       @default(3)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  display     Json       @default("{}")
+  filters     Json       @default("{}")
+  positionX   Int        @default(0)
+  positionY   Int        @default(0)
+  width       Int        @default(4)
+  height      Int        @default(3)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
   @@unique([id, tenantId])
   @@index([tenantId, dashboardId, positionY, positionX])
 }
 
 model Session {
-  id        String   @id
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  revokedAt DateTime?
+  id            String    @id
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime
+  revokedAt     DateTime?
   rotatedFromId String?
-  createdAt DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   @@index([expiresAt])
 }
 
 model MfaRecoveryCode {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   codeHash  String
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
   @@index([userId, usedAt])
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
   @@index([userId, expiresAt])
 }
 
 model Invitation {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email       String
-  role        Role      @default(USER)
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  acceptedAt  DateTime?
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  role         Role      @default(USER)
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
   acceptedById String?
-  acceptedBy  User?     @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
-  createdById String
-  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  propertyIds Json      @default("[]")
-  createdAt   DateTime  @default(now())
+  acceptedBy   User?     @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  createdById  String
+  createdBy    User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  propertyIds  Json      @default("[]")
+  createdAt    DateTime  @default(now())
+
   @@index([tenantId, email, expiresAt])
 }
 
 model NotificationPreference {
-  id        String             @id @default(cuid())
+  id        String              @id @default(cuid())
   userId    String
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel   NotificationChannel
   event     String
-  enabled   Boolean            @default(true)
-  createdAt DateTime           @default(now())
+  enabled   Boolean             @default(true)
+  createdAt DateTime            @default(now())
+
   @@unique([userId, channel, event])
 }
 
@@ -597,6 +607,7 @@ model LoginHistory {
   ipHash    String?
   userAgent String?
   createdAt DateTime @default(now())
+
   @@index([userId, createdAt])
   @@index([email, createdAt])
 }
@@ -615,16 +626,16 @@ model DeviceRateLimit {
 
 model Property {
   workOrders WorkOrder[]
-  id        String          @id @default(cuid())
-  tenantId  String
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name      String
-  address   String
-  city      String
-  createdAt DateTime        @default(now())
-  buildings Building[]
-  grants    PropertyGrant[]
-  rules     Rule[]
+  id         String          @id @default(cuid())
+  tenantId   String
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  address    String
+  city       String
+  createdAt  DateTime        @default(now())
+  buildings  Building[]
+  grants     PropertyGrant[]
+  rules      Rule[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -643,10 +654,10 @@ model PropertyGrant {
 
 model Building {
   workOrders WorkOrder[]
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   tenantId   String
   propertyId String
-  property   Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  property   Property    @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
   name       String
   units      Unit[]
 
@@ -656,13 +667,13 @@ model Building {
 
 model Unit {
   workOrders WorkOrder[]
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   tenantId   String
   buildingId String
-  building   Building @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  building   Building    @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
   name       String
   floor      String
-  area       Decimal  @db.Decimal(12, 2)
+  area       Decimal     @db.Decimal(12, 2)
   meters     Meter[]
 
   @@unique([id, tenantId])
@@ -670,32 +681,32 @@ model Unit {
 }
 
 model Meter {
-  workOrders WorkOrder[]
-  id               String             @id @default(cuid())
-  tenantId         String
-  unitId           String
-  unit             Unit               @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  serialNumber     String
-  externalDeviceId String?
-  type             MeterType
-  manufacturer     String
-  model            String
-  measurementUnit  String
-  location         String
-  status           MeterStatus        @default(ACTIVE)
-  lastContact      DateTime?
-  installedAt      DateTime
-  demoPricePerUnit Decimal            @db.Decimal(10, 4)
-  readings         Reading[]
-  qualityFindings  DataQualityFinding[]
-  alarms           Alarm[]
+  workOrders         WorkOrder[]
+  id                 String               @id @default(cuid())
+  tenantId           String
+  unitId             String
+  unit               Unit                 @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  serialNumber       String
+  externalDeviceId   String?
+  type               MeterType
+  manufacturer       String
+  model              String
+  measurementUnit    String
+  location           String
+  status             MeterStatus          @default(ACTIVE)
+  lastContact        DateTime?
+  installedAt        DateTime
+  demoPricePerUnit   Decimal              @db.Decimal(10, 4)
+  readings           Reading[]
+  qualityFindings    DataQualityFinding[]
+  alarms             Alarm[]
   analyticsAnomalies AnalyticsAnomaly[]
-  rules            Rule[]
-  devices          Device[]
-  utilityConfig    Json               @default("{}")
-  tariffs          Tariff[]
-  replacementsOut  MeterReplacement[] @relation("OldMeter")
-  replacementsIn   MeterReplacement[] @relation("NewMeter")
+  rules              Rule[]
+  devices            Device[]
+  utilityConfig      Json                 @default("{}")
+  tariffs            Tariff[]
+  replacementsOut    MeterReplacement[]   @relation("OldMeter")
+  replacementsIn     MeterReplacement[]   @relation("NewMeter")
 
   @@unique([id, tenantId])
   @@unique([tenantId, serialNumber])
@@ -704,7 +715,7 @@ model Meter {
 }
 
 model Gateway {
-  workOrders WorkOrder[]
+  workOrders        WorkOrder[]
   id                String              @id @default(cuid())
   tenantId          String
   tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -812,20 +823,21 @@ model Device {
 }
 
 model DeviceProfile {
-  id            String         @id @default(cuid())
-  tenantId      String
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  manufacturer  String
-  model         String
-  utility       MeterType
-  protocol      DeviceProtocol
-  version       Int            @default(1)
-  capabilities  Json
-  mapping       Json
-  defaults      Json           @default("{}")
-  firmwareNotes String?
-  active        Boolean        @default(true)
-  devices       Device[]
+  checklistTemplates ChecklistTemplate[]
+  id                 String              @id @default(cuid())
+  tenantId           String
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  manufacturer       String
+  model              String
+  utility            MeterType
+  protocol           DeviceProtocol
+  version            Int                 @default(1)
+  capabilities       Json
+  mapping            Json
+  defaults           Json                @default("{}")
+  firmwareNotes      String?
+  active             Boolean             @default(true)
+  devices            Device[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, manufacturer, model, version])
@@ -868,19 +880,20 @@ model WirelessMeterConfig {
 }
 
 model MeterReplacement {
-  id                String   @id @default(cuid())
+  workOrder         WorkOrder?
+  id                String     @id @default(cuid())
   tenantId          String
   oldMeterId        String
   newMeterId        String
   removedAt         DateTime
-  removedRegister   Decimal  @db.Decimal(20, 6)
+  removedRegister   Decimal    @db.Decimal(20, 6)
   installedAt       DateTime
-  installedRegister Decimal  @db.Decimal(20, 6)
+  installedRegister Decimal    @db.Decimal(20, 6)
   reason            String
   documentation     String?
   actorId           String
-  oldMeter          Meter    @relation("OldMeter", fields: [oldMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  newMeter          Meter    @relation("NewMeter", fields: [newMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  oldMeter          Meter      @relation("OldMeter", fields: [oldMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  newMeter          Meter      @relation("NewMeter", fields: [newMeterId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   @@unique([id, tenantId])
   @@index([tenantId, oldMeterId, removedAt])
@@ -902,21 +915,21 @@ model DeviceCredential {
 }
 
 model Reading {
-  id              String        @id @default(cuid())
+  id              String                  @id @default(cuid())
   tenantId        String
   meterId         String
   deviceId        String?
   messageId       String?
-  meter           Meter         @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  device          Device?       @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  meter           Meter                   @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  device          Device?                 @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
   timestamp       DateTime
-  registerValue   Decimal       @db.Decimal(20, 6)
-  meterValue      Decimal?      @db.Decimal(20, 6)
-  consumption     Decimal       @db.Decimal(20, 6)
+  registerValue   Decimal                 @db.Decimal(20, 6)
+  meterValue      Decimal?                @db.Decimal(20, 6)
+  consumption     Decimal                 @db.Decimal(20, 6)
   measurementUnit String
   source          Source
-  quality         Quality       @default(VALID)
-  receivedAt      DateTime      @default(now())
+  quality         Quality                 @default(VALID)
+  receivedAt      DateTime                @default(now())
   measurements    Measurement[]
   qualityFindings DataQualityFinding[]
   corrections     DataQualityCorrection[]
@@ -929,25 +942,25 @@ model Reading {
 }
 
 model DataQualityFinding {
-  id          String                @id @default(cuid())
-  tenantId    String
-  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  meterId     String
-  meter       Meter                 @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  readingId   String?
-  reading     Reading?              @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  type        DataQualityIssueType
-  status      DataQualityStatus
-  fingerprint String
-  description String
-  details     Json                  @default("{}")
-  windowFrom  DateTime
-  windowTo    DateTime
-  detectedAt  DateTime              @default(now())
-  lastSeenAt  DateTime              @default(now())
-  resolvedAt  DateTime?
-  acknowledgedAt DateTime?
-  acknowledgedBy String?
+  id                    String               @id @default(cuid())
+  tenantId              String
+  tenant                Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meterId               String
+  meter                 Meter                @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  readingId             String?
+  reading               Reading?             @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  type                  DataQualityIssueType
+  status                DataQualityStatus
+  fingerprint           String
+  description           String
+  details               Json                 @default("{}")
+  windowFrom            DateTime
+  windowTo              DateTime
+  detectedAt            DateTime             @default(now())
+  lastSeenAt            DateTime             @default(now())
+  resolvedAt            DateTime?
+  acknowledgedAt        DateTime?
+  acknowledgedBy        String?
   acknowledgementReason String?
 
   @@unique([tenantId, fingerprint])
@@ -957,17 +970,17 @@ model DataQualityFinding {
 }
 
 model DataQualityCorrection {
-  id          String               @id @default(cuid())
-  tenantId    String
-  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  readingId   String
-  reading     Reading              @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  actorId     String
-  action      DataCorrectionAction
-  reason      String
-  beforeData  Json
-  afterData   Json
-  createdAt   DateTime             @default(now())
+  id         String               @id @default(cuid())
+  tenantId   String
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  readingId  String
+  reading    Reading              @relation(fields: [readingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorId    String
+  action     DataCorrectionAction
+  reason     String
+  beforeData Json
+  afterData  Json
+  createdAt  DateTime             @default(now())
 
   @@unique([id, tenantId])
   @@index([tenantId, readingId, createdAt])
@@ -1008,47 +1021,48 @@ model Tariff {
 }
 
 model Alarm {
-  id        String      @id @default(cuid())
-  tenantId  String
-  meterId   String
-  meter     Meter       @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  title     String
-  severity  String
-  status    AlarmStatus @default(OPEN)
-  createdAt DateTime    @default(now())
+  id             String      @id @default(cuid())
+  tenantId       String
+  meterId        String
+  meter          Meter       @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title          String
+  severity       String
+  status         AlarmStatus @default(OPEN)
+  createdAt      DateTime    @default(now())
   acknowledgedAt DateTime?
   acknowledgedBy String?
-  resolvedAt DateTime?
-  resolvedBy String?
-  comment   String?
-  comments  Note[]
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  comment        String?
+  comments       Note[]
 
-  @@index([tenantId, status])
   @@unique([id, tenantId])
+  @@index([tenantId, status])
 }
 
 model AnalyticsAnomaly {
-  id              String                @id @default(cuid())
-  tenantId        String
-  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  meterId         String
-  meter           Meter                 @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  propertyId      String
-  type            String
-  medium          MeterType
-  severity        String
-  windowFrom      DateTime
-  windowTo        DateTime
-  measuredValue   Decimal               @db.Decimal(20, 6)
-  expectedValue   Decimal               @db.Decimal(20, 6)
-  deviationPercent Decimal?             @db.Decimal(20, 6)
-  description     String
-  detectedAt      DateTime              @default(now())
-  status          AnalyticsAnomalyStatus @default(OPEN)
-  comment         String?
-  resolvedAt      DateTime?
-  acknowledgedAt DateTime?
-  fingerprint     String
+  id               String                 @id @default(cuid())
+  tenantId         String
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meterId          String
+  meter            Meter                  @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  propertyId       String
+  type             String
+  medium           MeterType
+  severity         String
+  windowFrom       DateTime
+  windowTo         DateTime
+  measuredValue    Decimal                @db.Decimal(20, 6)
+  expectedValue    Decimal                @db.Decimal(20, 6)
+  deviationPercent Decimal?               @db.Decimal(20, 6)
+  description      String
+  detectedAt       DateTime               @default(now())
+  status           AnalyticsAnomalyStatus @default(OPEN)
+  comment          String?
+  resolvedAt       DateTime?
+  acknowledgedAt   DateTime?
+  fingerprint      String
+
   @@unique([tenantId, fingerprint])
   @@unique([id, tenantId])
   @@index([tenantId, status, detectedAt])
@@ -1056,33 +1070,33 @@ model AnalyticsAnomaly {
 }
 
 model Rule {
-  id          String      @id @default(cuid())
-  tenantId    String
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  propertyId  String?
-  property    Property?   @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  meterId     String?
-  meter       Meter?      @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  gatewayId   String?
-  gateway     Gateway?    @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  medium      MeterType?
-  name        String
-  description String
-  active      Boolean     @default(true)
-  trigger     RuleTrigger
-  conditions  Json        @default("[]")
-  actions     Json        @default("[]")
-  priority    Int         @default(100)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  executions  RuleExecution[]
-  versions    RuleVersion[]
-  actionJobs  RuleActionJob[]
-  cooldownSeconds Int @default(0)
-  maxExecutionsPerHour Int @default(0)
-  scheduleIntervalSeconds Int @default(300)
-  nextScheduledAt DateTime?
-  lastExecutedAt DateTime?
+  id                      String          @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId              String?
+  property                Property?       @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  meterId                 String?
+  meter                   Meter?          @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  gatewayId               String?
+  gateway                 Gateway?        @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  medium                  MeterType?
+  name                    String
+  description             String
+  active                  Boolean         @default(true)
+  trigger                 RuleTrigger
+  conditions              Json            @default("[]")
+  actions                 Json            @default("[]")
+  priority                Int             @default(100)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  executions              RuleExecution[]
+  versions                RuleVersion[]
+  actionJobs              RuleActionJob[]
+  cooldownSeconds         Int             @default(0)
+  maxExecutionsPerHour    Int             @default(0)
+  scheduleIntervalSeconds Int             @default(300)
+  nextScheduledAt         DateTime?
+  lastExecutedAt          DateTime?
 
   @@unique([id, tenantId])
   @@index([tenantId, active, priority])
@@ -1090,40 +1104,41 @@ model Rule {
 }
 
 model RuleVersion {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ruleId      String
-  rule        Rule     @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  version     Int
-  definition  Json
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ruleId     String
+  rule       Rule     @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  version    Int
+  definition Json
+  createdAt  DateTime @default(now())
+
   @@unique([id, tenantId])
   @@unique([ruleId, tenantId, version])
   @@index([tenantId, ruleId, createdAt])
 }
 
 model RuleExecution {
-  id          String    @id @default(cuid())
-  tenantId    String
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ruleId      String
-  rule        Rule      @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  trigger     RuleTrigger
-  eventKey    String
-  matched     Boolean
-  actionCount Int       @default(0)
-  details     Json      @default("{}")
-  executedAt  DateTime  @default(now())
-  startedAt   DateTime  @default(now())
-  finishedAt  DateTime?
-  status      RuleExecutionStatus @default(RUNNING)
-  executedActions Json @default("[]")
-  skippedActions Json @default("[]")
-  error       String?
-  correlationId String
-  ruleVersion Int @default(1)
-  actionJobs   RuleActionJob[]
+  id              String              @id @default(cuid())
+  tenantId        String
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ruleId          String
+  rule            Rule                @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  trigger         RuleTrigger
+  eventKey        String
+  matched         Boolean
+  actionCount     Int                 @default(0)
+  details         Json                @default("{}")
+  executedAt      DateTime            @default(now())
+  startedAt       DateTime            @default(now())
+  finishedAt      DateTime?
+  status          RuleExecutionStatus @default(RUNNING)
+  executedActions Json                @default("[]")
+  skippedActions  Json                @default("[]")
+  error           String?
+  correlationId   String
+  ruleVersion     Int                 @default(1)
+  actionJobs      RuleActionJob[]
 
   @@unique([id, tenantId])
   @@index([tenantId, ruleId, executedAt])
@@ -1131,24 +1146,24 @@ model RuleExecution {
 }
 
 model RuleActionJob {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ruleId      String
-  rule        Rule     @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  executionId String
-  execution   RuleExecution @relation(fields: [executionId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  type        String
-  payload     Json
-  status      String   @default("PENDING")
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(5)
-  nextAttemptAt DateTime @default(now())
-  lockedUntil DateTime?
-  lastError   String?
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ruleId        String
+  rule          Rule          @relation(fields: [ruleId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  executionId   String
+  execution     RuleExecution @relation(fields: [executionId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  type          String
+  payload       Json
+  status        String        @default("PENDING")
+  attempts      Int           @default(0)
+  maxAttempts   Int           @default(5)
+  nextAttemptAt DateTime      @default(now())
+  lockedUntil   DateTime?
+  lastError     String?
   correlationId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([id, tenantId])
   @@index([tenantId, status, nextAttemptAt])
@@ -1156,36 +1171,38 @@ model RuleActionJob {
 }
 
 model Report {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   tenantId    String
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdById String
-  createdBy   User         @relation("ReportCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy   User       @relation("ReportCreator", fields: [createdById], references: [id], onDelete: Restrict)
   type        ReportType
   title       String
   periodFrom  DateTime
   periodTo    DateTime
-  filters     Json         @default("{}")
-  status      String       @default("READY")
-  content     Json         @default("{}")
-  createdAt   DateTime     @default(now())
+  filters     Json       @default("{}")
+  status      String     @default("READY")
+  content     Json       @default("{}")
+  createdAt   DateTime   @default(now())
+
   @@unique([id, tenantId])
   @@index([tenantId, createdAt])
 }
 
 model ReportSchedule {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   tenantId    String
-  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdById String
-  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy   User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   type        ReportType
   delivery    ReportDelivery @default(PORTAL)
   dayOfMonth  Int?
-  active      Boolean       @default(true)
-  filters     Json          @default("{}")
+  active      Boolean        @default(true)
+  filters     Json           @default("{}")
   lastRunAt   DateTime?
-  createdAt   DateTime      @default(now())
+  createdAt   DateTime       @default(now())
+
   @@unique([id, tenantId])
   @@index([tenantId, active])
 }
@@ -1202,36 +1219,48 @@ model Note {
   createdAt  DateTime @default(now())
   alarmId    String?
   alarm      Alarm?   @relation(fields: [alarmId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
   @@unique([id, tenantId])
   @@index([tenantId, targetType, entityId, createdAt])
 }
 
 model Attachment {
-  id         String   @id @default(cuid())
-  tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  uploadedById String
-  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
-  targetType String
-  entityId   String
-  fileName   String
-  contentType String
-  storageKey String
-  sizeBytes  Int
-  createdAt  DateTime @default(now())
+  workOrderId     String?
+  workOrder       WorkOrder? @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  description     String     @default("")
+  category        String     @default("OTHER")
+  requestId       String?
+  contentHash     String?
+  storageProvider String     @default("local")
+  expiresAt       DateTime?
+  deletedAt       DateTime?
+  id              String     @id @default(cuid())
+  tenantId        String
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedById    String
+  uploadedBy      User       @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  targetType      String
+  entityId        String
+  fileName        String
+  contentType     String
+  storageKey      String
+  sizeBytes       Int
+  createdAt       DateTime   @default(now())
+
+  @@unique([tenantId, workOrderId, requestId])
   @@unique([id, tenantId])
   @@index([tenantId, targetType, entityId])
 }
 
 model AuditEvent {
-  id        String   @id @default(cuid())
-  tenantId  String?
-  actorId   String
-  action    String
-  entityId  String
-  details   Json     @default("{}")
+  id            String   @id @default(cuid())
+  tenantId      String?
+  actorId       String
+  action        String
+  entityId      String
+  details       Json     @default("{}")
   correlationId String?
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   @@index([tenantId, createdAt])
 }
@@ -1338,6 +1367,7 @@ enum WorkOrderType {
   INSPECTION
   OTHER
 }
+
 enum WorkOrderStatus {
   DRAFT
   PLANNED
@@ -1347,99 +1377,201 @@ enum WorkOrderStatus {
   COMPLETED
   CANCELED
 }
+
 enum WorkOrderPriority {
   LOW
   NORMAL
   HIGH
   URGENT
 }
+
 model WorkOrder {
-  id String @id @default(cuid())
-  tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  number String
-  title String
-  description String @default("")
-  type WorkOrderType
-  priority WorkOrderPriority @default(NORMAL)
-  status WorkOrderStatus @default(DRAFT)
-  propertyId String
-  property Property @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  buildingId String?
-  building Building? @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  unitId String?
-  unit Unit? @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  meterId String?
-  meter Meter? @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  gatewayId String?
-  gateway Gateway? @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  scheduledAt DateTime? @db.Timestamptz(3)
-  startedAt DateTime? @db.Timestamptz(3)
-  endedAt DateTime? @db.Timestamptz(3)
-  internalContactId String?
-  internalContact User? @relation("WorkOrderContact", fields: [internalContactId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  customerContact String @default("")
-  notes String @default("")
-  assignments TechnicianAssignment[]
-  checklists WorkOrderChecklist[]
-  comments WorkOrderComment[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  revision                   Int                    @default(0)
+  documentation              Json?
+  commissioning              Json?
+  replacementDetails         Json?
+  replacementId              String?                @unique
+  replacement                MeterReplacement?      @relation(fields: [replacementId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  requireTechnicianSignature Boolean                @default(false)
+  requireCustomerSignature   Boolean                @default(false)
+  entries                    WorkOrderEntry[]
+  receipts                   WorkOrderReceipt[]
+  attachments                Attachment[]
+  addenda                    WorkOrderAddendum[]
+  id                         String                 @id @default(cuid())
+  tenantId                   String
+  tenant                     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  number                     String
+  title                      String
+  description                String                 @default("")
+  type                       WorkOrderType
+  priority                   WorkOrderPriority      @default(NORMAL)
+  status                     WorkOrderStatus        @default(DRAFT)
+  propertyId                 String
+  property                   Property               @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  buildingId                 String?
+  building                   Building?              @relation(fields: [buildingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  unitId                     String?
+  unit                       Unit?                  @relation(fields: [unitId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  meterId                    String?
+  meter                      Meter?                 @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  gatewayId                  String?
+  gateway                    Gateway?               @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  scheduledAt                DateTime?              @db.Timestamptz(3)
+  startedAt                  DateTime?              @db.Timestamptz(3)
+  endedAt                    DateTime?              @db.Timestamptz(3)
+  internalContactId          String?
+  internalContact            User?                  @relation("WorkOrderContact", fields: [internalContactId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  customerContact            String                 @default("")
+  notes                      String                 @default("")
+  assignments                TechnicianAssignment[]
+  checklists                 WorkOrderChecklist[]
+  comments                   WorkOrderComment[]
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+  deletedAt                  DateTime?
+
+  @@unique([replacementId, tenantId])
   @@unique([id, tenantId])
   @@unique([tenantId, number])
   @@index([tenantId, status, scheduledAt])
   @@index([tenantId, propertyId])
 }
+
+enum WorkOrderAddendumStatus {
+  DRAFT
+  REQUESTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model WorkOrderAddendum {
+  id               String                  @id @default(cuid())
+  tenantId         String
+  workOrderId      String
+  workOrder        WorkOrder               @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdById      String
+  createdBy        User                    @relation(fields: [createdById, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title            String
+  description      String
+  reason           String
+  estimatedMinutes Int?
+  material         Json                    @default("[]")
+  status           WorkOrderAddendumStatus @default(DRAFT)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@unique([id, tenantId])
+  @@index([tenantId, workOrderId, status])
+}
+
 model TechnicianAssignment {
-  id String @id @default(cuid())
-  tenantId String
+  id          String    @id @default(cuid())
+  tenantId    String
   workOrderId String
-  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  userId String
-  user User @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  createdAt DateTime @default(now())
+  workOrder   WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  userId      String
+  user        User      @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+
   @@unique([workOrderId, userId])
   @@index([tenantId, userId])
 }
+
 model WorkOrderChecklist {
-  id String @id @default(cuid())
-  tenantId String
+  id          String          @id @default(cuid())
+  tenantId    String
   workOrderId String
-  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  title String
-  items ChecklistItem[]
-  createdAt DateTime @default(now())
+  workOrder   WorkOrder       @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title       String
+  items       ChecklistItem[]
+  createdAt   DateTime        @default(now())
+
   @@unique([id, tenantId])
   @@index([tenantId, workOrderId])
 }
+
 model ChecklistItem {
-  id String @id @default(cuid())
-  tenantId String
-  checklistId String
-  checklist WorkOrderChecklist @relation(fields: [checklistId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  title String
-  description String @default("")
-  required Boolean @default(false)
-  completed Boolean @default(false)
-  order Int @default(0)
-  comment String @default("")
+  id            String             @id @default(cuid())
+  tenantId      String
+  checklistId   String
+  checklist     WorkOrderChecklist @relation(fields: [checklistId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  title         String
+  description   String             @default("")
+  required      Boolean            @default(false)
+  completed     Boolean            @default(false)
+  order         Int                @default(0)
+  comment       String             @default("")
   completedById String?
-  completedBy User? @relation(fields: [completedById, tenantId], references: [id, tenantId], onDelete: Restrict)
-  completedAt DateTime? @db.Timestamptz(3)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  completedBy   User?              @relation(fields: [completedById, tenantId], references: [id, tenantId], onDelete: Restrict)
+  completedAt   DateTime?          @db.Timestamptz(3)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
   @@unique([id, tenantId])
   @@index([tenantId, checklistId, order])
 }
+
 model WorkOrderComment {
-  id String @id @default(cuid())
-  tenantId String
+  id          String    @id @default(cuid())
+  tenantId    String
   workOrderId String
-  workOrder WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  authorId String
-  author User @relation(fields: [authorId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  body String
-  createdAt DateTime @default(now())
+  workOrder   WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  authorId    String
+  author      User      @relation(fields: [authorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  body        String
+  createdAt   DateTime  @default(now())
+
   @@index([tenantId, workOrderId, createdAt])
+}
+
+// Validated discriminated payloads; quantity remains a PostgreSQL Decimal.
+model WorkOrderEntry {
+  id          String    @id @default(cuid())
+  tenantId    String
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorId     String
+  actor       User      @relation(fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  kind        String
+  payload     Json
+  quantity    Decimal?  @db.Decimal(20, 6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, workOrderId, kind])
+}
+
+model WorkOrderReceipt {
+  id          String    @id @default(cuid())
+  tenantId    String
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  requestId   String
+  actorId     String
+  digest      String
+  revision    Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([workOrderId, tenantId, requestId])
+}
+
+model ChecklistTemplate {
+  id              String         @id @default(cuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  title           String
+  type            WorkOrderType
+  medium          MeterType
+  deviceProfileId String?
+  deviceProfile   DeviceProfile? @relation(fields: [deviceProfileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  definition      Json
+  version         Int            @default(1)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([id, tenantId])
+  @@index([tenantId, type, medium])
 }

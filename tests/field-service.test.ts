@@ -92,6 +92,25 @@ beforeEach(() => {
     assignments: [],
     checklists: [],
     deletedAt: null,
+    attachments: [],
+    entries: [
+      {
+        kind: "time",
+        payload: {
+          technicianId: "tech",
+          start: "2026-01-01T08:00:00Z",
+          end: "2026-01-01T09:00:00Z",
+          pauseMinutes: 0,
+          activity: "Wartung",
+        },
+      },
+    ],
+    documentation: {
+      report: "Bericht",
+      workPerformed: "Wartung",
+      actualStart: "2026-01-01T08:00:00Z",
+      actualEnd: "2026-01-01T09:00:00Z",
+    },
   };
   mocks.db.workOrder.findFirst.mockImplementation(async () => order);
   mocks.db.workOrder.create.mockImplementation(async ({ data }) => ({

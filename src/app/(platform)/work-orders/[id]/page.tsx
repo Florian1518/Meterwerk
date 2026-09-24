@@ -1,3 +1,6 @@
+import { FieldDocumentation } from "@/components/field-documentation";
+import { AddendumForm } from "@/components/field-service-addendum";
+import { listChecklistTemplates } from "@/server/field-documentation";
 import Link from "next/link";
 import { FieldServiceHistory } from "@/components/field-service-history";
 import { notFound } from "next/navigation";
@@ -62,6 +65,9 @@ export default async function Page({
     context.actor.role !== "SUPER_ADMIN" && !terminal(order.status);
   const options =
     manager && editable ? await fieldServiceOptions(context.tenantId) : null;
+  const templates = manager
+    ? await listChecklistTemplates(context.tenantId)
+    : [];
   const formProps = { id, tenantId: context.tenantId };
   const query = `tenantId=${encodeURIComponent(context.tenantId)}`;
   const next = transitions[order.status].filter(
@@ -151,7 +157,22 @@ export default async function Page({
             <WorkOrderEditor
               tenantId={context.tenantId}
               options={options}
-              initial={order}
+              initial={{
+                id: order.id,
+                title: order.title,
+                type: order.type,
+                priority: order.priority,
+                propertyId: order.propertyId,
+                buildingId: order.buildingId,
+                unitId: order.unitId,
+                meterId: order.meterId,
+                gatewayId: order.gatewayId,
+                internalContactId: order.internalContactId,
+                scheduledAt: order.scheduledAt,
+                description: order.description,
+                customerContact: order.customerContact,
+                notes: order.notes,
+              }}
             />
           </div>
         </details>
@@ -270,6 +291,74 @@ export default async function Page({
           </details>
         )}
       </section>
+      <FieldDocumentation
+        id={id}
+        tenantId={context.tenantId}
+        revision={order.revision}
+        type={order.type}
+        editable={editable}
+        actorId={context.actor.id}
+        documentation={order.documentation as Record<string, unknown> | null}
+        commissioning={order.commissioning as Record<string, unknown> | null}
+        entries={order.entries.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          payload: e.payload as Record<string, unknown>,
+          createdAt: e.createdAt.toISOString(),
+          actor: e.actor,
+        }))}
+        technicians={order.assignments.map((a) => a.user)}
+        attachments={order.attachments}
+        templates={templates}
+      />
+      {order.replacement && (
+        <section className="grid gap-2">
+          <h2>Zählerwechselprotokoll</h2>
+          <p>
+            Alt: {order.replacement.oldMeter.serialNumber} · Ausbau{" "}
+            {time(order.replacement.removedAt)} ·{" "}
+            {order.replacement.removedRegister.toString()}{" "}
+            {order.replacement.oldMeter.measurementUnit}
+          </p>
+          <p>
+            Neu: {order.replacement.newMeter.serialNumber} · Einbau{" "}
+            {time(order.replacement.installedAt)} ·{" "}
+            {order.replacement.installedRegister.toString()}{" "}
+            {order.replacement.oldMeter.measurementUnit}
+          </p>
+          <p>
+            Medium: {order.replacement.oldMeter.type} ·{" "}
+            {order.replacement.reason}
+          </p>
+          <FieldServiceHistory value={order.replacementDetails} />
+        </section>
+      )}
+      <section className="grid gap-3">
+        <h2>Nachträge / Zusatzarbeiten</h2>
+        {order.addenda.map((addendum) => (
+          <article key={addendum.id} className="rounded border p-3">
+            <strong>{addendum.title}</strong>
+            <p>{addendum.description}</p>
+            <p>
+              {addendum.reason} · {addendum.status} ·{" "}
+              {addendum.estimatedMinutes ?? "-"} Minuten
+            </p>
+          </article>
+        ))}
+        {editable && (
+          <AddendumForm workOrderId={id} tenantId={context.tenantId} />
+        )}
+      </section>
+      {terminal(order.status) && (
+        <p>
+          <a
+            className="underline"
+            href={`/api/work-orders/${encodeURIComponent(id)}/report?tenantId=${encodeURIComponent(context.tenantId)}`}
+          >
+            Einsatzbericht als PDF herunterladen
+          </a>
+        </p>
+      )}
       <section className="grid gap-3">
         <h2>Kommentare</h2>
         {!order.comments.length && <p>Noch keine Kommentare.</p>}

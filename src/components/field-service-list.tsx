@@ -51,6 +51,11 @@ export async function FieldServiceList({
             <Button asChild variant="outline">
               <Link href={`/work-orders?${query}`}>Alle Einsätze</Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href={`/work-orders/calendar?${query}&mode=week`}>
+                Kalender
+              </Link>
+            </Button>
           </>
         )}
         {[

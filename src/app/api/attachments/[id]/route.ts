@@ -14,7 +14,7 @@ export async function GET(
     return new Response(file.data, {
       headers: {
         "Content-Type": file.contentType,
-        "Content-Disposition": `attachment; filename="${file.fileName.replace(/"/g, "")}"`,
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
       },

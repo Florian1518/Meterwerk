@@ -1,3 +1,19 @@
+import {
+  saveFieldDocumentation,
+  listChecklistTemplates,
+  saveChecklistTemplate,
+} from "@/server/field-documentation";
+import {
+  calendarWorkOrders,
+  changeAddendumStatus,
+  createAddendum,
+  listAddenda,
+  rescheduleWorkOrder,
+} from "@/server/field-service-planning";
+import {
+  fieldNotificationEvents,
+  notifyWorkOrder,
+} from "@/server/field-service-notifications";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/server/auth";
 import { AccessError } from "@/server/policy";
@@ -25,8 +41,27 @@ async function handle(request: NextRequest, context: Context) {
     const tenantId = request.nextUrl.searchParams.get("tenantId");
     const method = request.method;
     let result: unknown;
+    let mutationBody: Record<string, unknown> | null = null;
     if (method === "GET") {
-      if (!id || (id === "mine" && path.length === 1)) {
+      if (id === "calendar" && path.length === 1)
+        result = await calendarWorkOrders(
+          {
+            from:
+              request.nextUrl.searchParams.get("from") ??
+              `${new Date().toISOString().slice(0, 10)}T00:00:00Z`,
+            to:
+              request.nextUrl.searchParams.get("to") ??
+              `${new Date().toISOString().slice(0, 10)}T23:59:59Z`,
+            technicianId: request.nextUrl.searchParams.get("technicianId"),
+            status: request.nextUrl.searchParams.get("status") ?? undefined,
+            priority: request.nextUrl.searchParams.get("priority") ?? undefined,
+            propertyId: request.nextUrl.searchParams.get("propertyId"),
+          },
+          tenantId,
+        );
+      else if (id === "templates" && path.length === 1)
+        result = await listChecklistTemplates(tenantId);
+      else if (!id || (id === "mine" && path.length === 1)) {
         const view =
           request.nextUrl.searchParams.get("view") ||
           (id === "mine" ? "mine" : "all");
@@ -39,6 +74,8 @@ async function handle(request: NextRequest, context: Context) {
       } else if (id === "options" && path.length === 1)
         result = await fieldServiceOptions(tenantId);
       else if (path.length === 1) result = await getWorkOrder(id, tenantId);
+      else if (path.length === 2 && resource === "addenda")
+        result = await listAddenda(id, tenantId);
       else if (
         path.length === 2 &&
         ["assignments", "checklists", "comments", "history"].includes(resource)
@@ -60,8 +97,68 @@ async function handle(request: NextRequest, context: Context) {
       )
         result = await assignTechnician(id, { userId: child }, true, tenantId);
       else {
-        const body = await readBody(request);
-        if (method === "POST" && !id)
+        const body = await readBody(
+          request,
+          resource === "documentation" ? 131072 : 16384,
+        );
+        mutationBody = body;
+        if (
+          id === "templates" &&
+          (method === "POST" || method === "PATCH") &&
+          path.length <= 2
+        )
+          result = await saveChecklistTemplate(body, tenantId, resource);
+        else if (
+          method === "POST" &&
+          path.length === 2 &&
+          resource === "documentation"
+        )
+          result = await saveFieldDocumentation(id, body, tenantId);
+        else if (
+          method === "POST" &&
+          path.length === 2 &&
+          resource === "addenda"
+        )
+          result = await createAddendum(id, body, tenantId);
+        else if (
+          method === "POST" &&
+          path.length === 2 &&
+          resource === "notify"
+        ) {
+          if (
+            !fieldNotificationEvents.includes(
+              body.event as (typeof fieldNotificationEvents)[number],
+            )
+          )
+            throw new AccessError(
+              400,
+              "Unbekanntes Benachrichtigungsereignis.",
+            );
+          result = await notifyWorkOrder(
+            body.event as (typeof fieldNotificationEvents)[number],
+            id,
+            tenantId,
+            typeof body.details === "object" && body.details
+              ? (body.details as Record<string, string>)
+              : {},
+          );
+        } else if (
+          method === "PATCH" &&
+          path.length === 2 &&
+          resource === "schedule"
+        )
+          result = await rescheduleWorkOrder(
+            id,
+            typeof body.scheduledAt === "string" ? body.scheduledAt : "",
+            tenantId,
+          );
+        else if (
+          method === "PATCH" &&
+          path.length === 3 &&
+          resource === "addenda"
+        )
+          result = await changeAddendumStatus(child, body, tenantId);
+        else if (method === "POST" && !id)
           result = await createWorkOrder(body, tenantId);
         else if (method === "PATCH" && path.length === 1)
           result = await updateWorkOrder(id, body, tenantId);
@@ -98,6 +195,24 @@ async function handle(request: NextRequest, context: Context) {
         else throw new AccessError(404, "API-Pfad nicht gefunden.");
       }
     }
+    if (method === "POST" && id && resource === "assignments")
+      await notifyWorkOrder("WORK_ORDER_ASSIGNED", id, tenantId);
+    if (method === "PATCH" && id && resource === "schedule")
+      await notifyWorkOrder("WORK_ORDER_RESCHEDULED", id, tenantId);
+    if (
+      method === "POST" &&
+      id &&
+      resource === "status" &&
+      mutationBody?.status === "COMPLETED"
+    )
+      await notifyWorkOrder("WORK_ORDER_COMPLETED", id, tenantId);
+    if (
+      method === "POST" &&
+      id &&
+      resource === "status" &&
+      mutationBody?.status === "CANCELED"
+    )
+      await notifyWorkOrder("WORK_ORDER_CANCELED", id, tenantId);
     return NextResponse.json(result, {
       headers: { "Cache-Control": "private, no-store" },
     });

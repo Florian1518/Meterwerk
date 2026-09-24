@@ -70,9 +70,12 @@ export const workOrderSchema = z
     internalContactId: optionalId,
     customerContact: z.string().max(1000).default(""),
     notes: z.string().max(8000).default(""),
+    templateId: optionalId,
   })
   .strict();
-export const workOrderPatchSchema = workOrderSchema.partial();
+export const workOrderPatchSchema = workOrderSchema
+  .omit({ templateId: true })
+  .partial();
 export const checklistSchema = z
   .object({
     title: z.string().trim().min(1).max(200),

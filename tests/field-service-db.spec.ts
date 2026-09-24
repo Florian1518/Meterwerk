@@ -11,6 +11,10 @@ vi.mock("../src/server/auth", () => ({
 }));
 import { db } from "../src/server/db";
 import {
+  saveFieldDocumentation,
+  saveChecklistTemplate,
+} from "../src/server/field-documentation";
+import {
   addChecklist,
   addWorkOrderComment,
   assignTechnician,
@@ -84,6 +88,10 @@ afterAll(async () => {
   const where = { tenantId: { in: [a, b] } };
   try {
     if (!fixtureStarted) return;
+    await db.attachment.deleteMany({ where });
+    await db.workOrderReceipt.deleteMany({ where });
+    await db.workOrderEntry.deleteMany({ where });
+    await db.checklistTemplate.deleteMany({ where });
     await db.workOrderComment.deleteMany({ where });
     await db.checklistItem.deleteMany({ where });
     await db.workOrderChecklist.deleteMany({ where });
@@ -219,6 +227,33 @@ describe.sequential("Field Service mit PostgreSQL", () => {
       completed: true,
       comment: "Geprüft",
     });
+    await saveFieldDocumentation(orderId, {
+      requestId: randomUUID(),
+      revision: 0,
+      mutation: {
+        kind: "documentation",
+        value: {
+          report: "Wartung abgeschlossen",
+          workPerformed: "Prüfung",
+          actualStart: "2026-01-01T08:00:00Z",
+          actualEnd: "2026-01-01T10:00:00Z",
+        },
+      },
+    });
+    await saveFieldDocumentation(orderId, {
+      requestId: randomUUID(),
+      revision: 1,
+      mutation: {
+        kind: "time",
+        value: {
+          technicianId: tech.id,
+          start: "2026-01-01T08:00:00Z",
+          end: "2026-01-01T10:00:00Z",
+          pauseMinutes: 15,
+          activity: "Wartung",
+        },
+      },
+    });
     await changeWorkOrderStatus(orderId, { status: "COMPLETED" });
     const completed = await getWorkOrder(orderId);
     expect(completed.endedAt).toBeInstanceOf(Date);
@@ -236,6 +271,78 @@ describe.sequential("Field Service mit PostgreSQL", () => {
     await expect(
       completeChecklistItem(orderId, item.id, { completed: false }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+  it("Teil 2: idempotente Materialerfassung, Snapshot und zusammengesetzte Fremdschlüssel", async () => {
+    auth.actor = admin;
+    const definition = {
+      title: "Wartungsvorlage",
+      type: "MAINTENANCE",
+      medium: "WATER",
+      items: [{ title: "Sichtprüfung", order: 0, required: true }],
+    };
+    const template = await saveChecklistTemplate(definition);
+    const order = await createWorkOrder({
+      title: "Teil 2",
+      type: "MAINTENANCE",
+      propertyId: `${a}-p`,
+      templateId: template.id,
+    });
+    await assignTechnician(order.id, { userId: tech.id }, false);
+    await saveChecklistTemplate(
+      { ...definition, items: [{ title: "Geänderte Vorlage", order: 0 }] },
+      a,
+      template.id,
+    );
+    expect((await getWorkOrder(order.id)).checklists[0].items[0].title).toBe(
+      "Sichtprüfung",
+    );
+    auth.actor = tech;
+    const input = {
+      requestId: randomUUID(),
+      revision: 0,
+      mutation: {
+        kind: "material",
+        value: { description: "Dichtung", quantity: "0.125", unit: "Stück" },
+      },
+    };
+    await Promise.all([
+      saveFieldDocumentation(order.id, input),
+      saveFieldDocumentation(order.id, input),
+    ]);
+    expect(
+      await db.workOrderEntry.count({
+        where: { tenantId: a, workOrderId: order.id, kind: "material" },
+      }),
+    ).toBe(1);
+    expect(
+      await db.auditEvent.count({
+        where: {
+          tenantId: a,
+          entityId: order.id,
+          action: "work-order.material-saved",
+        },
+      }),
+    ).toBe(1);
+    await expect(
+      db.workOrderEntry.create({
+        data: {
+          tenantId: b,
+          workOrderId: order.id,
+          actorId: foreign.id,
+          kind: "material",
+          payload: {},
+        },
+      }),
+    ).rejects.toMatchObject({ code: "P2003" });
+    auth.actor = noGrant;
+    await expect(saveFieldDocumentation(order.id, input)).rejects.toMatchObject(
+      { status: 404 },
+    );
+    auth.actor = foreign;
+    await expect(saveFieldDocumentation(order.id, input)).rejects.toMatchObject(
+      { status: 404 },
+    );
+    auth.actor = admin;
   });
   it("Grant-Entzug entfernt auch einen bereits zugewiesenen Auftrag aus allen Ansichten", async () => {
     await db.propertyGrant.deleteMany({

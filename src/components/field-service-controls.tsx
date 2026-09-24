@@ -18,7 +18,8 @@ type Operation =
   | "checklist"
   | "item"
   | "comment"
-  | "delete";
+  | "delete"
+  | "template";
 export function FieldServiceForm({
   tenantId,
   id,
@@ -66,6 +67,9 @@ export function FieldServiceForm({
               "internalContactId",
             ].map((key) => [key, value[key] || null]),
           ),
+          ...(data.has("templateId")
+            ? { templateId: data.get("templateId") || null }
+            : {}),
           scheduledAt: value.scheduledAt
             ? new Date(`${value.scheduledAt}Z`).toISOString()
             : null,
@@ -83,11 +87,22 @@ export function FieldServiceForm({
       } else if (operation === "comment") {
         suffix = "/comments";
         body = { body: data.get("body") };
-      } else if (operation === "checklist") {
-        suffix = "/checklists";
+      } else if (operation === "checklist" || operation === "template") {
+        suffix = operation === "template" ? "" : "/checklists";
         const titles = data.getAll("itemTitle"),
           descriptions = data.getAll("itemDescription");
         body = {
+          ...(operation === "template"
+            ? {
+                type: data.get("type"),
+                medium: data.get("medium"),
+                deviceProfileId: data.get("deviceProfileId") || null,
+                requireTechnicianSignature: data.has(
+                  "requireTechnicianSignature",
+                ),
+                requireCustomerSignature: data.has("requireCustomerSignature"),
+              }
+            : {}),
           title: data.get("title"),
           items: titles.map((title, order) => ({
             title,
@@ -158,7 +173,23 @@ export function WorkOrderEditor({
 }: {
   tenantId: string;
   options: Options;
-  initial?: Awaited<ReturnType<typeof getWorkOrder>>;
+  initial?: Pick<
+    Awaited<ReturnType<typeof getWorkOrder>>,
+    | "id"
+    | "title"
+    | "type"
+    | "priority"
+    | "propertyId"
+    | "buildingId"
+    | "unitId"
+    | "meterId"
+    | "gatewayId"
+    | "internalContactId"
+    | "scheduledAt"
+    | "description"
+    | "customerContact"
+    | "notes"
+  >;
 }) {
   const [propertyId, setPropertyId] = useState(initial?.propertyId ?? "");
   const [buildingId, setBuildingId] = useState(initial?.buildingId ?? "");
@@ -336,6 +367,19 @@ export function WorkOrderEditor({
           defaultValue={initial?.customerContact}
         />
       </label>
+      {!initial && (
+        <label>
+          Checklistenvorlage (optional)
+          <select name="templateId">
+            <option value="">Keine Vorlage</option>
+            {options.templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title} · {typeLabels[t.type]} · {t.medium}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label>
         Notizen
         <textarea name="notes" maxLength={8000} defaultValue={initial?.notes} />
@@ -346,18 +390,54 @@ export function WorkOrderEditor({
 export function ChecklistEditor({
   tenantId,
   id,
+  template = false,
 }: {
   tenantId: string;
   id: string;
+  template?: boolean;
 }) {
   const [count, setCount] = useState(1);
   return (
     <FieldServiceForm
       tenantId={tenantId}
       id={id}
-      operation="checklist"
-      label="Checkliste hinzufügen"
+      operation={template ? "template" : "checklist"}
+      label={template ? "Vorlage speichern" : "Checkliste hinzufügen"}
     >
+      {template && (
+        <>
+          <label>
+            Einsatztyp
+            <select name="type">
+              {workOrderTypes.map((t) => (
+                <option key={t} value={t}>
+                  {typeLabels[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Medium
+            <select name="medium">
+              {["ELECTRICITY", "WATER", "GAS", "HEAT"].map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Device-Profile-ID (optional)
+            <input name="deviceProfileId" />
+          </label>
+          <label>
+            <input type="checkbox" name="requireTechnicianSignature" />{" "}
+            Technikerbestätigung erforderlich
+          </label>
+          <label>
+            <input type="checkbox" name="requireCustomerSignature" />{" "}
+            Kundenbestätigung erforderlich
+          </label>
+        </>
+      )}
       <label>
         Checklistenname
         <input name="title" required maxLength={200} />

@@ -20,7 +20,7 @@ export function failure(error: unknown) {
     },
   );
 }
-export async function readBody(request: NextRequest) {
+export async function readBody(request: NextRequest, maxBytes = 16384) {
   assertOrigin(request);
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new AccessError(415, "JSON-Anfrage erforderlich.");
@@ -33,7 +33,7 @@ export async function readBody(request: NextRequest) {
       const { value, done } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 16384) {
+      if (size > maxBytes) {
         await reader.cancel();
         throw new AccessError(413, "Anfrage zu groÃŸ.");
       }
