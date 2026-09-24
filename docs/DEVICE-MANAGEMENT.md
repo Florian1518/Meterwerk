@@ -28,6 +28,10 @@ Device Groups sind statisch oder verwenden ausschließlich strukturierte Filter.
 
 Notifications verwenden deduplizierte Audit-/Notification-Ereignisse mit Cooldown. Diagnoseanhänge und Firmware-Binaries werden nicht öffentlich ausgeliefert; produktive Object-Storage- und Retention-Ausführung bleibt deploymentabhängig.
 
+## Support & Operations
+
+Supportfälle, Timeline, Tenant-Diagnostics, Diagnostic Bundles, System Health, sichere Support Actions und SUPER_ADMIN-Maintenance-Mode sind in `docs/SUPPORT-OPERATIONS.md` beschrieben. Diese Funktionen zeigen technische Statusdaten, geben aber keine Secrets oder Tokens aus.
+
 ## Fleet Health und Teil 2
 
 Die Fleet-Ansicht `/fleet` berechnet `HEALTHY`, `WARNING`, `CRITICAL` oder `UNKNOWN` regelbasiert aus Kontaktalter, Gerätestatus, Diagnosefehlern, offenen Alarmen, Credentials, Provisioning und Firmwarestatus. Diagnose- und Command-APIs verwenden vorhandene Messwerte, `ModbusDiagnostic` und `GatewayCommand`; sie senden keinen Ping. Zulässige Commands sind fest kodiert. Firmware-Rollouts speichern Zielgeräte, Batch-/Parallelgrenzen, Canary-Größe, Pause-Schwelle und Rollback-Metadaten. Wartungsfenster markieren die Health-Bewertung und löschen keine Alarme. Credential-Rotation zeigt das neue Secret nur in der einmaligen API-Antwort.
