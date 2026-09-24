@@ -3,11 +3,16 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stableSecretKey } from "./security-config";
+import { isSafeStorageKey } from "@/lib/security";
 const provider = () =>
   process.env.ATTACHMENT_STORAGE === "s3"
     ? ("s3" as const)
     : ("local" as const);
 const root = () => process.env.ATTACHMENT_LOCAL_ROOT ?? ".local/attachments";
+function safeStorageKey(key: string) {
+  if (!isSafeStorageKey(key)) throw new Error("Ungültiger Storage-Pfad.");
+  return key;
+}
 function s3Config() {
   const endpoint = process.env.ATTACHMENT_S3_ENDPOINT;
   const bucket = process.env.ATTACHMENT_S3_BUCKET;
@@ -21,6 +26,7 @@ export async function putObject(
   bytes: Uint8Array,
   contentType: string,
 ) {
+  key = safeStorageKey(key);
   if (provider() === "local") {
     await mkdir(join(/* turbopackIgnore: true */ root(), key.split("/")[0]), {
       recursive: true,
@@ -50,6 +56,7 @@ export async function putObject(
   return "s3" as const;
 }
 export async function getObject(key: string) {
+  key = safeStorageKey(key);
   if (provider() === "local")
     return readFile(join(/* turbopackIgnore: true */ root(), key));
   const config = s3Config();
@@ -64,6 +71,7 @@ export async function getObject(key: string) {
   return Buffer.from(await response.arrayBuffer());
 }
 export async function deleteObject(key: string) {
+  key = safeStorageKey(key);
   if (provider() === "local") {
     await unlink(join(/* turbopackIgnore: true */ root(), key)).catch(
       () => undefined,

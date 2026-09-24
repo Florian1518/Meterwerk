@@ -5,11 +5,17 @@ import { db } from "./db";
 import { AccessError, type Actor } from "./policy";
 import { hashPassword, verifyPassword } from "./password";
 import { decryptForAuth, verifyRecoveryCode, verifyTotp } from "./mfa";
+import { sessionCookieSecure } from "@/lib/security";
 const cookieName = "meterwerk_session";
 export const digest = (value: string) =>
   createHmac(
     "sha256",
-    process.env.SESSION_SECRET ?? "development-session-secret",
+    process.env.SESSION_SECRET ??
+      (process.env.METERWERK_ENV === "production"
+        ? (() => {
+            throw new Error("SESSION_SECRET fehlt in production.");
+          })()
+        : "development-session-secret"),
   )
     .update(value)
     .digest("hex");
@@ -131,7 +137,7 @@ export async function signIn(
   });
   (await cookies()).set(cookieName, token, {
     httpOnly: true,
-    secure: ["pilot", "production"].includes(process.env.METERWERK_ENV ?? ""),
+    secure: sessionCookieSecure(process.env.METERWERK_ENV),
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
