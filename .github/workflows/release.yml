@@ -1,0 +1,37 @@
+name: Release Candidate
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer or RC version
+        required: true
+        type: string
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: read
+jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+  artifact:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm sbom
+      - run: RELEASE_VERSION="${{ inputs.version || github.ref_name }}" node scripts/release-artifact.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          {
+            name: release-artifact,
+            path: release-artifacts,
+            retention-days: 30,
+          }
+      - run: echo "Docker build and staging promotion are prepared but require an explicit deployment environment and registry credentials."

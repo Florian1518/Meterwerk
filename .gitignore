@@ -9,6 +9,7 @@ src/generated/
 coverage/
 .local/
 test-results/
+release-artifacts/
 *.pem
 *.key
 *.p12

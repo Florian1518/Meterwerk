@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: meterwerk_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?Set STAGING_POSTGRES_PASSWORD}
+      POSTGRES_DB: meterwerk_staging
+    volumes: [staging_db:/var/lib/postgresql/data]
+    networks: [staging]
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U meterwerk_staging -d meterwerk_staging"]
+  mqtt:
+    image: eclipse-mosquitto:2
+    volumes: [staging_mqtt:/mosquitto/data]
+    networks: [staging]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null",
+        ]
+  web:
+    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging
+      APP_URL: http://web:3000
+      SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
+    depends_on:
+      {
+        db: { condition: service_healthy },
+        mqtt: { condition: service_healthy },
+      }
+    networks: [staging]
+    ports: ["127.0.0.1:3000:3000"]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD",
+            "wget",
+            "-q",
+            "-O-",
+            "http://127.0.0.1:3000/api/health/ready",
+          ],
+        interval: 30s,
+        timeout: 5s,
+        retries: 5,
+      }
+  rules-worker:
+    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    command: ["src/server/rules-worker.ts"]
+    environment:
+      RUN_WORKER: "true"
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
+      SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
+    depends_on: { db: { condition: service_healthy } }
+    networks: [staging]
+  rollout-worker:
+    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    command: ["src/server/rollout-worker.ts"]
+    environment:
+      RUN_WORKER: "true"
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
+      SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
+    depends_on: { db: { condition: service_healthy } }
+    networks: [staging]
+networks: { staging: { internal: true } }
+volumes: { staging_db: {}, staging_mqtt: {} }

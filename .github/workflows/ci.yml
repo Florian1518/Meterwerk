@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://meterwerk:meterwerk@localhost:5432/meterwerk
+  APP_URL: http://localhost:3000
+  SESSION_SECRET: ci-only-session-secret-change-me
+  NODE_ENV: test
+
+jobs:
+  fast:
+    name: Fast checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm exec prisma validate
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: git diff --check
+      - run: pnpm audit --audit-level high
+
+  unit:
+    name: Unit tests
+    needs: fast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  integration:
+    name: Integration and migration tests
+    needs: fast
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          {
+            POSTGRES_USER: meterwerk,
+            POSTGRES_PASSWORD: meterwerk,
+            POSTGRES_DB: meterwerk,
+          }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U meterwerk -d meterwerk"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      mqtt:
+        image: eclipse-mosquitto:2
+        ports: ["1883:1883"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm test:integration
+
+  browser:
+    name: Browser and mobile tests
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env: { BROWSER_E2E_BASE_URL: http://localhost:3000 }
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          {
+            name: browser-artifacts,
+            path: test-results/browser-artifacts,
+            retention-days: 7,
+          }
+
+  build:
+    name: Production build
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
