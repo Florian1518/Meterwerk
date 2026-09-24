@@ -35,6 +35,40 @@ enum DeviceStatus {
   DISABLED
 }
 
+enum DeviceLifecycleStatus {
+  NEW
+  PROVISIONING
+  ACTIVE
+  OFFLINE
+  MAINTENANCE
+  DECOMMISSIONED
+  FAILED
+}
+
+enum DeviceHealthStatus {
+  HEALTHY
+  WARNING
+  CRITICAL
+  UNKNOWN
+}
+
+enum FirmwareRolloutStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum DeviceComplianceStatus {
+  COMPLIANT
+  WARNING
+  NON_COMPLIANT
+  UNKNOWN
+}
+
 enum DeviceProtocol {
   VIRTUAL
   REST
@@ -715,28 +749,29 @@ model Meter {
 }
 
 model Gateway {
-  workOrders        WorkOrder[]
-  id                String              @id @default(cuid())
-  tenantId          String
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name              String
-  externalGatewayId String
-  manufacturer      String
-  model             String
-  firmwareVersion   String?
-  queueSize         Int                 @default(0)
-  queueWarning      Boolean             @default(false)
-  quarantineSize    Int                 @default(0)
-  queueDropped      Int                 @default(0)
-  status            DeviceStatus        @default(MAINTENANCE)
-  lastSeenAt        DateTime?
-  installedAt       DateTime
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  devices           Device[]
-  credentials       GatewayCredential[]
-  commands          GatewayCommand[]
-  rules             Rule[]
+  workOrders         WorkOrder[]
+  id                 String              @id @default(cuid())
+  tenantId           String
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name               String
+  externalGatewayId  String
+  manufacturer       String
+  model              String
+  firmwareVersion    String?
+  queueSize          Int                 @default(0)
+  queueWarning       Boolean             @default(false)
+  quarantineSize     Int                 @default(0)
+  queueDropped       Int                 @default(0)
+  status             DeviceStatus        @default(MAINTENANCE)
+  lastSeenAt         DateTime?
+  installedAt        DateTime
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  devices            Device[]
+  credentials        GatewayCredential[]
+  commands           GatewayCommand[]
+  rules              Rule[]
+  maintenanceWindows MaintenanceWindow[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, externalGatewayId])
@@ -786,40 +821,170 @@ model TechnicalAlert {
 }
 
 model Device {
-  id               String               @id @default(cuid())
-  tenantId         String
-  meterId          String
-  gatewayId        String?
-  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  meter            Meter                @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  gateway          Gateway?             @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  externalDeviceId String
-  manufacturer     String
-  model            String
-  firmwareVersion  String?
-  protocol         DeviceProtocol
-  status           DeviceStatus         @default(MAINTENANCE)
-  lastSeenAt       DateTime?
-  installedAt      DateTime
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  credentials      DeviceCredential[]
-  readings         Reading[]
-  modbusConfig     ModbusConfiguration?
-  diagnostic       ModbusDiagnostic?
-  telemetry        TelemetrySample[]
-  commands         GatewayCommand[]
-  profileId        String?
-  profile          DeviceProfile?       @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  protocolConfig   Json                 @default("{}")
-  protocolMode     ProtocolMode         @default(POLLING)
-  pulseConfig      PulseConfig?
-  wirelessConfig   WirelessMeterConfig?
+  id                     String                       @id @default(cuid())
+  tenantId               String
+  meterId                String
+  gatewayId              String?
+  tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  meter                  Meter                        @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  gateway                Gateway?                     @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  externalDeviceId       String
+  name                   String?
+  serialNumber           String?
+  manufacturer           String
+  model                  String
+  firmwareVersion        String?
+  hardwareVersion        String?
+  protocol               DeviceProtocol
+  status                 DeviceStatus                 @default(MAINTENANCE)
+  lifecycleStatus        DeviceLifecycleStatus        @default(NEW)
+  lastSeenAt             DateTime?
+  installedAt            DateTime
+  desiredFirmwareVersion String?
+  firmwareUpdateStatus   String?
+  lastFirmwareAttemptAt  DateTime?
+  firmwareError          String?
+  tags                   Json                         @default("[]")
+  notes                  String                       @default("")
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  credentials            DeviceCredential[]
+  readings               Reading[]
+  modbusConfig           ModbusConfiguration?
+  diagnostic             ModbusDiagnostic?
+  telemetry              TelemetrySample[]
+  commands               GatewayCommand[]
+  profileId              String?
+  profile                DeviceProfile?               @relation(fields: [profileId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  protocolConfig         Json                         @default("{}")
+  protocolMode           ProtocolMode                 @default(POLLING)
+  pulseConfig            PulseConfig?
+  wirelessConfig         WirelessMeterConfig?
+  configurationVersions  DeviceConfigurationVersion[]
+  maintenanceEvents      DeviceMaintenanceEvent[]
+  maintenanceWindows     MaintenanceWindow[]
+  rolloutTargets         FirmwareRolloutTarget[]
+  groupMemberships       DeviceGroupMember[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, externalDeviceId])
   @@index([tenantId, meterId])
   @@index([tenantId, status])
+  @@index([tenantId, lifecycleStatus])
+  @@index([tenantId, manufacturer, model])
+  @@index([tenantId, gatewayId])
+}
+
+model DeviceGroup {
+  id          String              @id @default(cuid())
+  tenantId    String
+  name        String
+  description String              @default("")
+  dynamic     Boolean             @default(false)
+  filter      Json                @default("{}")
+  tags        Json                @default("[]")
+  createdBy   String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  members     DeviceGroupMember[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, dynamic])
+}
+
+model DeviceGroupMember {
+  id       String      @id @default(cuid())
+  tenantId String
+  groupId  String
+  deviceId String
+  group    DeviceGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  device   Device      @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, groupId, deviceId])
+  @@index([tenantId, deviceId])
+}
+
+model FirmwareRollout {
+  id              String                  @id @default(cuid())
+  tenantId        String
+  targetVersion   String
+  status          FirmwareRolloutStatus   @default(DRAFT)
+  windowStart     DateTime?
+  windowEnd       DateTime?
+  batchSize       Int                     @default(1)
+  maxParallel     Int                     @default(1)
+  canarySize      Int                     @default(0)
+  pauseThreshold  Float                   @default(0.25)
+  rollbackVersion String?
+  criteria        Json                    @default("{}")
+  createdBy       String
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  targets         FirmwareRolloutTarget[]
+
+  @@index([tenantId, status])
+}
+
+model FirmwareRolloutTarget {
+  id          String          @id @default(cuid())
+  tenantId    String
+  rolloutId   String
+  deviceId    String
+  status      String          @default("PENDING")
+  error       String?
+  attemptedAt DateTime?
+  rollout     FirmwareRollout @relation(fields: [rolloutId], references: [id], onDelete: Cascade)
+  device      Device          @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, rolloutId, deviceId])
+  @@index([tenantId, deviceId, status])
+}
+
+model MaintenanceWindow {
+  id            String   @id @default(cuid())
+  tenantId      String
+  deviceId      String?
+  gatewayId     String?
+  groupSelector Json     @default("{}")
+  startsAt      DateTime
+  endsAt        DateTime
+  reason        String
+  comment       String   @default("")
+  createdBy     String
+  createdAt     DateTime @default(now())
+  device        Device?  @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  gateway       Gateway? @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, startsAt, endsAt])
+  @@index([tenantId, deviceId])
+  @@index([tenantId, gatewayId])
+}
+
+model DeviceConfigurationVersion {
+  id        String   @id @default(cuid())
+  tenantId  String
+  deviceId  String
+  version   Int
+  config    Json
+  createdBy String
+  createdAt DateTime @default(now())
+  device    Device   @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, deviceId, version])
+  @@index([tenantId, deviceId, createdAt])
+}
+
+model DeviceMaintenanceEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  deviceId  String
+  kind      String
+  notes     String
+  createdBy String
+  createdAt DateTime @default(now())
+  device    Device   @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, deviceId, createdAt])
 }
 
 model DeviceProfile {
