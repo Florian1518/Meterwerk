@@ -42,6 +42,7 @@ Web: http://localhost:3000. Health: /api/health/live und /api/health/ready. Der 
     pnpm test
     pnpm test:integration
     pnpm build
+    pnpm acceptance:software
     pnpm docs:check
     pnpm docs:validate
 
@@ -60,5 +61,6 @@ Softwareseitige Treiber, Simulatoren und Protokollverträge sind nicht gleich re
 - [Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md) · [Monitoring](docs/MONITORING.md)
 - [Testing](docs/TESTING.md) · [Security](docs/SECURITY.md) · [Disaster Recovery](docs/DISASTER-RECOVERY.md)
 - [Staging und Demo](docs/STAGING-DEMO.md) · [Capabilities](docs/CAPABILITIES.md) · [Known Limitations](docs/KNOWN-LIMITATIONS.md)
+- [Software Acceptance](docs/SOFTWARE-ACCEPTANCE.md) · [RC Checklist](docs/checklists/RC-ACCEPTANCE-CHECKLIST.md) · [Acceptance Report](docs/acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
 
 Der aktuelle Code- und Validierungsstatus ist in Dokumentation und CI-Workflow maßgeblich; nicht ausgeführte Provider-, Staging- oder Hardwaretests werden nicht als bestanden dargestellt.

@@ -32,6 +32,7 @@
 ### Getting Started und Architektur
 
 - [README](../README.md) · [Entwicklung](DEVELOPMENT.md) · [Architecture](ARCHITECTURE.md) · [Environment](ENVIRONMENT.md) · [Capabilities](CAPABILITIES.md) · [Known Limitations](KNOWN-LIMITATIONS.md) · [Glossary](GLOSSARY.md)
+- [Software Acceptance](SOFTWARE-ACCEPTANCE.md) · [RC Checklist](checklists/RC-ACCEPTANCE-CHECKLIST.md) · [Acceptance Report](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
 
 ### Datenbank, MQTT und Geräte
 

@@ -16,6 +16,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
+RUN mkdir -p /app/.local/attachments && chown -R meterwerk:meterwerk /app/.local
 COPY --from=builder --chown=meterwerk:meterwerk /app/.next ./.next
 COPY --from=builder --chown=meterwerk:meterwerk /app/public ./public
 COPY --from=builder --chown=meterwerk:meterwerk /app/node_modules ./node_modules

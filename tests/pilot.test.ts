@@ -39,10 +39,11 @@ describe("pilot safety", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
-  it("requires TLS and verified certificates in pilot and production", async () => {
+  it("requires TLS for production/pilot but permits isolated staging MQTT", async () => {
     for (const env of [
       { METERWERK_ENV: "pilot" },
       { NODE_ENV: "production" },
+      { METERWERK_ENV: "production", MQTT_BROKER_URL: "mqtt://localhost" },
       {
         METERWERK_ENV: "pilot",
         MQTT_BROKER_URL: "mqtts://localhost",
@@ -50,6 +51,15 @@ describe("pilot safety", () => {
       },
     ])
       await expect(mqttConnection("a", env)).rejects.toThrow();
+    expect(
+      (
+        await mqttConnection("a", {
+          NODE_ENV: "production",
+          METERWERK_ENV: "staging",
+          MQTT_BROKER_URL: "mqtt://mqtt:1883",
+        })
+      ).url,
+    ).toBe("mqtt://mqtt:1883");
     expect((await mqttConnection("a", {})).options.rejectUnauthorized).toBe(
       true,
     );

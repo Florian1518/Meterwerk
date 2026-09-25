@@ -27,10 +27,12 @@ services:
       METERWERK_ENV: staging
       NEXT_PUBLIC_METERWERK_ENV: staging
       DATABASE_URL: postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging
-      APP_URL: http://web:3000
+      APP_URL: ${STAGING_APP_URL:-http://localhost:3000}
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
-      MQTT_URL: mqtt://mqtt:1883
-      STORAGE_ENDPOINT: http://object-storage:9000
+      MQTT_BROKER_URL: mqtt://mqtt:1883
+      ATTACHMENT_STORAGE: local
+      ATTACHMENT_LOCAL_ROOT: /app/.local/attachments
+    volumes: [staging_attachments:/app/.local/attachments]
     depends_on:
       {
         db: { condition: service_healthy },
@@ -53,43 +55,44 @@ services:
         retries: 5,
       }
   rules-worker:
-    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
     command: ["src/server/rules-worker.ts"]
     environment:
-      RUN_WORKER: "true"
       NODE_ENV: production
+      METERWERK_ENV: staging
+      APP_URL: ${STAGING_APP_URL:-http://localhost:3000}
       DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
     depends_on: { db: { condition: service_healthy } }
     networks: [staging]
   rollout-worker:
-    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
     command: ["src/server/rollout-worker.ts"]
     environment:
       RUN_WORKER: "true"
       NODE_ENV: production
+      METERWERK_ENV: staging
+      APP_URL: ${STAGING_APP_URL:-http://localhost:3000}
       DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
     depends_on: { db: { condition: service_healthy } }
     networks: [staging]
-  notification-worker:
-    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
-    command: ["src/server/notification-worker.ts"]
+  mqtt-worker:
+    image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
+    command: ["src/server/mqtt-worker.ts"]
     environment:
-      RUN_WORKER: "true"
       NODE_ENV: production
       METERWERK_ENV: staging
+      APP_URL: ${STAGING_APP_URL:-http://localhost:3000}
       DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
-    depends_on: { db: { condition: service_healthy } }
-    networks: [staging]
-  object-storage:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${STAGING_STORAGE_USER:?Set STAGING_STORAGE_USER}
-      MINIO_ROOT_PASSWORD: ${STAGING_STORAGE_PASSWORD:?Set STAGING_STORAGE_PASSWORD}
-    volumes: [staging_storage:/data]
+      MQTT_BROKER_URL: mqtt://mqtt:1883
+      MQTT_RECEIPT_KEY_PATH: /run/secrets/mqtt-receipt-key
+    volumes:
+      - ${STAGING_MQTT_RECEIPT_KEY:?Set STAGING_MQTT_RECEIPT_KEY}:/run/secrets/mqtt-receipt-key:ro
+    depends_on:
+      db: { condition: service_healthy }
+      mqtt: { condition: service_healthy }
     networks: [staging]
 networks: { staging: { internal: true } }
-volumes: { staging_db: {}, staging_mqtt: {}, staging_storage: {} }
+volumes: { staging_db: {}, staging_mqtt: {}, staging_attachments: {} }

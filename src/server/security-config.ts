@@ -2,9 +2,9 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-const schema = z.object({
+export const securityConfigSchema = z.object({
   METERWERK_ENV: z
-    .enum(["development", "test", "pilot", "production"])
+    .enum(["development", "test", "staging", "demo", "pilot", "production"])
     .default("development"),
   APP_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32).optional(),
@@ -15,7 +15,7 @@ const schema = z.object({
   EMAIL_API_KEY: z.string().min(16).optional(),
   TRUSTED_HOSTS: z.string().default("localhost,127.0.0.1"),
 });
-export const securityConfig = schema.parse({
+export const securityConfig = securityConfigSchema.parse({
   METERWERK_ENV: process.env.METERWERK_ENV,
   APP_URL: process.env.APP_URL ?? "http://localhost:3000",
   SESSION_SECRET: process.env.SESSION_SECRET,

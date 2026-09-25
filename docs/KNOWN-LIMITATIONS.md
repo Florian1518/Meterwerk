@@ -6,7 +6,7 @@ Diese Liste beschreibt Einschränkungen, die sich aus aktuellem Code und Reposit
 - S3-kompatible Storage-Abstraktion ist vorhanden, aber ein konkreter externer Provider, Versionierung, Restore und Ende-zu-Ende-Berechtigungsbetrieb müssen noch validiert werden.
 - PITR benötigt WAL-Archivierung und Provider-Infrastruktur; keine produktive PITR-Prüfung pauschal belegt.
 - Backup-Metadaten/DR-Workflows sind teilweise vorhanden, aber `scripts/backup.ts` ist kein nachgewiesener produktiver, persistenter Backup-Scheduler. Schedulerbetrieb, Alerting und vollständiger isolierter Restore-Drill sind umgebungsabhängig/offen.
-- `compose.staging.yaml` enthält derzeit Konfigurations-/Worker-Referenzen, die nicht mit dem tatsächlich ausführbaren Worker-/Storage-Setup abgestimmt sind. Staging Compose deshalb nicht als erfolgreich gestarteten oder produktionsreifen Stack behandeln; vor Nutzung Images, Variablen, Worker-Einstiegspunkte und Storage-Adapter korrigieren und isoliert testen.
+- `compose.staging.yaml` wurde auf getrennte Web-/Worker-Images, reale Laufzeitvariablen und private persistente lokale Attachments korrigiert. Der Stack wurde mangels laufendem Docker-Daemon nicht gestartet; vollständige Staging-Readiness bleibt unvalidiert.
 - Mail-Implementierung stellt eine lokale In-Memory-Outbox bereit; SMTP/API-Providerzustellung und dauerhafte Mail-Sandbox sind nicht implementiert. Push-Providerbetrieb ebenfalls providerabhängig.
 - Readiness prüft nicht automatisch alle Worker, MQTT und Storage gleichzeitig. Externe Metrik-/Alertplattform ist nicht mit der Anwendung gleichzusetzen.
 - Release Workflow baut/verpackt Artefakte und SBOM; automatische Staging- oder Production-Deployment-Promotion ist nicht implementiert.

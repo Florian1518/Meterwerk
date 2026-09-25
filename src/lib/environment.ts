@@ -35,8 +35,14 @@ export function assertStagingIsolation(
     values.DATABASE_URL,
     values.APP_URL,
     values.MQTT_URL,
+    values.MQTT_BROKER_URL,
     values.STORAGE_ENDPOINT,
+    values.ATTACHMENT_S3_ENDPOINT,
     values.WEBHOOK_BASE_URL,
+    values.EMAIL_API_URL,
+    values.SMTP_URL,
+    values.PUSH_API_URL,
+    values.BACKUP_STORAGE_ENDPOINT,
   ]
     .filter(Boolean)
     .join(" ")

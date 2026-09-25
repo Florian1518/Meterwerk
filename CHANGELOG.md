@@ -15,7 +15,8 @@
 
 ### Fixed
 
-- Keine Einträge.
+- Staging/Demo werden von der Laufzeit-Securitykonfiguration akzeptiert; MQTT-Transportanforderungen unterscheiden nun explizite Environments von einem allgemeinen Node-Production-Build.
+- Staging Compose verwendet die implementierten Worker-Entrypoints, Broker-/Storage-Variablen und getrennte Receipt-Key-Konfiguration.
 
 ### Security
 

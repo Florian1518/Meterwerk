@@ -8,7 +8,10 @@ export async function mqttConnection(
   env: Record<string, string | undefined> = process.env,
 ) {
   const url = new URL(env.MQTT_BROKER_URL ?? "mqtt://127.0.0.1:1883");
-  const pilot = env.NODE_ENV === "production" || env.METERWERK_ENV === "pilot";
+  const pilot = env.METERWERK_ENV === "pilot";
+  const secureTransportRequired = env.METERWERK_ENV
+    ? env.METERWERK_ENV === "production" || pilot
+    : env.NODE_ENV === "production";
   if (
     !["mqtt:", "mqtts:"].includes(url.protocol) ||
     url.username ||
@@ -18,10 +21,10 @@ export async function mqttConnection(
       "MQTT URL must contain only a supported scheme and endpoint",
     );
   if (
-    pilot &&
+    secureTransportRequired &&
     (url.protocol !== "mqtts:" || env.NODE_TLS_REJECT_UNAUTHORIZED === "0")
   )
-    throw new Error("Pilot requires validated MQTT TLS");
+    throw new Error("This environment requires validated MQTT TLS.");
   const options: IClientOptions & ConnectionOptions = {
     clientId: identity,
     reconnectPeriod: 2000,
