@@ -1620,6 +1620,98 @@ model AuditEvent {
   @@index([tenantId, createdAt])
 }
 
+enum BackupStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  DELETED
+}
+
+enum RestoreTestStatus {
+  NOT_TESTED
+  TESTING
+  PASSED
+  FAILED
+}
+
+model BackupRecord {
+  id                 String       @id @default(cuid())
+  type               String
+  environment        String
+  startedAt          DateTime
+  completedAt        DateTime?
+  status             BackupStatus @default(PENDING)
+  appVersion         String
+  gitCommit          String
+  migrationVersion   String
+  sizeBytes          BigInt?
+  sha256             String?
+  storageReference   String
+  retentionExpiresAt DateTime?
+  errorReason        String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  restoreTests       RestoreTestRun[]
+
+  @@index([environment, status, startedAt])
+}
+
+model RestoreTestRun {
+  id              String            @id @default(cuid())
+  backupId        String
+  backup          BackupRecord      @relation(fields: [backupId], references: [id], onDelete: Restrict)
+  targetDatabase  String
+  status          RestoreTestStatus @default(NOT_TESTED)
+  startedAt       DateTime
+  completedAt     DateTime?
+  checks          Json              @default("{}")
+  errorReason     String?
+  createdAt       DateTime          @default(now())
+
+  @@index([backupId, createdAt])
+}
+
+model BackupSchedule {
+  id                 String   @id @default(cuid())
+  environment        String
+  cron               String
+  enabled            Boolean  @default(true)
+  dailyKeep          Int      @default(7)
+  weeklyKeep        Int      @default(4)
+  monthlyKeep       Int      @default(12)
+  nextRunAt          DateTime
+  lastStartedAt      DateTime?
+  lastCompletedAt    DateTime?
+  lastSuccessfulAt   DateTime?
+  status             String   @default("IDLE")
+  attempts           Int      @default(0)
+  nextRetryAt        DateTime?
+  lastError          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([environment])
+}
+
+model BackupObjectVersion {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  objectKey     String
+  versionId     String?
+  etag          String?
+  sha256        String?
+  sizeBytes     BigInt?
+  status        String   @default("ACTIVE")
+  backupId      String?
+  createdAt     DateTime @default(now())
+  deletedAt     DateTime?
+
+  @@index([tenantId, objectKey, createdAt])
+  @@index([backupId])
+}
+
 enum CommissioningStatus {
   NOT_CONFIGURED
   COMMISSIONING

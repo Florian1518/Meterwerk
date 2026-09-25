@@ -148,6 +148,15 @@ Adressen, interne Fehlertexte und unnötige Kundennotizen werden nicht exportier
 IP-, Standort- und Objektdaten bleiben auf die fachlich erforderlichen
 Antworten beschränkt.
 
+## Disaster Recovery
+
+Backup- und Restore-Sicherheit ist in [DISASTER-RECOVERY.md](DISASTER-RECOVERY.md)
+und [RECOVERY-RUNBOOK.md](RECOVERY-RUNBOOK.md) beschrieben. Backup-Metadaten
+werden plattformgeschützt in einer Registry geführt, enthalten keine
+Zugangsdaten und werden verifiziert, bevor ein Restore-Test als bestanden gilt.
+Restore-Ziele müssen explizit `meterwerk_restore_*` heißen; produktive und
+normale Entwicklungsdatenbanken werden nicht zurückgesetzt.
+
 Die ClamAV-Anbindung, zentrale verteilte Rate-Limits und ein produktiver
 Secret-Scanning-Job sind vorbereitet; der lokale Fallback bleibt nur für
 Entwicklung zulässig. Vor Produktion müssen Scanner,
