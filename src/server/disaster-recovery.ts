@@ -382,3 +382,168 @@ export async function claimDueBackupSchedule(now = new Date()) {
   });
   return claimed.count ? schedule : null;
 }
+
+export type DrResult = "PASSED" | "FAILED" | "UNKNOWN";
+export function evaluateRecoveryTarget(
+  targetSeconds: number | null | undefined,
+  observedSeconds: number | null | undefined,
+): DrResult {
+  if (targetSeconds == null || observedSeconds == null) return "UNKNOWN";
+  return observedSeconds <= targetSeconds ? "PASSED" : "FAILED";
+}
+export function assertDrillEnvironment(environment: string) {
+  if (!(["test", "staging"] as string[]).includes(environment))
+    throw new AccessError(
+      403,
+      "DR-Übungen sind nur in TEST oder STAGING erlaubt.",
+    );
+  return environment;
+}
+export const failureScenarioCatalog = [
+  "web-app",
+  "postgresql",
+  "mqtt",
+  "rules-worker",
+  "device-worker",
+  "notification-worker",
+  "report-worker",
+  "backup-worker",
+  "object-storage",
+  "multi-worker",
+  "database-and-web",
+  "storage-database-inconsistency",
+  "failed-deployment",
+  "corrupt-configuration",
+  "secret-rotation",
+] as const;
+export function drillStatusFor(
+  findings: number,
+  checksPassed: boolean,
+): "PASSED" | "PASSED_WITH_FINDINGS" | "FAILED" {
+  if (!checksPassed) return "FAILED";
+  return findings > 0 ? "PASSED_WITH_FINDINGS" : "PASSED";
+}
+export function rtoSeconds(
+  start: Date | null | undefined,
+  end: Date | null | undefined,
+) {
+  if (!start || !end) return null;
+  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+}
+
+export async function startDrDrill(input: {
+  type: string;
+  environment: string;
+  plannedAt?: Date;
+  ownerId?: string;
+  nextDrillAt?: Date;
+}) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  assertDrillEnvironment(input.environment);
+  const drill = await db.drDrill.create({
+    data: { ...input, status: "RUNNING", performedAt: new Date() },
+  });
+  await db.auditEvent.create({
+    data: {
+      actorId: actor.id,
+      entityId: drill.id,
+      action: "recovery.drill.started",
+      details: { type: input.type, environment: input.environment },
+    },
+  });
+  return drill;
+}
+export async function completeDrDrill(input: {
+  id: string;
+  checksPassed: boolean;
+  findings?: number;
+  incidentStartedAt?: Date;
+  recoveryStartedAt?: Date;
+  rpoTargetSeconds?: number;
+  rpoObservedSeconds?: number;
+  rtoTargetSeconds?: number;
+  completedAt?: Date;
+}) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  const rpoStatus = evaluateRecoveryTarget(
+    input.rpoTargetSeconds,
+    input.rpoObservedSeconds,
+  );
+  const rtoObserved = rtoSeconds(
+    input.recoveryStartedAt,
+    input.completedAt ?? new Date(),
+  );
+  const rtoStatus = evaluateRecoveryTarget(input.rtoTargetSeconds, rtoObserved);
+  const status = drillStatusFor(
+    input.findings ?? 0,
+    input.checksPassed && rpoStatus !== "FAILED" && rtoStatus !== "FAILED",
+  );
+  const drill = await db.drDrill.update({
+    where: { id: input.id },
+    data: {
+      status,
+      completedAt: input.completedAt ?? new Date(),
+      incidentStartedAt: input.incidentStartedAt,
+      recoveryStartedAt: input.recoveryStartedAt,
+      rpoTargetSeconds: input.rpoTargetSeconds,
+      rpoObservedSeconds: input.rpoObservedSeconds,
+      rtoTargetSeconds: input.rtoTargetSeconds,
+      rtoObservedSeconds: rtoObserved,
+      rpoStatus,
+      rtoStatus,
+    },
+  });
+  await db.auditEvent.create({
+    data: {
+      actorId: actor.id,
+      entityId: drill.id,
+      action: "recovery.drill.completed",
+      details: { status, rpoStatus, rtoStatus },
+    },
+  });
+  return drill;
+}
+export async function createDrFinding(input: {
+  drillId: string;
+  severity: string;
+  component: string;
+  description: string;
+  action: string;
+  ownerId?: string;
+  dueAt?: Date;
+}) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  const finding = await db.drFinding.create({ data: input });
+  await db.auditEvent.create({
+    data: {
+      actorId: actor.id,
+      entityId: finding.id,
+      action: "recovery.finding.created",
+      details: { severity: input.severity, component: input.component },
+    },
+  });
+  return finding;
+}
+export async function updateDrFinding(
+  id: string,
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ACCEPTED",
+) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  const finding = await db.drFinding.update({
+    where: { id },
+    data: { status },
+  });
+  await db.auditEvent.create({
+    data: {
+      actorId: actor.id,
+      entityId: id,
+      action: "recovery.finding.updated",
+      details: { status },
+    },
+  });
+  return finding;
+}

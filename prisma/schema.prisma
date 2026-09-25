@@ -1712,6 +1712,72 @@ model BackupObjectVersion {
   @@index([backupId])
 }
 
+enum DrDrillStatus {
+  PLANNED
+  RUNNING
+  PASSED
+  PASSED_WITH_FINDINGS
+  FAILED
+  CANCELED
+}
+
+enum DrFindingStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ACCEPTED
+}
+
+model DrDrill {
+  id                   String        @id @default(cuid())
+  type                 String
+  environment          String
+  plannedAt            DateTime?
+  performedAt          DateTime?
+  ownerId              String?
+  status               DrDrillStatus @default(PLANNED)
+  rpoStatus            String        @default("UNKNOWN")
+  rtoStatus            String        @default("UNKNOWN")
+  rpoTargetSeconds     Int?
+  rpoObservedSeconds   Int?
+  rtoTargetSeconds     Int?
+  rtoObservedSeconds   Int?
+  incidentStartedAt    DateTime?
+  recoveryStartedAt    DateTime?
+  dbReadyAt            DateTime?
+  storageValidatedAt   DateTime?
+  webReadyAt           DateTime?
+  workerReadyAt        DateTime?
+  criticalValidatedAt  DateTime?
+  completedAt          DateTime?
+  findings             Json          @default("[]")
+  actions              Json          @default("[]")
+  nextDrillAt          DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  drFindings           DrFinding[]
+
+  @@index([environment, status, plannedAt])
+}
+
+model DrFinding {
+  id          String          @id @default(cuid())
+  drillId     String
+  drill       DrDrill         @relation(fields: [drillId], references: [id], onDelete: Restrict)
+  severity    String
+  component   String
+  description String
+  action      String
+  ownerId     String?
+  status      DrFindingStatus @default(OPEN)
+  dueAt       DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status, severity])
+  @@index([drillId])
+}
+
 enum CommissioningStatus {
   NOT_CONFIGURED
   COMMISSIONING

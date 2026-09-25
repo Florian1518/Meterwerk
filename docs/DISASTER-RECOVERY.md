@@ -98,3 +98,11 @@ und validiert Login, Tenantzugriff, Dashboard, Meter/Readings, Reports, Rules,
 Attachments und AuditEvents. MQTT wird nur per Konfigurations-/Healthcheck
 geprüft; keine reale Hardware wird verbunden. Stichproben werden als solche
 gekennzeichnet.
+
+# Teil 3 – Failover und Übungen
+
+Web-Instanzen bleiben zustandslos und werden über Readiness/Health hinter einem beliebigen Load Balancer betrieben. Graceful Shutdown beendet keine laufenden kritischen Mutationen; gemeinsame Datenbank-, Queue- und Lease-Zustände ermöglichen die Übernahme durch eine andere Instanz. PostgreSQL-Failover verwendet Primary/Replica, reconnectende Pools und einen wechselbaren Endpoint; Multi-Master ist ausgeschlossen.
+
+Worker-Ausfälle werden über Heartbeats erkannt. Abgelaufene Leases werden reclaimed, Retries begrenzt und Dead-Letter/Failed Jobs erhalten. MQTT nutzt Store-and-forward, Message-ID/Idempotenz, Offline-Status und Backoff. Storage- und Datenbankfehler markieren Uploads/Referenzen als nicht erfolgreich und werden nach Wiederkehr über Versionen, Prüfsummen und Konsistenzstatus geprüft.
+
+RPO/RTO werden in Drills aus gemessenen Zeitpunkten berechnet. Fehlende Messungen bleiben `UNKNOWN`; Zielwerte sind technische Engineering-Ziele, keine SLA. Drills, Findings, nächste Termine und Status sind persistiert und nur in TEST/STAGING ausführbar. Alerts verwenden die vorhandene deduplizierte Recovery-Event-Struktur für alte/fehlgeschlagene Backups, Restore/PITR, RPO/RTO-Verletzungen, Inkonsistenzen und überfällige Drills.

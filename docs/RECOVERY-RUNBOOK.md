@@ -40,3 +40,7 @@ Nur mit freigegebenem TEST-/RESTORE-Ziel und `meterwerk_restore_*`-Datenbank:
 Base Backup wählen, WAL-Archiv bis Zielzeitpunkt anwenden, Migrationstand und
 Stichproben prüfen, Readiness ausführen, AuditEvent und `RestoreTestRun`
 speichern. Produktion ist als PITR-Testziel verboten.
+
+# Failover und Full-Drill
+
+Bei einem Dienstfehler zuerst Health/Readiness und Lease-/Queue-Zustände prüfen, betroffene Instanz aus dem Traffic nehmen und keine pauschalen Resets ausführen. Danach Backup, Storage-Versionen, Migrationstand und externe Secret-Referenzen validieren. Der sichere Full-Drill läuft ausschließlich in `test`/`staging`: isolierte DB bereitstellen, Backup wiederherstellen, Storage-Konsistenz prüfen, Web/Worker/virtuelles MQTT starten, Login/Tenantzugriff, Readings, Reports, Rules, Attachments und AuditEvents validieren, anschließend RPO/RTO und Findings dokumentieren. Produktions-Restore, beliebige DB-URLs, öffentliche Buckets und automatische Löschungen sind ausgeschlossen.

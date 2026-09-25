@@ -58,7 +58,8 @@
     "test:e2e": "playwright test",
     "test:visual": "playwright test --grep @visual",
     "security:secrets": "node scripts/secret-scan.mjs",
-    "security:regression": "node scripts/security-regression.mjs"
+    "security:regression": "node scripts/security-regression.mjs",
+    "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
