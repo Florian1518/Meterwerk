@@ -138,6 +138,13 @@ export function Shell({
   children: React.ReactNode;
 }) {
   const path = usePathname();
+  const environment = process.env.NEXT_PUBLIC_METERWERK_ENV ?? "production";
+  const environmentLabel =
+    environment === "demo"
+      ? "DEMO"
+      : environment === "staging"
+        ? "STAGING"
+        : null;
   const params = useSearchParams();
   const tenant = params.get("tenantId");
   const suffix = tenant ? `?tenantId=${encodeURIComponent(tenant)}` : "";
@@ -229,15 +236,17 @@ export function Shell({
         </nav>
         <div className="sidebar-bottom">
           <DisplayPreferences {...preferences} />
-          <div className="demo-card">
-            <Activity size={18} />
-            <strong>Demo-Umgebung</strong>
-            <p>
-              Realistische Beispieldaten.
-              <br />
-              Keine Geräte verbunden.
-            </p>
-          </div>
+          {environmentLabel && (
+            <div className="demo-card">
+              <Activity size={18} />
+              <strong>Demo-Umgebung</strong>
+              <p>
+                Realistische Beispieldaten.
+                <br />
+                Keine Geräte verbunden.
+              </p>
+            </div>
+          )}
           <div className="user-profile">
             <span className="avatar">
               {actor.name
@@ -281,7 +290,11 @@ export function Shell({
             <GlobalSearch tenantId={tenant} />
             <span className="protected-label">
               <ShieldCheck size={15} /> Geschützter Bereich{" "}
-              <span className="topbar-dot" /> DEMO
+              {environmentLabel && (
+                <>
+                  <span className="topbar-dot" /> {environmentLabel}
+                </>
+              )}
             </span>
           </div>
         </header>

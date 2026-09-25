@@ -1,0 +1,2 @@
+CREATE TABLE "DemoScenarioState" ("id" TEXT NOT NULL,"environment" TEXT NOT NULL,"scenario" TEXT NOT NULL,"seed" INTEGER NOT NULL DEFAULT 20260925,"activatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,"updatedBy" TEXT,"metadata" JSONB NOT NULL DEFAULT '{}',CONSTRAINT "DemoScenarioState_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "DemoScenarioState_environment_key" ON "DemoScenarioState"("environment");

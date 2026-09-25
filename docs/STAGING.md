@@ -14,3 +14,7 @@ docker compose -f compose.staging.yaml down
 ```
 
 Images werden über einen unveränderlichen Tag oder Digest referenziert; `latest` ist keine Produktionsreferenz. Health Gates prüfen Web, Datenbank, MQTT, Worker, API und Smoke Tests vor einer Promotion.
+
+Promotion benötigt einen erfolgreichen CI-Lauf, explizite RC-Auswahl, Migrationen, Worker-Start, Demo-Verify sowie Smoke- und E2E-Abnahme. Der Status wird anschließend als Staging-Release bewertet; ein Produktionsrelease erfolgt separat und niemals automatisch.
+
+Die Readiness-Prüfung blockiert die Promotion bei fehlender Migration, nicht bereitem Dienst, fehlgeschlagenem E2E-/Security-Gate oder abweichender Build-Version/Git-SHA. Restart-Drills für Web, Worker, PostgreSQL und MQTT werden nur in einer isolierten Staging-/Testumgebung durchgeführt.

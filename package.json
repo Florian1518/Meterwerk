@@ -59,6 +59,12 @@
     "test:visual": "playwright test --grep @visual",
     "security:secrets": "node scripts/secret-scan.mjs",
     "security:regression": "node scripts/security-regression.mjs",
+    "env:check": "node scripts/environment-guard.mjs",
+    "demo:seed": "node scripts/demo-seed.mjs",
+    "demo:reset": "node scripts/demo-reset.mjs",
+    "demo:verify": "node scripts/demo-verify.mjs",
+    "smoke:staging": "node scripts/smoke-staging.mjs",
+    "demo:verify-all": "node scripts/demo-verify-all.mjs",
     "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts"
   },
   "dependencies": {

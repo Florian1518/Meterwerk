@@ -7,7 +7,12 @@ import {
 } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "../src/server/password";
-if (process.env.SEED_DEMO !== "true" || process.env.NODE_ENV === "production")
+if (
+  process.env.SEED_DEMO !== "true" ||
+  !["development", "test", "demo"].includes(
+    process.env.METERWERK_ENV ?? process.env.NODE_ENV ?? "development",
+  )
+)
   throw new Error(
     "Demo-Seed benötigt SEED_DEMO=true und eine Entwicklungsumgebung.",
   );

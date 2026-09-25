@@ -1778,6 +1778,17 @@ model DrFinding {
   @@index([drillId])
 }
 
+model DemoScenarioState {
+  id           String   @id @default(cuid())
+  environment  String   @unique
+  scenario     String
+  seed         Int      @default(20260925)
+  activatedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  updatedBy    String?
+  metadata     Json     @default("{}")
+}
+
 enum CommissioningStatus {
   NOT_CONFIGURED
   COMMISSIONING

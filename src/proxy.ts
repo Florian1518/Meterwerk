@@ -1,6 +1,8 @@
-﻿import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { assertStagingIsolation, getEnvironment } from "@/lib/environment";
 export function proxy(request: NextRequest) {
-  const environment = process.env.METERWERK_ENV ?? "development";
+  const environment = getEnvironment();
+  assertStagingIsolation(environment);
   const host = (
     request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??

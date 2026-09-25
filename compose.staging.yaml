@@ -24,9 +24,13 @@ services:
     image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
     environment:
       NODE_ENV: production
+      METERWERK_ENV: staging
+      NEXT_PUBLIC_METERWERK_ENV: staging
       DATABASE_URL: postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging
       APP_URL: http://web:3000
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
+      MQTT_URL: mqtt://mqtt:1883
+      STORAGE_ENDPOINT: http://object-storage:9000
     depends_on:
       {
         db: { condition: service_healthy },
@@ -68,5 +72,24 @@ services:
       SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
     depends_on: { db: { condition: service_healthy } }
     networks: [staging]
+  notification-worker:
+    image: ${METERWERK_IMAGE:?Set METERWERK_IMAGE}
+    command: ["src/server/notification-worker.ts"]
+    environment:
+      RUN_WORKER: "true"
+      NODE_ENV: production
+      METERWERK_ENV: staging
+      DATABASE_URL: "postgresql://meterwerk_staging:${STAGING_POSTGRES_PASSWORD}@db:5432/meterwerk_staging"
+      SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set STAGING_SESSION_SECRET}
+    depends_on: { db: { condition: service_healthy } }
+    networks: [staging]
+  object-storage:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STAGING_STORAGE_USER:?Set STAGING_STORAGE_USER}
+      MINIO_ROOT_PASSWORD: ${STAGING_STORAGE_PASSWORD:?Set STAGING_STORAGE_PASSWORD}
+    volumes: [staging_storage:/data]
+    networks: [staging]
 networks: { staging: { internal: true } }
-volumes: { staging_db: {}, staging_mqtt: {} }
+volumes: { staging_db: {}, staging_mqtt: {}, staging_storage: {} }
