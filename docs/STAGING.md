@@ -1,20 +1,16 @@
 # Staging
 
-Staging verwendet `compose.staging.yaml`, eine getrennte PostgreSQL-Datenbank, MQTT, Web, Rules Worker und Rollout Worker. Produktions-Credentials und Produktionskunden sind ausgeschlossen.
+Die Repository-Konfiguration enthält `compose.staging.yaml`, Smoke-Script und Environment Guards. Der Compose-Stack ist derzeit **nicht als lauffähiger Gesamtstack validiert**: Worker-Images/Entrypoints und Storage-Variablen sind nicht auf die tatsächlichen Implementierungen abgestimmt. Deshalb die Datei nicht als erfolgreiche Staging-Anleitung oder Promotion-Gate behandeln. Bekannte Punkte: [Known Limitations](KNOWN-LIMITATIONS.md).
 
-```powershell
-$env:STAGING_POSTGRES_PASSWORD = "local-only"
-$env:STAGING_SESSION_SECRET = "local-staging-secret"
-$env:METERWERK_IMAGE = "meterwerk/app:staging"
-docker compose -f compose.staging.yaml up -d
-docker compose -f compose.staging.yaml run --rm web node node_modules/prisma/build/index.js migrate deploy
-node scripts/smoke-staging.mjs
-docker compose -f compose.staging.yaml logs -f web rules-worker rollout-worker
-docker compose -f compose.staging.yaml down
-```
+Vor einem Staging-Lauf ist zunächst ein unveränderliches Web-Image und ein korrekt gebautes Worker-Image mit dessen tatsächlichem Entrypoint bereitzustellen. Externe Variablen müssen zu den in `src/server/` gelesenen Namen passen; das aktuelle Compose-Beispiel setzt teils andere Namen. PostgreSQL, MQTT, Storage, Mail, API-/Webhook-Schlüssel und Backup-Ziele müssen nachweislich ausschließlich Staging-Ressourcen sein. Keine produktiven Kunden oder Secrets importieren.
 
-Images werden über einen unveränderlichen Tag oder Digest referenziert; `latest` ist keine Produktionsreferenz. Health Gates prüfen Web, Datenbank, MQTT, Worker, API und Smoke Tests vor einer Promotion.
+Lokale statische Checks:
 
-Promotion benötigt einen erfolgreichen CI-Lauf, explizite RC-Auswahl, Migrationen, Worker-Start, Demo-Verify sowie Smoke- und E2E-Abnahme. Der Status wird anschließend als Staging-Release bewertet; ein Produktionsrelease erfolgt separat und niemals automatisch.
+    pnpm env:check
+    pnpm smoke:staging
 
-Die Readiness-Prüfung blockiert die Promotion bei fehlender Migration, nicht bereitem Dienst, fehlgeschlagenem E2E-/Security-Gate oder abweichender Build-Version/Git-SHA. Restart-Drills für Web, Worker, PostgreSQL und MQTT werden nur in einer isolierten Staging-/Testumgebung durchgeführt.
+`pnpm smoke:staging` benötigt einen expliziten `SMOKE_BASE_URL` zu einer isolierten, bereits laufenden Umgebung. Es prüft HTTP-Endpunkte und ersetzt weder Deployment noch E2E oder Providerprüfung.
+
+## RC-Freigabe
+
+Der CI-Workflow prüft Build und Tests. Der Release-Workflow erzeugt Release-Artefakt und SBOM; er führt kein Staging- oder Produktionsdeployment aus. Sobald ein Staging-Stack korrekt provisioniert und getestet ist, RC-SHA, Migrationen, Readiness, Worker, Smoke, E2E, Security Guards und Demo Acceptance gemeinsam dokumentieren. Production Promotion erfolgt getrennt, manuell und mit expliziter Freigabe. Keine Restart- oder Docker-Drills als bestanden ausgeben, wenn sie nicht tatsächlich gelaufen sind.

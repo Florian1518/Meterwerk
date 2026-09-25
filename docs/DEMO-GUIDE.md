@@ -1,0 +1,3 @@
+# Demo-Handbuch
+
+Demo ausschließlich mit `METERWERK_ENV=demo`, eigener Datenbank und synthetischem `DEMO_PASSWORD` starten. `pnpm demo:seed`, `pnpm demo:verify` und `pnpm demo:verify-all` verwenden. Im Admin-Menü Szenarien NORMAL, HIGH_ELECTRICITY, WATER_LEAK, METER_OFFLINE/GATEWAY_OFFLINE, MISSING_DATA, OPEN/ACKNOWLEDGED_ALARM, CRITICAL_ANOMALY, MAINTENANCE, METER_REPLACEMENT, SUPPORT_CASE und FIRMWARE_ROLLOUT aktivieren. Für Präsentationen Dashboard, Portfolio, Analytics, Alarme, WorkOrders, Fleet und Reports öffnen. Nachher NORMAL setzen oder sicheren Demo-Reset durchführen; niemals Produktionsdaten verwenden.

@@ -199,4 +199,24 @@ ChecklistTemplate enthält Typ, Medium, optionales Geräteprofil, Version und Ab
 
 Signaturen bestehen aus begrenzten numerischen Linienzügen, Name, Rolle, serverseitigem Zeitpunkt und Audit-Digest. Es handelt sich ausschließlich um Einsatz-/Abnahmebestätigungen. Nach der ersten Bestätigung werden fachliche Einsatzdaten und Anhänge gesperrt; weitere erforderliche Bestätigungen und Abschluss bleiben möglich. Keine stillen Überschreibungen oder Wiedereröffnung. Ein expliziter Nachtrags-/Stornoprozess ist später separat zu spezifizieren.
 
-Attachment wird mit tenantgebundener WorkOrder-Relation, Kategorie, Beschreibung, Request-ID und Inhaltshash erweitert. Bestehende autorisierte Download-Route bleibt verpflichtend: private/no-store, nosniff, Content-Disposition attachment. Uploads prüfen begrenzten Multipart-Body, Dateigröße, MIME, Endung und Dateisignatur; zulässig sind JPEG, PNG, PDF und UTF-8-TXT. SVG, ausführbare Dateien und Office-Dokumente sind nicht zugelassen. Dies ersetzt keine Malwareprüfung. Lokale Dateien werden unter derselben tenantgebundenen Adresse geschrieben und gelesen; fehlgeschlagene Transaktionen/Replay-Dateien werden bereinigt. Ein Storage-Adapter für produktiven Object Storage ist weiterhin nicht implementiert; ein gesetztes ATTACHMENT_STORAGE=s3 darf keinen lokalen Produktionsupload freischalten.
+Attachment wird mit tenantgebundener WorkOrder-Relation, Kategorie, Beschreibung, Request-ID und Inhaltshash erweitert. Bestehende autorisierte Download-Route bleibt verpflichtend: private/no-store, nosniff, Content-Disposition attachment. Uploads prüfen begrenzten Multipart-Body, Dateigröße, MIME, Endung und Dateisignatur; zulässig sind JPEG, PNG, PDF und UTF-8-TXT. SVG, ausführbare Dateien und Office-Dokumente sind nicht zugelassen. Dies ersetzt keine Malwareprüfung. Lokaler Storage und S3-kompatible Storage-Abstraktion sind vorhanden; konkrete Provider-/Versionierungs-/Restore-Validierung bleibt offen und wird in [Known Limitations](KNOWN-LIMITATIONS.md) geführt.
+
+# Gesamtübersicht
+
+Meterwerk ist eine Next.js-App mit serverseitigen Datenzugriffen unter `src/server/`, PostgreSQL/Prisma als Quelle, MQTT und optionalem Edge Gateway. Tatsächliche eigenständige Prozesse sind MQTT-Ingestion/Webhook-Outbox, Rules Worker und Rollout Worker. Ein separates Notification-, Report- oder Backup-Worker-Programm ist derzeit nicht vorhanden. Mail-Providerzustellung und konkrete S3-Providervalidierung sind offene Punkte. Aktuelle Einzelheiten stehen in [Worker-Betrieb](WORKERS.md), [Monitoring](MONITORING.md) und [Known Limitations](KNOWN-LIMITATIONS.md).
+
+## Datenfluss
+
+`Zähler → Gateway/Simulator → Protokolltreiber → MQTT oder REST → Ingestion → PostgreSQL → Analytics/Rules → Portal/Dashboard/Reports`. Edge-Komponenten können Nachrichten bei Broker-/Netzausfall zwischenspeichern und nach Wiederverbindung mit Message-ID/Idempotenz weiterleiten. Webhooks und Mail laufen über serverseitige Outbox-/Retry-Pfade.
+
+## Fachliches Modell
+
+`Platform → Tenant → Property → Building → Unit → Meter`. Devices und Gateways liefern Messwerte für Meter; DeviceProfiles beschreiben Protokoll-/Capabilities. Readings sind zeitbezogene Messwerte, Alarms und AnalyticsAnomalies markieren Auffälligkeiten. Rules erzeugen Auswertungen/Aktionen, WorkOrders bilden Einsätze, SupportCases Supportarbeit, Dashboards und Reports Präsentation/Export. Public API Keys, Webhooks, BackupRecord/RestoreTestRun und DR-Drills sind tenant- bzw. operationsgebundene Konfigurationen.
+
+## Rollen und Grenzen
+
+SUPER_ADMIN arbeitet nur mit expliziter Tenant-Auswahl. Implementierte Rollen sind `SUPER_ADMIN`, `TENANT_ADMIN`, `MANAGER` und `USER`; `TECHNICIAN` ist keine eigene globale Rollen-Enum. Technikerarbeit beruht in unterstützten Field-Service-Pfaden auf USER, Grant und Assignment. Siehe [Rollenpolitik](admin/SUPER-ADMIN-GUIDE.md) und [Technikerhandbuch](technician/TECHNICIAN-GUIDE.md).
+
+## Betriebskomponenten
+
+PostgreSQL speichert Fach- und Auditdaten, Prisma versioniert Migrationen, MQTT verbindet Ingestion/Gateway. Worker- und Queue-Umfang ist in [WORKERS.md](WORKERS.md) beschrieben. Operations und DR-Metadaten sind vorhanden, aber nicht jeder Status ist an produktive Provider oder externe Alerting-Systeme angebunden. Siehe [Monitoring](MONITORING.md), [Security](SECURITY.md) und [Disaster Recovery](DISASTER-RECOVERY.md).

@@ -6,7 +6,7 @@ Meterwerk unterscheidet `development`, `test`, `staging`, `demo` und `production
 
 Für einen Demo-Lauf: `METERWERK_ENV=demo`, `DATABASE_URL` auf eine isolierte Datenbank, `DEMO_PASSWORD` setzen, `pnpm db:migrate`, `pnpm demo:seed`, `pnpm demo:verify`. Ein Reset erfordert zusätzlich `DEMO_RESET_CONFIRM=I_UNDERSTAND_DEMO_RESET` und ist ausschließlich für DEMO/TEST zulässig. Unbekannte oder produktionsähnliche Datenbanken werden abgelehnt.
 
-Der deterministische Seed erzeugt Demo-Tenants, Rollen, Liegenschaften, Gebäude, Einheiten, Strom-/Wasser-/Gas-/Wärmezähler, Geräte, historische DEMO-Messwerte, Offline-Zähler und Alarme. Demo und Staging verwenden ausschließlich Mail-/Push-Sandboxen und Mock-Webhooks; reale Hardware und Kundennachrichten sind ausgeschlossen.
+Der deterministische Seed erzeugt synthetische Demo-Daten. Mail ist derzeit eine lokale In-Memory-Outbox; produktive SMTP/API-Zustellung oder persistente Mail-Sandbox ist nicht implementiert. Mock-Webhooks/Demo-Ziele dürfen keine Kundensysteme ansprechen. Push-Providerbetrieb und Staging-Compose bleiben bis zur separaten End-to-End-Prüfung offen; reale Hardware und Kundennachrichten sind ausgeschlossen.
 
 `pnpm smoke:staging` prüft Live/Ready/Build-Info. Ein vollständiger Staging-Lauf ergänzt Login, Tenantzugriff, Dashboard, Analytics, Meter/Readings, Alarme, Rules, Devices, WorkOrders, Support, Reports, API und Worker Health.
 

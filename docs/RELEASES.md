@@ -1,16 +1,22 @@
 # Releases
 
-Meterwerk verwendet Semantic Versioning `MAJOR.MINOR.PATCH`.
+Versionen folgen SemVer (`MAJOR.MINOR.PATCH`); Vorabversionen verwenden etwa `-rc.1`. Paketversion steht in `package.json`. Changelog-Einträge werden künftig unter `Unreleased` gesammelt und zum Release kategorisiert, ohne frühere Entwicklungshistorie nachträglich zu erfinden.
 
-- **MAJOR**: inkompatible API- oder Datenmodelländerung.
-- **MINOR**: rückwärtskompatible Funktion.
-- **PATCH**: rückwärtskompatible Fehler- oder Sicherheitskorrektur.
-- **Pre-Release/RC**: Suffixe wie `-alpha.1`, `-beta.1` oder `-rc.1` vor dem stabilen Tag.
+## Prüf- und Promotion-Ablauf
 
-Die Version steht zentral in `package.json`. Releases entstehen aus dem stabilen Hauptbranch mit einem signierten oder geschützten Tag `vMAJOR.MINOR.PATCH`. Pull Requests laufen durch die vollständige CI. Hotfixes starten vom letzten Release-Tag, werden geprüft und anschließend in den Hauptbranch zurückgeführt.
+CI prüft frozen-lockfile Installation, Prisma-Validierung/Generierung, TypeScript, Lint, Format, Tests, Audit, Secret Scan und Build. Release Workflow kann per Tag oder manuell gestartet werden, ruft CI auf, baut Release-Artefakt und SBOM und lädt ein befristet gespeichertes Artefakt hoch. GitHub Actions verwenden minimale Permissions und gepinnte Actions.
 
-Rollback bedeutet zunächst auf das vorherige geprüfte Artefakt zurückzugehen. Datenbankmigrationen müssen vorwärtskompatibel geplant werden; ein automatisches Zurückrollen produktiver Migrationen ist nicht Teil der Pipeline.
+Release Candidate: erfolgreichen CI-Lauf und SHA bestimmen, RC-Artefakt unveränderlich bauen, anschließend in isoliertem STAGING deployen. Migration, Readiness, Worker-Status, Smoke-/E2E-Tests, Security Guards und Demo Acceptance dokumentieren. Promotion ist eine manuelle Freigabeentscheidung. Der vorhandene Workflow deployt weder Staging noch Produktion automatisch; Produktionsrelease erfordert explizite externe Freigabe und separates Deployment.
 
-## Staging-RC-Freigabe
+`pnpm release:gate` prüft Release-Metadaten; `pnpm sbom` generiert die Software-Komponentenliste. SBOM bedeutet nicht, dass Artefakte signiert oder Provenance attestiert sind. Signierung darf nur behauptet werden, wenn sie in der jeweiligen Release-Infrastruktur eingerichtet und geprüft wurde.
 
-Ein Release Candidate folgt `CI grün → RC auswählen → Staging deployen → Migration Check → Worker-/MQTT-/DB-/Storage-Readiness → Smoke → E2E → Security Guards → Demo Acceptance`. Version und Git-SHA müssen mit dem Artefakt übereinstimmen. Fehlende oder `DEGRADED`/`UNKNOWN`-Pflichtprüfungen blockieren die Promotion. `pnpm demo:verify-all` darf nur in DEMO/TEST laufen; ein Produktionsrelease wird niemals automatisch ausgelöst.
+## Vor Freigabe
+
+- Changelog und Versions-/Git-SHA stimmen.
+- CI und Security Gates sind grün; Findings dokumentiert.
+- Migration und Backupstrategie geprüft.
+- Staging Readiness, Demo Acceptance, Smoke und E2E erfolgreich bzw. Abweichung ausdrücklich freigegeben.
+- Rollback-Grenzen, Worker-Kompatibilität und Betriebsverantwortung geklärt.
+- Production Release wird manuell und getrennt ausgelöst.
+
+Details: [Release Checkliste](RELEASE-CHECKLIST.md), [Deployment](DEPLOYMENT.md), [Upgrade](UPGRADE.md), [Rollback](ROLLBACK.md), [Staging](STAGING.md).

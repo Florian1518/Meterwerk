@@ -17,7 +17,7 @@ produktiver Infrastruktur und Daten nachgewiesen sind.
 | MQTT/Ingestion/Devices           | Gateway → Ingestion          | S/T/D: falsche Geräte, Replay, DoS                    | separate Credentials, TLS/mTLS, Device Tokens, Rate Limits, messageId Unique            | Geräte-/Broker-Physik außerhalb Web-App                |
 | Support/Field Service            | Tenant User/Admin → Server   | I/E/D: interne Notizen, Support-Missbrauch            | Rollen, tenant scopes, USER-Beschränkung, Audit, idempotente Aktionen                   | Privilegierter Insider                                 |
 | SUPER_ADMIN / Maintenance        | Plattformgrenze → Mandanten  | E/I: falsche Tenant-Auswahl, breite Diagnose          | explizite Tenant-Auswahl, Rollenprüfung, Audit, reduzierte Bundles                      | MFA-Pflicht für Plattformkonto noch Deployment-Aufgabe |
-| CI/CD und Dependencies           | GitHub → Build/Deploy        | T/E: untrusted PR, Actions, Supply Chain, Secret Leak | pinned Actions, read permissions, frozen lockfile, Secret Scan, Audit                   | offener deepmerge-ts High-Fund                         |
+| CI/CD und Dependencies           | GitHub → Build/Deploy        | T/E: untrusted PR, Actions, Supply Chain, Secret Leak | pinned Actions, read permissions, frozen lockfile, Secret Scan, Audit                   | Audit muss regelmäßig gegen Lockfile wiederholt werden |
 | Staging/Production               | Deployment → Internet/DB     | S/D/I: schwache Secrets, falsche Cookies, offene DB   | HTTPS/HSTS/CSP, Secret-Konfiguration, private DB/Storage, Checklist                     | Umgebungsdrift                                         |
 
 Produktionsgrenzen: ClamAV/externer Scanner, verteiltes Rate-Limit-Backend,

@@ -11,6 +11,7 @@
 ### Changed
 
 - Release- und Quality-Gate-Dokumentation ergänzt.
+- Betriebs-, Datenbank-, MQTT-, Worker-, Deployment-, Upgrade-, Rollback- und Capability-Dokumentation mit dem aktuellen Repository-Stand abgeglichen.
 
 ### Fixed
 

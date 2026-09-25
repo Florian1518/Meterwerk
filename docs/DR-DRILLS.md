@@ -4,7 +4,7 @@ DR-Übungen laufen ausschließlich in explizit freigegebenen `test`- oder `stagi
 
 ## Szenarien
 
-Web, PostgreSQL, MQTT, Rules-, Device-, Notification-, Report- und Backup-Worker, Object Storage, kombinierte Worker-Ausfälle, Datenbank+Web, Storage/DB-Inkonsistenz, fehlerhaftes Deployment, beschädigte Konfiguration und Secret-Rotation werden mit Erkennung, Readiness/Health, Auswirkung, Failover, Datenrisiko, Wiederanlauf und Nachvalidierung geprüft. Web-Instanzen sind zustandslos; Sessions, Locks und Queues liegen in den gemeinsamen Diensten. Worker verwenden Heartbeats, Leases, Retry-Limits und nachvollziehbare Failed/Dead-Letter-Zustände. MQTT nutzt Store-and-forward, Message-IDs, Idempotenz und Backoff.
+Der Drill-Plan deckt Web, PostgreSQL, MQTT, tatsächlich vorhandene Rules-/Rollout-/MQTT-Prozesse, Object Storage, kombinierte Ausfälle, Datenbank+Web, Storage/DB-Inkonsistenz, fehlerhaftes Deployment, beschädigte Konfiguration und Secret-Rotation ab. Das ist ein geplanter Prüfumfang, kein Nachweis, dass jedes Szenario bereits automatisiert oder in einer Zielumgebung gelaufen ist. Ein eigenständiger Notification-, Report- oder Backup-Worker existiert derzeit nicht. Für jedes tatsächlich durchgeführte Szenario werden Erkennung, Health, Auswirkung, Datenrisiko, Wiederanlauf und Nachvalidierung festgehalten.
 
 ## Drill-Ablauf
 

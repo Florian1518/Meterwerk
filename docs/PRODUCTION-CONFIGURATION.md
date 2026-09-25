@@ -1,6 +1,6 @@
 # Produktionskonfiguration Phase 5d
 
-Meterwerk trennt `development`, `test`, `pilot` und `production` über `METERWERK_ENV`. Konfiguration kommt ausschließlich aus Environment-Variablen oder einem Secret-Provider. `.env.example` enthält nur Platzhalter.
+Die kanonischen Environments sind `development`, `test`, `staging`, `demo` und `production`. Die ältere Pilot-Konfiguration ist ein Bereitstellungsprofil, keine zusätzliche isolierte Datenumgebung; ein Pilot benötigt die produktionsgleichen Sicherheitsvorkehrungen und getrennte Pilot-Ressourcen. Konfiguration kommt aus Environment-Variablen oder einem Secret-Provider. `.env.example` enthält Platzhalter.
 
 ## Variablen
 
@@ -17,7 +17,7 @@ Meterwerk trennt `development`, `test`, `pilot` und `production` über `METERWER
 | `TRUSTED_HOSTS`                   | erlaubte App- und Tenant-Hosts     | öffentliche Domains                    |
 | `MQTT_*`, `GATEWAY_*`             | Geräte-/Gateway-Credentials        | getrennte Secret-Scopes                |
 
-Development verwendet lokale Mailablage und darf keine Produktionsdaten verwenden. Test verwendet isolierte Datenbank und zeitlich begrenzte Testschlüssel. Pilot benötigt HTTPS, echte Secret-Verwaltung und kontrollierte Domains. Production erzwingt `SESSION_SECRET`, `MFA_ENCRYPTION_KEY` und die konfigurierten Mailprovider-Parameter.
+Development verwendet eine lokale In-Memory-Mail-Outbox; SMTP/API-Zustellung ist nicht implementiert. Test verwendet eine isolierte Datenbank. Staging und Demo brauchen getrennte Datenbanken, MQTT, Storage, Mail-/Push-Testziele, API-/Webhook-Secrets und Backup-Ziele. Pilot erfordert HTTPS und externe Secret-Verwaltung. Production erzwingt die im aktuellen `src/server/security-config.ts` definierten Secrets; die konkrete Providerbereitstellung muss separat validiert werden.
 
 ## HTTPS und Subdomains
 
@@ -40,4 +40,4 @@ Secrets erscheinen nicht in Logs, Reports, AuditEvents, Client-DTOs oder Git. TO
 
 ## Attachment Storage
 
-Production verwendet `ATTACHMENT_STORAGE=s3` mit einem privaten, S3-kompatiblen Bucket. Endpoint, Bucket, Region und Credentials kommen aus der Deployment-/Secret-Konfiguration. Lokaler Storage ist nur für Development und Test vorgesehen.
+Der Code enthält lokale und S3-kompatible Storage-Adapter; konkreter Providerbetrieb wurde nicht pauschal nachgewiesen. Produktion darf nur private Objekte und serverseitige Credentials verwenden. Endpoint, Bucket und erforderliche Zugangsdaten kommen aus Deployment/Secret-Konfiguration. Siehe [Known Limitations](KNOWN-LIMITATIONS.md).

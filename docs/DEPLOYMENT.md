@@ -1,17 +1,30 @@
-# Pilot- und Produktionsdeployment
+# Deployment
 
-## Start
+Diese Anleitung beschreibt einen providerunabhängigen, kontrollierten App-Rollout. Compose-Dateien sind Referenzen, keine Behauptung eines erfolgreich validierten Produktionsstacks. Keine Produktions-Credentials in Dateien, Images oder Git speichern.
 
-```sh
-cp .env.example .env.production
-# Werte über Secret-Provider setzen, niemals committen
-docker compose -f compose.production.yaml --env-file .env.production build
-docker compose -f compose.production.yaml --env-file .env.production up -d
-curl -fsS https://app.meterwerk.de/api/health/ready
-```
+## Voraussetzungen
 
-Für einen Pilot-Stack kann `compose.pilot.yaml` verwendet werden. Der MQTT-Broker wird nur im internen Compose-Netz veröffentlicht. PostgreSQL läuft vorzugsweise managed; bei eigener Ausführung wird das bestehende `compose.yaml` mit einem persistenten Volume und Backup-Job verwendet.
+- Node.js 22.12+ und pnpm 12.5.1 für Build/Administration oder Docker Engine/Compose für Containerbetrieb.
+- Getrennte PostgreSQL-Datenbank, MQTT-Broker, private Storage-Ressourcen und externe Secret-Verwaltung je Environment.
+- Reverse Proxy mit TLS, DNS, persistente Backup-/MQTT-Volumes wo erforderlich, sowie getrennte Web- und Worker-Prozesse.
+- Externe Werte anhand [ENVIRONMENT.md](ENVIRONMENT.md) bereitstellen. Produktive Werte niemals aus `.env.example` übernehmen.
 
-## Betrieb
+## Build und Start
 
-Images sind unveränderlich versioniert (`METERWERK_IMAGE=meterwerk/app:<git-sha>`). Keine Secrets werden in Dockerfiles, Images, Logs oder Health-Antworten eingebettet. Restart-Policies, Healthchecks und persistente MQTT-Volumes sind im Produktions-Compose enthalten. Vor jedem Update: Backup, Migration, Healthcheck, Smoke-Test; bei Fehlern Image-Rollback ohne automatische DB-Rückmigration.
+Release anhand eines unveränderlichen Git-SHA/Artefakts bauen: `pnpm install --frozen-lockfile`, `pnpm db:generate`, `pnpm build`. `compose.production.yaml` enthält App, MQTT und einen MQTT-Worker; PostgreSQL ist extern über `DATABASE_URL` bereitzustellen. Rules-/Rollout-Worker separat und nur mit tatsächlichem Entrypoint betreiben. Siehe [WORKERS.md](WORKERS.md).
+
+Vor Rollout Version, SHA, Konfiguration und Datenbankziel prüfen. Für kritische Migrationen verifiziertes Backup sicherstellen. Migrationen mit der passenden Release-Version kontrolliert deployen (`pnpm db:migrate` oder entsprechender Prisma-Befehl im freigegebenen Image). Dann App und Worker bereitstellen. Schemaänderungen können abgestimmte Release-Schritte benötigen.
+
+## Netzwerk und Health
+
+Web nur über Reverse Proxy veröffentlichen; Backend-DB und MQTT nicht unnötig öffentlich öffnen. TLS am Proxy terminieren, HTTPS erzwingen und Forwarded-Header nur von vertrauenswürdigem Proxy akzeptieren. Broker-TLS/ACL und Gateway-Zertifikate nach Infrastrukturvorgaben konfigurieren. Storage-Buckets/Objekte bleiben privat.
+
+`/api/health/live` zeigt Prozess-Liveness, `/api/health/ready` prüft Datenbank und erforderliche Produktionskonfiguration, nicht automatisch jede optionale Integration. Build-Info und Worker/Integration-Health separat kontrollieren. Danach Migrationstatus, Login, Tenant-Scope, Dashboard, Messwerte, API soweit aktiviert sowie Logs/Alerts prüfen.
+
+## Fehler und Rollback
+
+Deployment stoppen, Fehler sichern und vorheriges kompatibles Image nur nach Schema-/Worker-Kompatibilitätsprüfung zurückstellen. Keine automatische DB-Rückmigration. Bei Datenbeschädigung nicht normalen App-Rollback mit Restore verwechseln: ausschließlich kontrollierten DR-Prozess verwenden. Details in [Upgrade](UPGRADE.md), [Rollback](ROLLBACK.md) und [Disaster Recovery](DISASTER-RECOVERY.md).
+
+## Reifegrad
+
+CI-Build und Release-Artefakt sind vorhanden. Release Workflow führt kein automatisches Staging-/Production-Deployment aus. Das Staging-Compose enthält aktuell nicht validierte Worker-/Storage-Referenzen; vor Verwendung an reale Image-Entrypoints und Storage-Konfiguration anpassen, isoliert starten und [Staging Readiness](STAGING.md) durchführen. Keine reale Hardware erforderlich oder hier getestet.

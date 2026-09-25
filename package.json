@@ -65,6 +65,8 @@
     "demo:verify": "node scripts/demo-verify.mjs",
     "smoke:staging": "node scripts/smoke-staging.mjs",
     "demo:verify-all": "node scripts/demo-verify-all.mjs",
+    "docs:check": "node scripts/docs-check.mjs",
+    "docs:validate": "node scripts/docs-validation.mjs",
     "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts"
   },
   "dependencies": {
