@@ -1,3 +1,4 @@
+import { downloadDisposition } from "@/lib/report-security";
 import { NextRequest } from "next/server";
 import { failure } from "@/server/http";
 import { reportExport } from "@/server/customer-portal";
@@ -17,7 +18,7 @@ export async function GET(
     return new Response(out.body, {
       headers: {
         "Content-Type": out.contentType,
-        "Content-Disposition": `attachment; filename="${out.fileName}"`,
+        "Content-Disposition": downloadDisposition(out.fileName),
         "Cache-Control": "private, no-store",
       },
     });

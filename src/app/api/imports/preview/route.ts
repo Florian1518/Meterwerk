@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
-import { assertOrigin, failure } from "@/server/http";
+import { assertOrigin, failure, readUploadForm } from "@/server/http";
 import { requireActor } from "@/server/auth";
 import { previewCsvImport } from "@/server/data-imports";
 
 export async function POST(request: NextRequest) {
   try {
     assertOrigin(request);
-    const form = await request.formData();
+    const actor = await requireActor();
+    const form = await readUploadForm(request, 5 * 1024 * 1024 + 65536);
     const file = form.get("file");
     const resource = form.get("resource");
     const tenantId = form.get("tenantId");
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
     return Response.json(
       await previewCsvImport(
-        await requireActor(),
+        actor,
         file instanceof File ? file : (null as unknown as File),
         tenantId ? String(tenantId) : null,
         String(resource ?? ""),

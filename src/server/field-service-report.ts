@@ -4,11 +4,10 @@ import { requireActor } from "./auth";
 import { AccessError, tenantScope } from "./policy";
 import { terminal } from "@/lib/field-service";
 import { workOrderScope } from "./field-service";
+import { pdfText } from "@/lib/report-security";
 
 function pdf(lines: string[]) {
-  const safe = lines.map((line) =>
-    line.replaceAll(/[()\\]/g, "").slice(0, 180),
-  );
+  const safe = lines.map((line) => pdfText(line.slice(0, 180)));
   const stream = `BT /F1 10 Tf 40 800 Td ${safe.map((line, index) => `${index ? "0 -14 Td " : ""}(${line}) Tj`).join(" ")} ET`;
   return `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length ${stream.length}>>stream\n${stream}\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF`;
 }

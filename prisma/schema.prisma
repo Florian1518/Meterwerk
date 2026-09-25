@@ -1568,31 +1568,43 @@ model Note {
 }
 
 model Attachment {
+  scanStatus      MalwareScanStatus @default(PENDING)
+  scannedAt       DateTime?
+  scanProvider    String?
+  sha256          String?
   workOrderId     String?
-  workOrder       WorkOrder? @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  description     String     @default("")
-  category        String     @default("OTHER")
+  workOrder       WorkOrder?        @relation(fields: [workOrderId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  description     String            @default("")
+  category        String            @default("OTHER")
   requestId       String?
   contentHash     String?
-  storageProvider String     @default("local")
+  storageProvider String            @default("local")
   expiresAt       DateTime?
   deletedAt       DateTime?
-  id              String     @id @default(cuid())
+  id              String            @id @default(cuid())
   tenantId        String
-  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploadedById    String
-  uploadedBy      User       @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedBy      User              @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
   targetType      String
   entityId        String
   fileName        String
   contentType     String
   storageKey      String
   sizeBytes       Int
-  createdAt       DateTime   @default(now())
+  createdAt       DateTime          @default(now())
 
   @@unique([tenantId, workOrderId, requestId])
   @@unique([id, tenantId])
   @@index([tenantId, targetType, entityId])
+}
+
+enum MalwareScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+  SKIPPED
 }
 
 model AuditEvent {

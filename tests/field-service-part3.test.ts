@@ -63,11 +63,11 @@ describe("Field Service Teil 3 Verträge", () => {
     );
     expect(verifyAttachmentToken("attachment", token)).toBe(true);
     expect(verifyAttachmentToken("foreign", token)).toBe(false);
+    expect(() =>
+      signedAttachmentToken("attachment", new Date(Date.now() - 1)),
+    ).toThrow();
     expect(
-      verifyAttachmentToken(
-        "attachment",
-        signedAttachmentToken("attachment", new Date(Date.now() - 1)),
-      ),
+      verifyAttachmentToken("attachment", `0.${token.split(".")[1]}`),
     ).toBe(false);
   });
 });

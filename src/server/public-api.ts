@@ -151,6 +151,38 @@ export async function revokePublicApiKey(
   });
 }
 
+export async function rotatePublicApiKey(
+  actor: Actor,
+  id: string,
+  requested?: string | null,
+) {
+  requireKeyManager(actor);
+  const tenantId = tenantScope(actor, requested);
+  z.string().min(1).max(160).parse(id);
+  const token = `mwk_pub_${randomBytes(32).toString("base64url")}`;
+  await db.$transaction(async (tx) => {
+    const result = await tx.publicApiKey.updateMany({
+      where: {
+        id,
+        tenantId,
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      data: { keyHash: createHash("sha256").update(token).digest("hex") },
+    });
+    if (!result.count) throw new AccessError(404, "API-Key nicht gefunden.");
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: id,
+        action: "security.api_key.rotated",
+      },
+    });
+  });
+  return { id, token }; // Scopes, expiry and rate counters are deliberately preserved.
+}
+
 export type PublicApiCredential = {
   id: string;
   tenantId: string;
@@ -171,6 +203,25 @@ export async function consumePublicApiRateLimit(
   now = new Date(),
 ) {
   const resetAt = new Date(now.getTime() + 60_000);
+  const bucket = `public-api-tenant:${tenantId}`;
+  const [tenantCounter] = await db.$queryRaw<Array<{ attempts: number }>>`
+    INSERT INTO "LoginLimit" ("key", "attempts", "resetAt") VALUES (${bucket}, 1, ${resetAt})
+    ON CONFLICT ("key") DO UPDATE SET
+      "attempts" = CASE WHEN "LoginLimit"."resetAt" <= ${now} THEN 1 ELSE "LoginLimit"."attempts" + 1 END,
+      "resetAt" = CASE WHEN "LoginLimit"."resetAt" <= ${now} THEN ${resetAt} ELSE "LoginLimit"."resetAt" END
+    RETURNING "attempts"`;
+  if (tenantCounter.attempts > 600) {
+    if (tenantCounter.attempts === 601)
+      await db.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: "api-key",
+          entityId: keyId,
+          action: "security.api_key.rate_limit",
+        },
+      });
+    throw new PublicApiRateLimitError(60);
+  }
   const [counter] = await db.$queryRaw<
     Array<{ attempts: number; resetAt: Date }>
   >`
@@ -195,7 +246,7 @@ export async function authenticatePublicApiKey(
   if (!authorization?.startsWith("Bearer "))
     throw new AccessError(401, "API-Key fehlt oder ist ungültig.");
   const token = authorization.slice(7).trim();
-  if (!token.startsWith("mwk_pub_") || token.length < 40)
+  if (!/^mwk_pub_[A-Za-z0-9_-]{43}$/.test(token))
     throw new AccessError(401, "API-Key fehlt oder ist ungültig.");
   const keyHash = createHash("sha256").update(token).digest("hex");
   const key = await db.publicApiKey.findUnique({
@@ -231,13 +282,15 @@ export function publicCorrelationId(header: string | null) {
     : randomUUID();
 }
 
-const listQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(50),
-  cursor: z.string().min(1).max(160).optional(),
-  tenantId: z.string().optional(),
-  from: z.iso.datetime({ offset: true }).optional(),
-  to: z.iso.datetime({ offset: true }).optional(),
-});
+const listQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(50),
+    cursor: z.string().min(1).max(160).optional(),
+    tenantId: z.string().optional(),
+    from: z.iso.datetime({ offset: true }).optional(),
+    to: z.iso.datetime({ offset: true }).optional(),
+  })
+  .strict();
 
 export async function readPublicResource(
   credential: PublicApiCredential,
@@ -256,15 +309,32 @@ export async function readPublicResource(
     ])
     .parse(resourceInput) as PublicApiResource;
   const query = listQuerySchema.parse(rawQuery);
-  if (query.tenantId && query.tenantId !== credential.tenantId)
+  if (query.tenantId && query.tenantId !== credential.tenantId) {
+    await db.auditEvent.create({
+      data: {
+        tenantId: credential.tenantId,
+        actorId: "api-key",
+        entityId: credential.id,
+        action: "security.cross_tenant.denied",
+      },
+    });
     throw new AccessError(
       403,
       "API-Key darf nur auf den zugehörigen Mandanten zugreifen.",
     );
+  }
   if (!credential.scopes.includes(`${resource}:read` as PublicApiScope))
     throw new AccessError(403, `Dem API-Key fehlt der Scope ${resource}:read.`);
-  const from = query.from ? new Date(query.from) : undefined;
-  const to = query.to ? new Date(query.to) : undefined;
+  const to = query.to
+    ? new Date(query.to)
+    : resource === "readings"
+      ? new Date()
+      : undefined;
+  const from = query.from
+    ? new Date(query.from)
+    : resource === "readings"
+      ? new Date(to!.getTime() - 30 * 86400000)
+      : undefined;
   if (from && to && from >= to)
     throw new AccessError(400, "Der Zeitfilter 'from' muss vor 'to' liegen.");
   if (resource === "readings" && from && to && exceedsReadingWindow(from, to))

@@ -24,8 +24,7 @@ export function safeError(
   return {
     errorClass:
       error instanceof Error ? error.constructor.name : "UnknownError",
-    message:
-      error instanceof Error ? error.message.slice(0, 240) : "Unknown error",
+    message: "Operation failed",
     service: context.service,
     requestId: context.requestId,
     tenantId: context.tenantId,

@@ -1,11 +1,5 @@
 export function isSafeStorageKey(key: string) {
-  return Boolean(
-    key &&
-    !key.startsWith("/") &&
-    !/^[A-Za-z]:[\\/]/.test(key) &&
-    !key.includes("\0") &&
-    !key.split(/[\\/]/).some((part) => part === ".."),
-  );
+  return /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?$/.test(key);
 }
 
 export function sessionCookieSecure(

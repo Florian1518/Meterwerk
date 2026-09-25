@@ -58,6 +58,12 @@ export async function resetPassword(input: unknown) {
     throw new AccessError(400, "Ungültiger oder abgelaufener Reset-Link.");
   const passwordHash = await hashPassword(value.password);
   await db.$transaction(async (tx) => {
+    const consumed = await tx.passwordResetToken.updateMany({
+      where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+    if (consumed.count !== 1)
+      throw new AccessError(400, "Ungültiger oder abgelaufener Reset-Link.");
     await tx.user.update({ where: { id: row.userId }, data: { passwordHash } });
     await tx.passwordResetToken.update({
       where: { id: row.id },
@@ -148,9 +154,19 @@ export async function acceptInvitation(input: unknown) {
     where: { email: invitation.email },
   });
   if (existing)
-    throw new AccessError(409, "Diese E-Mail-Adresse ist bereits registriert.");
+    throw new AccessError(400, "Ungültige oder abgelaufene Einladung.");
   const passwordHash = await hashPassword(value.password);
   const user = await db.$transaction(async (tx) => {
+    const consumed = await tx.invitation.updateMany({
+      where: {
+        id: invitation.id,
+        acceptedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { acceptedAt: new Date() },
+    });
+    if (consumed.count !== 1)
+      throw new AccessError(400, "Ungültige oder abgelaufene Einladung.");
     await requireTenantQuota(tx, invitation.tenantId, "users");
     const created = await tx.user.create({
       data: {

@@ -9,6 +9,7 @@ import { categories } from "@/lib/field-documentation";
 import { attachmentError } from "@/lib/attachment-validation";
 import { terminal } from "@/lib/field-service";
 import { deleteObject, getObject, putObject } from "./storage";
+import { downloadAllowed, scanUpload } from "./malware";
 const allowed = new Set([
   "image/jpeg",
   "image/png",
@@ -43,7 +44,11 @@ function targetWhere(
     });
   if (targetType === "GATEWAY")
     return db.gateway.findFirst({
-      where: { id: entityId, tenantId },
+      where: {
+        id: entityId,
+        tenantId,
+        ...(actor.role === "USER" ? { id: { in: [] } } : {}),
+      },
       select: { id: true },
     });
   if (targetType === "ALARM")
@@ -70,14 +75,38 @@ export async function storeAttachment(
     .parse(form.get("targetType"));
   const entityId = z.string().min(1).parse(form.get("entityId"));
   const file = form.get("file");
-  if (!(file instanceof File) || !allowed.has(file.type))
+  const rejected = () =>
+    db.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        action: "security.upload.rejected",
+        entityId: tenantId,
+      },
+    });
+  if (!(file instanceof File) || !allowed.has(file.type)) {
+    await rejected();
     throw new AccessError(415, "Dateityp nicht erlaubt.");
-  if (file.size > maxBytes) throw new AccessError(413, "Datei ist zu groß.");
+  }
+  if (file.size > maxBytes) {
+    await rejected();
+    throw new AccessError(413, "Datei ist zu groß.");
+  }
   if (actor.role === "SUPER_ADMIN")
     throw new AccessError(403, "Plattformdiagnose ist nur lesend.");
   const bytes = Buffer.from(await file.arrayBuffer());
   const error = attachmentError(file.name, file.type, bytes);
-  if (error) throw new AccessError(415, error);
+  if (error) {
+    await db.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        action: "security.upload.rejected",
+        entityId: tenantId,
+      },
+    });
+    throw new AccessError(415, error);
+  }
   const description = z
     .string()
     .max(2000)
@@ -99,16 +128,13 @@ export async function storeAttachment(
   if (!(await targetWhere(actor, tenantId, targetType, entityId)))
     throw new AccessError(404, "Ziel nicht gefunden.");
   const key = `${tenantId}/${randomUUID()}`;
+  const scan = await scanUpload(bytes);
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
   let storageProvider: "local" | "s3";
   try {
     storageProvider = await putObject(key, bytes, file.type);
-  } catch (error) {
-    throw new AccessError(
-      503,
-      error instanceof Error
-        ? error.message
-        : "Object Storage nicht verfügbar.",
-    );
+  } catch {
+    throw new AccessError(503, "Object Storage nicht verfügbar.");
   }
   try {
     const persist = async (
@@ -129,7 +155,23 @@ export async function storeAttachment(
           requestId,
           contentHash,
           storageProvider,
+          sha256,
+          scanStatus: scan.status,
+          scanProvider: scan.provider,
+          scannedAt: new Date(),
           workOrderId: targetType === "WORK_ORDER" ? entityId : null,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: actor.id,
+          action:
+            scan.status === "INFECTED"
+              ? "security.malware.detected"
+              : "security.upload.scan",
+          entityId: attachment.id,
+          details: { status: scan.status, provider: scan.provider },
         },
       });
       await tx.auditEvent.create({
@@ -143,9 +185,7 @@ export async function storeAttachment(
           entityId: targetType === "WORK_ORDER" ? entityId : attachment.id,
           details: {
             attachmentId: attachment.id,
-            fileName: attachment.fileName,
             category,
-            description,
             contentHash,
           },
         },
@@ -167,7 +207,7 @@ export async function storeAttachment(
             prior.uploadedById !== actor.id
           )
             throw new AccessError(409, "Upload-ID bereits anders verwendet.");
-          await deleteObject(key);
+          await deleteObject(key, storageProvider);
           return {
             id: prior.id,
             fileName: prior.fileName,
@@ -186,11 +226,14 @@ export async function storeAttachment(
       });
     return await db.$transaction(persist);
   } catch (error) {
-    await deleteObject(key).catch(() => {});
+    await deleteObject(key, storageProvider).catch(() => {});
     throw error;
   }
 }
-export async function readAttachment(id: string, requested?: string | null) {
+export async function authorizeAttachment(
+  id: string,
+  requested?: string | null,
+) {
   const actor = await requireActor();
   const tenantId = tenantScope(actor, requested);
   const attachment = await db.attachment.findFirst({ where: { id, tenantId } });
@@ -209,7 +252,27 @@ export async function readAttachment(id: string, requested?: string | null) {
     (attachment.expiresAt && attachment.expiresAt < new Date())
   )
     throw new AccessError(404, "Datei nicht gefunden.");
-  const data = await getObject(attachment.storageKey);
+  if (!downloadAllowed(attachment.scanStatus))
+    throw new AccessError(423, "Datei ist zur Sicherheitsprüfung gesperrt.");
+  if (!attachment.storageKey.startsWith(`${tenantId}/`))
+    throw new AccessError(404, "Datei nicht gefunden.");
+  return { actor, tenantId, attachment };
+}
+export async function readAttachment(id: string, requested?: string | null) {
+  const { actor, tenantId, attachment } = await authorizeAttachment(
+    id,
+    requested,
+  );
+  const data = await getObject(
+    attachment.storageKey,
+    attachment.storageProvider,
+  );
+  if (
+    !attachment.sha256 ||
+    createHash("sha256").update(data).digest("hex") !== attachment.sha256 ||
+    attachmentError(attachment.fileName, attachment.contentType, data)
+  )
+    throw new AccessError(423, "Datei ist zur Sicherheitsprüfung gesperrt.");
   await db.auditEvent.create({
     data: {
       tenantId,
@@ -223,4 +286,78 @@ export async function readAttachment(id: string, requested?: string | null) {
     contentType: attachment.contentType,
     fileName: attachment.fileName,
   };
+}
+
+export async function rescanAttachment(id: string, requested?: string | null) {
+  const actor = await requireActor();
+  const tenantId = tenantScope(actor, requested);
+  if (actor.role !== "TENANT_ADMIN")
+    throw new AccessError(403, "Keine Scanberechtigung.");
+  const row = await db.attachment.findFirst({
+    where: {
+      id: z.string().min(1).max(160).parse(id),
+      tenantId,
+      deletedAt: null,
+    },
+  });
+  if (
+    !row ||
+    !row.storageKey.startsWith(`${tenantId}/`) ||
+    (row.expiresAt && row.expiresAt <= new Date()) ||
+    !(await targetWhere(actor, tenantId, row.targetType, row.entityId))
+  )
+    throw new AccessError(404, "Datei nicht gefunden.");
+  // Revoke download access before performing any external scan.
+  await db.$transaction(async (tx) => {
+    await tx.attachment.update({
+      where: { id_tenantId: { id, tenantId } },
+      data: { scanStatus: "PENDING" },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: id,
+        action: "security.upload.rescan",
+      },
+    });
+  });
+  let scan: import("./malware").ScanResult = {
+    status: "FAILED",
+    provider: "validation",
+  };
+  let sha256: string | undefined;
+  try {
+    const bytes = await getObject(row.storageKey, row.storageProvider);
+    if (!attachmentError(row.fileName, row.contentType, bytes)) {
+      sha256 = createHash("sha256").update(bytes).digest("hex");
+      scan = await scanUpload(bytes);
+    }
+  } catch {
+    /* Remain quarantined; never return scanner/storage exception text. */
+  }
+  await db.$transaction(async (tx) => {
+    await tx.attachment.update({
+      where: { id_tenantId: { id, tenantId } },
+      data: {
+        scanStatus: scan.status,
+        scanProvider: scan.provider,
+        scannedAt: new Date(),
+        sha256,
+      },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: id,
+        action:
+          scan.status === "INFECTED"
+            ? "security.malware.detected"
+            : "security.upload.scan",
+        details: { status: scan.status },
+      },
+    });
+  });
+  return { id, status: scan.status };
 }

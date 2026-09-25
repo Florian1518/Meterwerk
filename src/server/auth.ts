@@ -60,6 +60,14 @@ export async function signIn(
   const limits = await db.$queryRaw<
     Array<{ attempts: number }>
   >`INSERT INTO "LoginLimit" ("key", "attempts", "resetAt") VALUES (${key}, 1, ${new Date(now.getTime() + 15 * 60_000)}) ON CONFLICT ("key") DO UPDATE SET "attempts" = CASE WHEN "LoginLimit"."resetAt" < ${now} THEN 1 ELSE "LoginLimit"."attempts" + 1 END, "resetAt" = CASE WHEN "LoginLimit"."resetAt" < ${now} THEN ${new Date(now.getTime() + 15 * 60_000)} ELSE "LoginLimit"."resetAt" END RETURNING "attempts"`;
+  if (limits[0].attempts === 9)
+    await db.auditEvent.create({
+      data: {
+        actorId: "anonymous",
+        entityId: key,
+        action: "security.login.rate_limit",
+      },
+    });
   if (limits[0].attempts > 8)
     throw new AccessError(
       429,
@@ -103,7 +111,17 @@ export async function signIn(
     }
     if (!accepted && mfaToken)
       accepted = await verifyRecoveryCode(user.id, mfaToken);
-    if (!accepted) throw new AccessError(401, "MFA-Code erforderlich.");
+    if (!accepted) {
+      await db.auditEvent.create({
+        data: {
+          tenantId: user.tenantId,
+          actorId: user.id,
+          entityId: user.id,
+          action: "security.mfa.failed",
+        },
+      });
+      throw new AccessError(401, "MFA-Code erforderlich.");
+    }
   }
   const oldToken = (await cookies()).get(cookieName)?.value;
   const token = randomBytes(32).toString("base64url"),

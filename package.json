@@ -56,7 +56,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "playwright test",
-    "test:visual": "playwright test --grep @visual"
+    "test:visual": "playwright test --grep @visual",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "security:regression": "node scripts/security-regression.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -95,5 +97,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
-  }
+  },
+  "packageManager": "pnpm@12.5.1"
 }

@@ -7,8 +7,11 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
-import { isIP } from "node:net";
-import { lookup } from "node:dns/promises";
+import {
+  publicRequest,
+  validateOutboundUrl,
+  resolvePublicTarget as resolveOutboundTarget,
+} from "./outbound-http";
 import { z } from "zod";
 import { Prisma } from "../generated/prisma/client";
 import { db } from "./db";
@@ -77,60 +80,12 @@ function decryptSecret(value: {
   ]).toString("utf8");
 }
 
-function isPrivateAddress(address: string) {
-  if (isIP(address) === 4) {
-    const [a, b, c] = address.split(".").map(Number);
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b! >= 16 && b! <= 31) ||
-      (a === 192 && (b === 0 || b === 2 || b === 168)) ||
-      (a === 192 && b === 88 && c === 99) ||
-      (a === 198 && (b === 18 || b === 19 || b === 51)) ||
-      (a === 203 && b === 0 && c === 113) ||
-      (a === 100 && b! >= 64 && b! <= 127) ||
-      a! >= 224
-    );
-  }
-  const normalized = address.toLowerCase();
-  if (normalized.startsWith("::ffff:")) return true;
-  return (
-    (!normalized.startsWith("2") && !normalized.startsWith("3")) ||
-    normalized.startsWith("2001:db8:")
-  );
-}
-
 export function validateWebhookUrl(raw: string) {
-  const url = new URL(raw);
-  if (url.username || url.password || url.hash)
-    throw new AccessError(
-      400,
-      "Webhook-URL darf keine Zugangsdaten oder Fragmente enthalten.",
-    );
-  if (process.env.NODE_ENV === "production" && url.protocol !== "https:")
-    throw new AccessError(
-      400,
-      "Webhook-URLs müssen in Produktion HTTPS verwenden.",
-    );
-  if (
-    url.protocol !== "https:" &&
-    !(process.env.NODE_ENV !== "production" && url.protocol === "http:")
-  )
-    throw new AccessError(400, "Webhook-URL muss HTTP oder HTTPS sein.");
-  const host = url.hostname.toLowerCase();
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    (isIP(host) !== 0 && isPrivateAddress(host))
-  )
-    throw new AccessError(
-      400,
-      "Lokale und private Ziele sind für Webhooks nicht zulässig.",
-    );
-  return url.toString();
+  try {
+    return validateOutboundUrl(raw).toString();
+  } catch {
+    throw new AccessError(400, "Webhook-Ziel ist nicht zul?ssig.");
+  }
 }
 
 const webhookInput = z
@@ -234,6 +189,34 @@ export async function listWebhooks(actor: Actor, requested?: string | null) {
     }),
   ]);
   return { endpoints, deliveries };
+}
+
+export async function rotateWebhookSecret(
+  actor: Actor,
+  id: string,
+  requested?: string | null,
+) {
+  requireWebhookManager(actor);
+  const tenantId = tenantScope(actor, requested);
+  z.string().min(1).max(160).parse(id);
+  const secret = `mwk_whsec_${randomBytes(32).toString("base64url")}`;
+  await db.$transaction(async (tx) => {
+    const result = await tx.webhookEndpoint.updateMany({
+      where: { id, tenantId, deletedAt: null },
+      data: encryptSecret(secret),
+    });
+    if (!result.count) throw new AccessError(404, "Webhook nicht gefunden.");
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: id,
+        action: "security.webhook.rotated",
+      },
+    });
+  });
+  // Immediate expiry: coordinate receiver change; queued retries use the new key.
+  return { id, secret, previousSecretExpired: true };
 }
 
 export async function updateWebhook(
@@ -422,19 +405,7 @@ export function verifyWebhookSignature(
 }
 
 async function resolvePublicTarget(url: URL) {
-  if (process.env.NODE_ENV === "production" && url.protocol !== "https:")
-    throw new Error("HTTPS required");
-  const host = url.hostname.replace(/^\[|\]$/g, "");
-  if (isIP(host)) {
-    if (isPrivateAddress(host)) throw new Error("Private destination blocked");
-    return;
-  }
-  const addresses = await lookup(host, { all: true, verbatim: true });
-  if (
-    !addresses.length ||
-    addresses.some(({ address }) => isPrivateAddress(address))
-  )
-    throw new Error("Private destination blocked");
+  await resolveOutboundTarget(url);
 }
 
 async function claimNextWebhookDelivery(now = new Date()) {
@@ -528,7 +499,8 @@ export async function deliverNextWebhook(
   let error: string | null = null;
   try {
     const target = new URL(delivery.webhook.url);
-    await (adapters.resolveTarget ?? resolvePublicTarget)(target);
+    if (adapters.resolveTarget) await adapters.resolveTarget(target);
+    else if (adapters.fetcher) await resolvePublicTarget(target);
     const body = JSON.stringify(delivery.payload);
     const timestamp = String(Math.floor(now.getTime() / 1000));
     const signature = signWebhook(
@@ -537,7 +509,15 @@ export async function deliverNextWebhook(
       timestamp,
       body,
     );
-    const response = await (adapters.fetcher ?? fetch)(target, {
+    const fetcher =
+      adapters.fetcher ??
+      ((url: URL | RequestInfo, init?: RequestInit) =>
+        publicRequest(String(url), {
+          method: init?.method,
+          headers: init?.headers as Record<string, string>,
+          body: init?.body as string,
+        }));
+    const response = await fetcher(target, {
       method: "POST",
       redirect: "manual",
       signal: AbortSignal.timeout(8000),
@@ -551,6 +531,7 @@ export async function deliverNextWebhook(
         "X-Meterwerk-Signature": signature,
       },
     });
+    await response.body?.cancel();
     statusCode = response.status;
     if (!response.ok) error = `Receiver returned HTTP ${response.status}`;
   } catch (cause) {

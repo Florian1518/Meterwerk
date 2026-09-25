@@ -38,12 +38,18 @@ const mock = vi.hoisted(() => {
       writeFile: vi.fn(),
       readFile: vi.fn(),
       unlink: vi.fn(),
+      lstat: vi.fn(),
+      open: vi.fn(),
     },
   };
 });
 vi.mock("../src/server/db", () => ({ db: mock.db }));
 vi.mock("../src/server/auth", () => ({ requireActor: mock.auth }));
 vi.mock("node:fs/promises", () => mock.fs);
+vi.mock("../src/server/malware", () => ({
+  scanUpload: async () => ({ status: "CLEAN", provider: "test-only" }),
+  downloadAllowed: (status: string) => status === "CLEAN",
+}));
 import {
   completionError,
   saveChecklistTemplate,
@@ -155,7 +161,16 @@ beforeEach(() => {
     ...data,
   }));
   mock.fs.unlink.mockResolvedValue(undefined);
-  mock.fs.readFile.mockResolvedValue(Buffer.from("test"));
+  mock.fs.readFile.mockResolvedValue(Buffer.from("%PDF-1.7"));
+  mock.fs.lstat.mockResolvedValue({
+    isDirectory: () => true,
+    isSymbolicLink: () => false,
+  });
+  mock.fs.open.mockResolvedValue({
+    stat: async () => ({ isFile: () => true, size: 8 }),
+    readFile: mock.fs.readFile,
+    close: async () => {},
+  });
 });
 describe("Vor-Ort-Verträge", () => {
   it("berechnet Nettozeit, verweigert negative Pausen und fehlende Korrekturbegründung", () => {
@@ -620,7 +635,7 @@ describe("Attachment-Isolation und Storage", () => {
     await storeAttachment(data);
     expect(mock.db.attachment.create).toHaveBeenCalledTimes(1);
     await readAttachment("attachment");
-    expect(mock.fs.readFile.mock.calls[0][0]).toBe(
+    expect(mock.fs.open.mock.calls[0][0]).toBe(
       mock.fs.writeFile.mock.calls[0][0],
     );
   });

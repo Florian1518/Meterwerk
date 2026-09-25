@@ -9,6 +9,7 @@ import { requireActor } from "./auth";
 import { AccessError, propertyScope, tenantScope, type Actor } from "./policy";
 import { comparisonPeriods, utilities, profiles, metrics } from "@/lib/utility";
 import { csvDocument } from "@/lib/modbus/csv";
+import { pdfText } from "@/lib/report-security";
 import { utilityReport } from "./utility";
 import type { MeterType, ReportType } from "@/generated/prisma/client";
 import { requireFeature } from "./licensing";
@@ -465,7 +466,21 @@ export async function reportExport(
   await recordTenantUsage(tenantId, "EXPORT");
   const content = report.content as {
     readings?: Array<Record<string, string>>;
+    meters?: Array<{ id: string }>;
   };
+  if (actor.role === "USER") {
+    const ids = [
+      ...new Set([
+        ...(content.meters ?? []).map((m) => m.id),
+        ...(content.readings ?? []).map((r) => r.meterId),
+      ]),
+    ];
+    const accessible = await db.meter.count({
+      where: { ...meterWhere(tenantId, actor, {}), id: { in: ids } },
+    });
+    if (accessible !== ids.length)
+      throw new AccessError(404, "Bericht nicht gefunden.");
+  }
   if (format === "csv") {
     const rows = (content.readings ?? []).map((r) => [
       r.meterId,
@@ -499,7 +514,7 @@ export async function reportExport(
     "Verbrauchs- und Kostenanalyse, keine rechtsverbindliche Abrechnung.",
   ];
   const text = lines.join("\\n");
-  const stream = `BT /F1 12 Tf 50 780 Td (${text.replaceAll(/[()\\]/g, "")}) Tj ET`;
+  const stream = `BT /F1 12 Tf 50 780 Td (${pdfText(text)}) Tj ET`;
   const pdf = `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length ${stream.length}>>stream\n${stream}\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF`;
   return {
     body: pdf,

@@ -1,9 +1,21 @@
 export const attachmentMaxBytes = 10 * 1024 * 1024;
+export function safeUploadName(name: string) {
+  // Exactly one extension; reject path separators, ADS, controls and bidi spoofing.
+  return (
+    name.length <= 160 &&
+    /^[^./\\:\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]+\.[a-zA-Z0-9]+$/u.test(
+      name,
+    ) &&
+    name === name.trim()
+  );
+}
 export function attachmentError(
   name: string,
   mime: string,
   bytes: Uint8Array,
 ): string | null {
+  if (!safeUploadName(name))
+    return "Ungültiger Dateiname oder doppelte Dateiendung.";
   if (!bytes.length || bytes.length > attachmentMaxBytes)
     return "Datei leer oder größer als 10 MiB.";
   const extension = name.toLowerCase().split(".").pop();

@@ -1,4 +1,5 @@
 import "server-only";
+import { safeUploadName } from "@/lib/attachment-validation";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import Decimal from "decimal.js";
@@ -826,12 +827,22 @@ export async function previewCsvImport(
     throw new AccessError(400, "Bitte eine CSV-Datei auswählen.");
   if (file.size > MAX_FILE_BYTES)
     throw new AccessError(413, "CSV-Datei darf höchstens 5 MB groß sein.");
+  if (
+    !safeUploadName(file.name) ||
+    !file.name.toLowerCase().endsWith(".csv") ||
+    !["text/csv", "text/plain", "application/vnd.ms-excel", ""].includes(
+      file.type,
+    )
+  )
+    throw new AccessError(415, "CSV-Dateityp oder Dateiname nicht erlaubt.");
   const mapping = z.record(z.string(), z.string().max(160)).parse(mappingValue);
   let parsed;
   let fileBytes: Uint8Array;
   try {
     fileBytes = new Uint8Array(await file.arrayBuffer());
     const text = new TextDecoder("utf-8", { fatal: true }).decode(fileBytes);
+    if (text.includes("\0") || /^\s*(?:MZ|#!|<)/.test(text))
+      throw new AccessError(415, "CSV-Inhalt nicht erlaubt.");
     parsed = parseCsv(text);
   } catch (error) {
     throw new AccessError(

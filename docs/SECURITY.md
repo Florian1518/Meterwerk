@@ -63,3 +63,93 @@ Tenant-Schlüssel und Escaping. DB-Integrationstests für Cross-Tenant-IDOR,
 Property Grants, MFA, Session-Widerruf und parallele Zugriffspfade laufen nur
 mit erreichbarem PostgreSQL. Offene Risiken werden nicht als behoben markiert;
 insbesondere fehlen ohne Testdatenbank empirische HTTP-/DB-Security-Nachweise.
+
+## Phase 5r Teil 2: Uploads und Malware-Scanning
+
+Anhänge, Fotos, PDFs und CSV-Importe werden serverseitig auf Größenlimit,
+erlaubten MIME-Typ, Endung, Magic Bytes, UTF-8 und sichere Dateinamen geprüft.
+Storage-Schlüssel sind zufällige, tenantgebundene IDs; Originalnamen werden nur
+als Metadaten verwendet. Absolute Pfade, Traversal, NUL-/Steuerzeichen,
+Double-Extensions, SVG/HTML und ausführbare Inhalte werden abgewiesen.
+
+`Attachment.scanStatus` kennt `PENDING`, `CLEAN`, `INFECTED`, `FAILED` und
+`SKIPPED`. Die ClamAV-kompatible INSTREAM-Abstraktion ist vorbereitet. Ohne
+konfigurierten Scanner wird nicht gelogen: der Status ist `SKIPPED` und der
+Download bleibt quarantänisiert. Nur `CLEAN` wird ausgeliefert; Hash,
+Dateityp und Storage-Pfad werden beim Download erneut geprüft. INFECTED,
+abgewiesene Uploads und Rescans erzeugen AuditEvents. Scanner und Storage
+werden nie mit Upload-Dateinamen oder Upload-Code ausgeführt.
+
+## Storage und Downloads
+
+Lokale Dateien liegen in privaten Verzeichnissen mit restriktiven Rechten und
+Symlink-/Datei-Checks. S3-kompatible Objekte werden mit tenantgebundenen Keys,
+privater ACL und serverseitigem Bearer-Token angesprochen. Der gespeicherte
+Provider wird beim Lesen verwendet. Downloads prüfen Authentifizierung,
+Tenant, Parent-Objekt, PropertyGrant, Scanstatus und Hash; kurzlebige Tokens
+sind an Tenant, Benutzer und Attachment gebunden. Antworten setzen `nosniff`,
+eine Sandbox-CSP, `no-store` und eine bereinigte Content-Disposition.
+
+## SSRF und Webhooks
+
+Ausgehende Ziele akzeptieren in Produktion nur HTTPS. Localhost, Loopback,
+private/link-local/Metadata-/interne Netze, Benutzerpasswörter, Fragmente,
+`file:` und `ftp:` werden blockiert. DNS wird vor dem Request vollständig
+geprüft und an die Verbindung gepinnt; Redirects sind verboten, Timeouts und
+Antwortgrößen begrenzt. Die Abstraktion gilt für Webhooks und S3-Endpunkte.
+
+Webhooks werden verschlüsselt gespeichert, nur einmal vollständig angezeigt
+und über einen Tenant-Admin rotierbar. HMAC bindet Body, Delivery-ID und
+Timestamp; das Replay-Fenster beträgt fünf Minuten. Zustellungen nutzen
+Lease/Retry/Dead-Letter, eindeutige `(webhookId,eventId)`-Schlüssel und
+keine Geheimnisse in Fehlern oder Logs.
+
+## Public API und Replay-Schutz
+
+API-Keys werden ausschließlich als SHA-256-Hash gespeichert, einmalig gezeigt,
+tenantgebunden, scopebegrenzt, ablauf- und widerrufbar und rotierbar.
+Bearer-Header ist der einzige Credential-Kanal; Query-Parameter werden nicht
+akzeptiert. Limits gelten pro Key und Tenant, Seiten-/Zeitfenster sind begrenzt,
+fremde Tenant-IDs und Scope-Eskalation werden abgewiesen. Login, MFA, Reset-
+und Einladungspfade verwenden generische Antworten und atomare Verbrauchs-
+Updates für Replay-Schutz. Webhook-, Ingestion- und Support-Request-IDs sind
+idempotent bzw. durch Unique Constraints abgesichert.
+
+## CSV-, PDF- und Report-Sicherheit
+
+CSV-Zellen mit `=`, `+`, `-`, `@`, BOM oder Steuerzeichen erhalten ein
+führendes Apostroph; echte negative Dezimalwerte bleiben unverändert. PDFs
+werden aus bereits autorisierten Daten erzeugt. Text wird als PDF-Operand
+escaped; HTML, Templates, externe URLs und lokale Dateien werden nicht
+interpretiert. USER-Berichte werden vor Export erneut auf zugängliche Meter
+geprüft.
+
+## Supply Chain, CI und Secrets
+
+`pnpm-lock.yaml` und `packageManager` sind festgelegt, Installationsskripte
+werden im Audit nicht ausgeführt und CI verwendet `--frozen-lockfile`. Actions
+sind auf Commit-IDs gepinnt, Checkout behält keine Credentials, Workflows
+haben minimale Read-Rechte und Pull Requests erhalten keine Deploy-Secrets.
+Der Secret-Scan prüft getrackte und nicht ignorierte Arbeitsdateien, gibt nur
+Fundstelle/Regel aus und unterscheidet bekannte Test-Fixtures. Der transitive
+`deepmerge-ts`-Fund wurde nach einer Kompatibilitätsprüfung per Override auf
+die gepatchte 8.0.2-Version aktualisiert; Prisma validate/generate, Typecheck,
+Security-Suite und Produktionsbuild bestanden danach. `mysql2` wurde sicher
+auf die gepatchte 3.23.1-Minorversion aufgelöst.
+
+## Security Events und Datenschutz
+
+AuditEvents decken fehlgeschlagene Login-/MFA-Versuche, API-Key-Rate-Limits,
+Cross-Tenant-Ablehnungen, Upload-Ablehnungen, Malware, Credential-Rotation,
+Webhook-Signatur-/Zustellfehler und Support-Aktionen ab. Es gibt keine
+unkontrollierte automatische Kontosperre. Diagnostic Bundles enthalten nur
+notwendige Zähler und Audit-Aktionsmetadaten; Secret-Ciphertext, E-Mail-
+Adressen, interne Fehlertexte und unnötige Kundennotizen werden nicht exportiert.
+IP-, Standort- und Objektdaten bleiben auf die fachlich erforderlichen
+Antworten beschränkt.
+
+Die ClamAV-Anbindung, zentrale verteilte Rate-Limits und ein produktiver
+Secret-Scanning-Job sind vorbereitet; der lokale Fallback bleibt nur für
+Entwicklung zulässig. Vor Produktion müssen Scanner,
+Retention/Deletion-Job, rotierte Secrets und ein externer Malware-/Dependency-
+Prozess konfiguriert und gegen die reale Deployment-Umgebung geprüft werden.

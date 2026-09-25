@@ -27,7 +27,13 @@ const caseInput = z
 async function scopedCase(id: string, requested?: string | null) {
   const actor = await requireActor();
   const tenantId = tenantScope(actor, requested);
-  const row = await db.supportCase.findFirst({ where: { id, tenantId } });
+  const row = await db.supportCase.findFirst({
+    where: {
+      id,
+      tenantId,
+      ...(actor.role === "USER" ? { reportedById: actor.id } : {}),
+    },
+  });
   if (!row) throw new AccessError(404, "Supportfall nicht gefunden.");
   return { actor, tenantId, row };
 }
@@ -49,6 +55,7 @@ export async function listSupportCases(
     .parse(raw);
   const where: Prisma.SupportCaseWhereInput = {
     tenantId,
+    ...(actor.role === "USER" ? { reportedById: actor.id } : {}),
     status: v.status as Prisma.EnumSupportCaseStatusFilter | undefined,
     priority: v.priority as Prisma.EnumSupportCasePriorityFilter | undefined,
     category: v.category as Prisma.EnumSupportCaseCategoryFilter | undefined,
@@ -206,6 +213,8 @@ export async function updateSupportCase(
 export async function tenantDiagnostics(requested?: string | null) {
   const actor = await requireActor();
   const tenantId = tenantScope(actor, requested);
+  if (!["SUPER_ADMIN", "TENANT_ADMIN"].includes(actor.role))
+    throw new AccessError(403, "Keine Diagnoseberechtigung.");
   const [
     tenant,
     users,
@@ -219,7 +228,10 @@ export async function tenantDiagnostics(requested?: string | null) {
     reports,
     usage,
   ] = await Promise.all([
-    db.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+    db.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { id: true },
+    }),
     db.user.count({ where: { tenantId } }),
     db.property.count({ where: { tenantId } }),
     db.meter.count({ where: { tenantId } }),
@@ -291,7 +303,7 @@ export async function diagnosticBundle(requested?: string | null) {
   const diagnostics = await tenantDiagnostics(tenantId);
   const audits = await db.auditEvent.findMany({
     where: { tenantId },
-    select: { action: true, entityId: true, createdAt: true, details: true },
+    select: { action: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -324,20 +336,27 @@ export async function supportAction(raw: unknown, requested?: string | null) {
     .strict()
     .parse(raw);
   const action = "support-action." + v.action;
-  const prior = await db.auditEvent.findFirst({
-    where: { tenantId, action, correlationId: v.requestId },
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
+    const prior = await tx.auditEvent.findFirst({
+      where: { tenantId, action, correlationId: v.requestId },
+    });
+    if (prior) {
+      if (prior.entityId !== v.entityId || prior.actorId !== actor.id)
+        throw new AccessError(409, "Request-ID bereits anders verwendet.");
+      return { idempotent: true, auditId: prior.id, queued: false };
+    }
+    const audit = await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        action,
+        entityId: v.entityId,
+        correlationId: v.requestId,
+      },
+    });
+    return { idempotent: false, auditId: audit.id, queued: false };
   });
-  if (prior) return { idempotent: true, auditId: prior.id };
-  const audit = await db.auditEvent.create({
-    data: {
-      tenantId,
-      actorId: actor.id,
-      action,
-      entityId: v.entityId,
-      correlationId: v.requestId,
-    },
-  });
-  return { idempotent: false, auditId: audit.id, queued: true };
 }
 export async function setMaintenanceMode(raw: unknown) {
   const actor = await requireActor();

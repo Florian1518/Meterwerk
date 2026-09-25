@@ -1,11 +1,5 @@
-export function csvCell(value: string) {
-  const safe =
-    /^[\s]*[=+@\t\r]/.test(value) ||
-    (/^\s*-/.test(value) && !/^-[0-9]+(\.[0-9]+)?$/.test(value))
-      ? `'${value}`
-      : value;
-  return `"${safe.replaceAll('"', '""')}"`;
-}
+import { csvCell } from "../data-export";
+export { csvCell } from "../data-export";
 export function csvDocument(headers: string[], rows: string[][]) {
   return (
     "\uFEFF" +

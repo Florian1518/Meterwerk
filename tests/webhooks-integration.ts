@@ -64,7 +64,7 @@ try {
   await check("secret is one-time shown and encrypted at rest", async () => {
     const created = await createWebhook(actor, {
       name: "Primary receiver",
-      url: "https://hooks.example.invalid/meterwerk",
+      url: "https://hooks.example.com/meterwerk",
       events: ["meter.reading.received"],
     });
     secretForSigning = created.secret;
@@ -84,7 +84,7 @@ try {
         createWebhook(platform, {
           tenantId,
           name: "Forbidden platform create",
-          url: "https://forbidden.example.invalid/hooks",
+          url: "https://forbidden.example.com/hooks",
           events: ["alarm.created"],
         }),
       { status: 403 },
@@ -301,7 +301,7 @@ try {
   await check("inactive webhook is cancelled without sending", async () => {
     const endpoint = await createWebhook(actor, {
       name: "Disable before send",
-      url: "https://disabled.example.invalid/hooks",
+      url: "https://disabled.example.com/hooks",
       events: ["alarm.created"],
     });
     const eventId = await db.$transaction((tx) =>
@@ -343,7 +343,7 @@ try {
     async () => {
       const endpoint = await createWebhook(actor, {
         name: "Dead-letter receiver",
-        url: "https://dead-letter.example.invalid/hooks",
+        url: "https://dead-letter.example.com/hooks",
         events: ["report.ready"],
       });
       const eventId = await db.$transaction((tx) =>
@@ -380,7 +380,7 @@ try {
     async () => {
       const foreign = await createWebhook(foreignActor, {
         name: "Foreign endpoint",
-        url: "https://foreign.example.invalid/hooks",
+        url: "https://foreign.example.com/hooks",
         events: ["alarm.created"],
       });
       assert.equal(
@@ -414,7 +414,7 @@ try {
         () =>
           createWebhook(actor, {
             name: "Blocked endpoint",
-            url: "https://blocked.example.invalid/hooks",
+            url: "https://blocked.example.com/hooks",
             events: ["alarm.created"],
           }),
         { status: 403 },
