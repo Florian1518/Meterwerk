@@ -17,6 +17,12 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     permissions: { contents: read }
+    env:
+      DATABASE_URL: postgresql://localhost:5432/meterwerk_build
+      APP_URL: http://localhost:3000
+      METERWERK_ENV: test
+      NODE_ENV: production
+      GIT_COMMIT_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { persist-credentials: false }

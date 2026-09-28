@@ -48,10 +48,15 @@ beforeAll(async () => {
     process.env.SEED_DEMO !== "true" ||
     process.env.NODE_ENV === "production" ||
     !["localhost", "127.0.0.1"].includes(url.hostname) ||
-    url.pathname !== "/meterwerk"
+    !(
+      url.pathname === "/meterwerk" ||
+      (process.env.METERWERK_ENV === "test" &&
+        url.pathname === "/meterwerk_acceptance" &&
+        url.port === "55435")
+    )
   )
     throw new Error(
-      "Nur lokale Demo-Datenbank meterwerk mit SEED_DEMO=true erlaubt.",
+      "Nur lokale Demo- oder explizite Acceptance-Datenbank mit SEED_DEMO=true erlaubt.",
     );
   await db.$queryRaw`SELECT 1`;
   fixtureStarted = true;
@@ -217,6 +222,7 @@ describe.sequential("Field Service mit PostgreSQL", () => {
     auth.actor = tech;
     const order = await getWorkOrder(orderId);
     const item = order.checklists[0].items[0];
+    expect(item.tenantId).toBe(a);
     await expect(
       changeWorkOrderStatus(orderId, { status: "COMPLETED" }),
     ).rejects.toMatchObject({ status: 409 });
@@ -296,6 +302,9 @@ describe.sequential("Field Service mit PostgreSQL", () => {
     expect((await getWorkOrder(order.id)).checklists[0].items[0].title).toBe(
       "Sichtprüfung",
     );
+    expect((await getWorkOrder(order.id)).checklists[0].items[0].tenantId).toBe(
+      a,
+    );
     auth.actor = tech;
     const input = {
       requestId: randomUUID(),
@@ -343,6 +352,29 @@ describe.sequential("Field Service mit PostgreSQL", () => {
       { status: 404 },
     );
     auth.actor = admin;
+  });
+  it("nachträglich angewandte Vorlage übernimmt den Tenant für verschachtelte Items", async () => {
+    auth.actor = admin;
+    const template = await saveChecklistTemplate({
+      title: "Nachträgliche Vorlage",
+      type: "MAINTENANCE",
+      medium: "WATER",
+      items: [{ title: "Tenantprüfung", order: 0, required: true }],
+    });
+    const order = await createWorkOrder({
+      title: "Vorlagenregression",
+      type: "MAINTENANCE",
+      propertyId: `${a}-p`,
+    });
+    await saveFieldDocumentation(order.id, {
+      requestId: randomUUID(),
+      revision: 0,
+      mutation: { kind: "template", value: { templateId: template.id } },
+    });
+    const checklist = (await getWorkOrder(order.id)).checklists[0];
+    expect(checklist.tenantId).toBe(a);
+    expect(checklist.items[0].tenantId).toBe(a);
+    expect(checklist.items[0].title).toBe("Tenantprüfung");
   });
   it("Grant-Entzug entfernt auch einen bereits zugewiesenen Auftrag aus allen Ansichten", async () => {
     await db.propertyGrant.deleteMany({

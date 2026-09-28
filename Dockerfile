@@ -10,7 +10,7 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm build
+RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build pnpm build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

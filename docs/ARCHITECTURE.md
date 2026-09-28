@@ -220,3 +220,11 @@ SUPER_ADMIN arbeitet nur mit expliziter Tenant-Auswahl. Implementierte Rollen si
 ## Betriebskomponenten
 
 PostgreSQL speichert Fach- und Auditdaten, Prisma versioniert Migrationen, MQTT verbindet Ingestion/Gateway. Worker- und Queue-Umfang ist in [WORKERS.md](WORKERS.md) beschrieben. Operations und DR-Metadaten sind vorhanden, aber nicht jeder Status ist an produktive Provider oder externe Alerting-Systeme angebunden. Siehe [Monitoring](MONITORING.md), [Security](SECURITY.md) und [Disaster Recovery](DISASTER-RECOVERY.md).
+
+## Acceptance-Korrekturen aus Phase 5v Teil 2
+
+SupportCases referenzieren Property, Meter, Device und Gateway über zusammengesetzte Fremdschlüssel einschließlich `tenantId`. Attachment-Uploader dürfen demselben Mandanten oder bewusst der globalen SUPER_ADMIN-Ebene angehören; ein Datenbanktrigger prüft diese Regel beim Schreiben eines Attachments. Migrationen lehnen vorhandene inkonsistente Referenzen ab, statt Datensätze zu löschen oder automatisch umzuhängen.
+
+Bei verschachtelten Prisma-ChecklistItem-Erstellungen werden `checklistId` und `tenantId` von der zusammengesetzten Parent-Relation übernommen. Die redundante explizite Angabe von `tenantId` wurde entfernt, weil Prisma sie zur Laufzeit ablehnt. Die tatsächlich gespeicherten Mandanten sowie Fremd-ID-/Grant-Sperren werden mit PostgreSQL geprüft.
+
+Die Acceptance-Infrastruktur ist lokal getrennt. DB-Serviceprüfungen mit injiziertem Actor, echtes HTTP, Browserkomponenten mit Testantworten und vollständige E2E-Journeys werden im Bericht getrennt ausgewiesen. Siehe [Software Acceptance](SOFTWARE-ACCEPTANCE.md).

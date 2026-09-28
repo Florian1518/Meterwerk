@@ -7,6 +7,7 @@ export const securityConfigSchema = z.object({
     .enum(["development", "test", "staging", "demo", "pilot", "production"])
     .default("development"),
   APP_URL: z.string().url(),
+  BASE_DOMAIN: z.string().min(1).default("meterwerk.de"),
   SESSION_SECRET: z.string().min(32).optional(),
   MFA_ENCRYPTION_KEY: z.string().min(32).optional(),
   EMAIL_PROVIDER: z.enum(["local", "smtp", "api"]).default("local"),
@@ -18,6 +19,7 @@ export const securityConfigSchema = z.object({
 export const securityConfig = securityConfigSchema.parse({
   METERWERK_ENV: process.env.METERWERK_ENV,
   APP_URL: process.env.APP_URL ?? "http://localhost:3000",
+  BASE_DOMAIN: process.env.BASE_DOMAIN,
   SESSION_SECRET: process.env.SESSION_SECRET,
   MFA_ENCRYPTION_KEY: process.env.MFA_ENCRYPTION_KEY,
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
@@ -47,10 +49,7 @@ export function requireProductionSecrets() {
 export function hostTenantHint(host: string) {
   const normalized = host.toLowerCase().split(":")[0];
   if (trustedHosts.includes(normalized)) return null;
-  const appHost = new URL(securityConfig.APP_URL).hostname;
-  const base =
-    process.env.BASE_DOMAIN ??
-    (appHost.includes("localhost") ? "meterwerk.de" : appHost);
+  const base = securityConfig.BASE_DOMAIN;
   if (normalized.endsWith(`.${base}`))
     return normalized.slice(0, -(base.length + 1));
   return null;

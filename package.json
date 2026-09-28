@@ -62,7 +62,7 @@
     "env:check": "node scripts/environment-guard.mjs",
     "demo:seed": "node scripts/demo-seed.mjs",
     "demo:reset": "node scripts/demo-reset.mjs",
-    "demo:verify": "node scripts/demo-verify.mjs",
+    "demo:verify": "node --import tsx scripts/demo-verify.mjs",
     "smoke:staging": "node scripts/smoke-staging.mjs",
     "demo:verify-all": "node scripts/demo-verify-all.mjs",
     "docs:check": "node scripts/docs-check.mjs",

@@ -2,8 +2,7 @@ import "dotenv/config";
 const env = process.env.METERWERK_ENV ?? "";
 if (!["demo", "test"].includes(env))
   throw new Error("demo:verify requires METERWERK_ENV=demo or test");
-const { PrismaClient } =
-  await import("../src/generated/prisma/client/index.js");
+const { PrismaClient } = await import("../src/generated/prisma/client.ts");
 const { PrismaPg } = await import("@prisma/adapter-pg");
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),

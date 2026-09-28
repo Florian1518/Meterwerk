@@ -5,6 +5,7 @@ import { newDeviceToken, hashDeviceToken } from "./device-auth";
 import { ingestUtility } from "./utility-ingestion";
 import { utilities } from "../lib/utility";
 import { VirtualMeter } from "../lib/utility-simulator";
+import { changePlan } from "./licensing";
 const url = new URL(process.env.DATABASE_URL ?? "");
 if (
   process.env.SEED_DEMO !== "true" ||
@@ -19,6 +20,20 @@ try {
     update: {},
     create: { id: tenantId, name: "Multi-Utility Demo", slug: tenantId },
   });
+  // The normal ingestion path enforces licensing, including for a synthetic tenant.
+  // Preserve an existing subscription instead of overwriting its plan.
+  if (!(await db.subscription.findFirst({ where: { tenantId } }))) {
+    await changePlan(
+      {
+        id: "demo-seed",
+        tenantId: null,
+        role: "SUPER_ADMIN",
+        name: "Demo seed",
+        email: "seed@example.invalid",
+      },
+      { tenantId, plan: "BASIC" },
+    );
+  }
   await db.property.upsert({
     where: { id: `${tenantId}-property` },
     update: {},

@@ -280,7 +280,7 @@ export async function saveFieldDocumentation(
           tenantId,
           workOrderId: id,
           title: `${v.title} (Vorlage v${template.version})`,
-          items: { create: v.items.map((item) => ({ ...item, tenantId })) },
+          items: { create: v.items },
         },
       });
       data.requireTechnicianSignature =

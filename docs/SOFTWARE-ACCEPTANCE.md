@@ -38,3 +38,17 @@ PostgreSQL Clean Install/Upgrade, API-Integrationen, Browser-E2E, Docker/Staging
 ## Release Candidate Kriterien
 
 Ein RC ist erst freigabefähig, wenn lokale Qualitätsgates erfolgreich sind, Release-Blocker behoben sind, Datenbankmigrationen und Tenant-Isolation in geeigneter Testumgebung verifiziert sind, benötigte Browser/API-/Integrationsprüfungen durchgeführt oder begründet ausgenommen sind, externe/hardwareabhängige Grenzen offengelegt sind und Rollback sowie Release-Artefakt geprüft sind. Dieser Kriterienkatalog allein ist keine Freigabe und kein Nachweis für Production Readiness.
+
+## Phase 5v Teil 2 — lokale Runtime-Abnahme
+
+Baseline ist `09427c6b74c1ae3cb4355fa51ac3e6c531f1045e` (WIP Teil 1). Teil 2 arbeitet auf einem uncommitteten Arbeitsbaum; es gibt keinen neuen RC-SHA. Ergebnisse vom 28.09.2026 stehen im bestehenden [Acceptance Result](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md) und im maschinenlesbaren [Teil-2-Nachweis](acceptance/PHASE-5V-PART2-EVIDENCE.json). Teil 1 bleibt als historische Abnahme erhalten.
+
+`node scripts/acceptance-local.mjs db` startet ausschließlich einen eigenen Embedded-PostgreSQL-Cluster unter `.local/acceptance/postgres`, gebunden an `127.0.0.1:55435`. Testzugangsdaten werden zufällig erzeugt und ausschließlich unter dem ignorierten `.local/acceptance/private.json` gespeichert. Keine bestehende Entwicklungsdatenbank wird zurückgesetzt. Der Starter führt mit `run <log-name> <node-entrypoint> [args]` lokale Befehle mit explizitem `METERWERK_ENV=test`, privatem Attachment-Verzeichnis und lokalen Endpunkten aus. `webdev` startet einen Entwicklungsserver, `build`/`web` nutzen `NODE_ENV=production`, behalten aber die fachliche Umgebung TEST. Ein Exit-Code ungleich null ist kein bestandener Test.
+
+Der PostgreSQL-Upgrade-Test `scripts/acceptance-database.mjs` verlangt eine leere, explizit benannte lokale Upgrade-Datenbank und prüft Migrationen, Datenerhalt, Fremdschlüssel und Tenant-Grenzen. `vitest.field-service.config.ts`, `vitest.utility.config.ts` und `vitest.acceptance.config.ts` trennen DB-Serviceprüfungen von der Unit-Suite. Ein injizierter Actor in diesen Tests beweist keine funktionierende HTTP-Authentifizierung.
+
+Der zunächst sandbox-gestartete Next-Prozess konnte das installierte `@node-rs/argon2`-Prebuild nicht laden. Mit Node 24.19.0 win32/x64 außerhalb dieses Prozesskontexts bestanden Argon2id Hash/Verify, Login und die vier Login-/Produkt-Browserprojekte; der Production Build und 84 HTTP/API-Checks bestanden. Es wurde keine Hashmethode oder Sicherheitsrichtlinie abgeschwächt. `pnpm` 12.5.1 kann wegen `pnpm-native.exe` (`spawnSync ... UNKNOWN`) nicht starten; der Dependency Audit ist daher NOT_EXECUTED. Docker CLI ist vorhanden, der Daemon nicht verfügbar. Die App-Runtime wurde mit der isolierten Testdatenbank geprüft; dies ist keine RC-Freigabe.
+
+Der aktualisierte Demo-Seed bestand nach Reset und erneutem Seed die Verify-Prüfung: 2 Tenants, 7 User, 6 Properties, 48 Meter, 41.064 Readings und jeweils 2 Devices, Gateways, WorkOrders, Supportfälle, Dashboards, Reports, Regeln und Anomalien. Die 13 Szenarien sind nur hinsichtlich ihrer auswählbaren Werte und gespeicherten Metadaten geprüft; szenariospezifische Datenwirkungen fehlen weiterhin.
+
+Das bestehende `acceptance:software`-Kommando ersetzt seinen Ergebnisbericht. Es wurde in Teil 2 bewusst nicht als Sammelkommando ausgeführt; vor einem späteren Lauf die Teil-2-Nachweise erhalten und den Bericht anschließend zusammenführen.

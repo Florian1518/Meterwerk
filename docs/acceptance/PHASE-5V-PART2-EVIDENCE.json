@@ -1,0 +1,71 @@
+{
+  "phase": "5v-part-2",
+  "recordedAt": "2026-09-28",
+  "baseline": "09427c6b74c1ae3cb4355fa51ac3e6c531f1045e",
+  "head": "09427c6b74c1ae3cb4355fa51ac3e6c531f1045e",
+  "workingTree": "uncommitted",
+  "environment": {
+    "meterwerkEnv": "test",
+    "database": "isolated embedded PostgreSQL 17.10 on 127.0.0.1:55435",
+    "node": "24.19.0",
+    "platform": "win32/x64"
+  },
+  "results": {
+    "prismaValidate": "PASSED",
+    "prismaGenerate": "PASSED",
+    "cleanInstall": { "status": "PASSED", "migrations": 46 },
+    "upgrade": { "status": "PASSED", "fromMigrations": 39, "toMigrations": 46 },
+    "databaseAcceptance": { "status": "PASSED", "tests": 24 },
+    "fieldDatabase": { "status": "PASSED", "tests": 9 },
+    "fieldServiceUnit": { "status": "PASSED", "tests": 53 },
+    "unit": { "status": "PASSED", "files": 39, "tests": 285 },
+    "securityUnit": { "status": "PASSED", "files": 6, "tests": 63 },
+    "authIntegration": { "status": "PASSED", "checks": 18 },
+    "httpApi": { "status": "PASSED", "checks": 84 },
+    "browserLoginJourney": {
+      "status": "PASSED",
+      "rerunProjects": 4,
+      "priorOtherCasesPassed": 24,
+      "runsCombined": true
+    },
+    "demoResetSeedVerify": {
+      "status": "PASSED",
+      "tenants": 2,
+      "users": 7,
+      "properties": 6,
+      "meters": 48,
+      "readings": 41064,
+      "devices": 2,
+      "gateways": 2,
+      "workOrders": 2,
+      "supportCases": 2,
+      "dashboards": 2,
+      "reports": 2,
+      "rules": 2,
+      "anomalies": 2
+    },
+    "productionBuild": "PASSED",
+    "typecheck": "PASSED",
+    "eslint": "PASSED",
+    "prettier": "PASSED",
+    "secretScan": {
+      "status": "PASSED",
+      "reviewFindings": 0,
+      "knownFixtures": 17
+    },
+    "diffCheck": "PASSED",
+    "dependencyAudit": {
+      "status": "NOT_EXECUTED",
+      "reason": "pnpm-native.exe could not start (spawnSync UNKNOWN)"
+    },
+    "demoScenarioEffects": "FAILED",
+    "performanceGate": "NOT_EXECUTED",
+    "externalValidation": "EXTERNAL_VALIDATION_PENDING",
+    "hardwareValidation": "HARDWARE_VALIDATION_PENDING"
+  },
+  "releaseBlockers": [
+    "Demo scenario selection stores metadata but does not apply scenario-specific product state.",
+    "Compatibility of changed historical migrations with supported existing migration histories must be verified before RC."
+  ],
+  "finalPhase5vCommitCreated": false
+}

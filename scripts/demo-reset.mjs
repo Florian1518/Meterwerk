@@ -13,11 +13,15 @@ if (
 )
   throw new Error("Refusing unknown or production-like database");
 execFileSync(
-  "pnpm",
-  ["exec", "prisma", "migrate", "reset", "--force", "--skip-seed"],
+  process.execPath,
+  ["node_modules/prisma/build/index.js", "migrate", "reset", "--force"],
   { stdio: "inherit", env: { ...process.env, METERWERK_ENV: env } },
 );
-execFileSync("pnpm", ["db:seed"], {
-  stdio: "inherit",
-  env: { ...process.env, SEED_DEMO: "true", METERWERK_ENV: env },
-});
+execFileSync(
+  process.execPath,
+  ["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"],
+  {
+    stdio: "inherit",
+    env: { ...process.env, SEED_DEMO: "true", METERWERK_ENV: env },
+  },
+);

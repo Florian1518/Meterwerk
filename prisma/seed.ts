@@ -317,6 +317,146 @@ try {
         }
       }
     }
+    const propertyId = `${tenantId}-property-0`;
+    const meterId = `${propertyId}-building-unit-0-meter-0`;
+    const gatewayId = `${tenantId}-gateway-0`;
+    const userId = `${tenantId}-user-0`;
+    await db.gateway.upsert({
+      where: { id: gatewayId },
+      update: {},
+      create: {
+        id: gatewayId,
+        tenantId,
+        name: t === 0 ? "Nordstern Test-Gateway" : "Rheinblick Test-Gateway",
+        externalGatewayId: `demo-gateway-${t}`,
+        manufacturer: "Meterwerk",
+        model: "Virtual Gateway",
+        status: "ONLINE",
+        installedAt: new Date("2024-02-15T00:00:00Z"),
+        lastSeenAt: now,
+      },
+    });
+    await db.device.upsert({
+      where: { id: `${tenantId}-device-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-device-demo`,
+        tenantId,
+        meterId,
+        gatewayId,
+        externalDeviceId: `demo-device-${t}`,
+        name: "Virtueller Demo-Zähleradapter",
+        manufacturer: "Meterwerk",
+        model: "Virtual Meter Adapter",
+        protocol: "MQTT",
+        status: "ONLINE",
+        lifecycleStatus: "ACTIVE",
+        installedAt: new Date("2024-02-15T00:00:00Z"),
+        lastSeenAt: now,
+      },
+    });
+    await db.workOrder.upsert({
+      where: { id: `${tenantId}-workorder-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-workorder-demo`,
+        tenantId,
+        number: `DEMO-${t + 1}-001`,
+        title: "Zählerwartung — Demo",
+        description: "Synthetischer Auftrag für die Acceptance-Demo.",
+        type: "MAINTENANCE",
+        status: "PLANNED",
+        propertyId,
+        meterId,
+        gatewayId,
+        scheduledAt: now,
+      },
+    });
+    await db.supportCase.upsert({
+      where: { id: `${tenantId}-support-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-support-demo`,
+        tenantId,
+        title: "Gateway-Verbindung prüfen — Demo",
+        description: "Synthetischer Supportfall für die Acceptance-Demo.",
+        category: "GATEWAY",
+        priority: "NORMAL",
+        status: "OPEN",
+        propertyId,
+        meterId,
+        gatewayId,
+        reportedById: userId,
+      },
+    });
+    await db.dashboard.upsert({
+      where: { id: `${tenantId}-dashboard-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-dashboard-demo`,
+        tenantId,
+        ownerId: userId,
+        name: "Verbrauch — Demo",
+        description: "Synthetisches Dashboard für die Acceptance-Demo.",
+        visibility: "TENANT",
+        roles: ["TENANT_ADMIN", "MANAGER"],
+      },
+    });
+    await db.report.upsert({
+      where: { id: `${tenantId}-report-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-report-demo`,
+        tenantId,
+        createdById: userId,
+        type: "CONSUMPTION",
+        title: "Verbrauchsübersicht — Demo",
+        periodFrom: previous,
+        periodTo: now,
+        filters: { synthetic: true },
+        content: { note: "Synthetische Acceptance-Daten" },
+      },
+    });
+    await db.rule.upsert({
+      where: { id: `${tenantId}-rule-demo` },
+      update: {},
+      create: {
+        id: `${tenantId}-rule-demo`,
+        tenantId,
+        propertyId,
+        gatewayId,
+        name: "Offline-Zähler melden — Demo",
+        description: "Synthetische Regel für die Acceptance-Demo.",
+        trigger: "METER_OFFLINE",
+        conditions: [{ field: "status", operator: "equals", value: "OFFLINE" }],
+        actions: [{ type: "ALARM", title: "Zähler offline" }],
+      },
+    });
+    await db.analyticsAnomaly.upsert({
+      where: {
+        tenantId_fingerprint: {
+          tenantId,
+          fingerprint: `demo-anomaly-${t}`,
+        },
+      },
+      update: {},
+      create: {
+        id: `${tenantId}-anomaly-demo`,
+        tenantId,
+        meterId,
+        propertyId,
+        type: "HIGH_CONSUMPTION",
+        medium: "ELECTRICITY",
+        severity: "MEDIUM",
+        windowFrom: today,
+        windowTo: now,
+        measuredValue: "18.500000",
+        expectedValue: "10.000000",
+        deviationPercent: "85.000000",
+        description: "Synthetische Verbrauchsanomalie für die Demo.",
+        fingerprint: `demo-anomaly-${t}`,
+      },
+    });
   }
   console.log(
     "Demo bereit: 2 Mandanten, 7 Benutzer, 6 Liegenschaften, 12 Einheiten und 48 Zähler. Passwörter stammen aus DEMO_PASSWORD.",

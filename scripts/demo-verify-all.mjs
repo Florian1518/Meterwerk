@@ -8,9 +8,12 @@ execFileSync("node", ["scripts/environment-guard.mjs"], {
 });
 if (!process.env.DATABASE_URL)
   throw new Error("DATABASE_URL is required; no demo database was verified");
-execFileSync("pnpm", ["demo:verify"], { stdio: "inherit", env: process.env });
+execFileSync(process.execPath, ["--import", "tsx", "scripts/demo-verify.mjs"], {
+  stdio: "inherit",
+  env: process.env,
+});
 if (process.env.SMOKE_BASE_URL)
-  execFileSync("pnpm", ["smoke:staging"], {
+  execFileSync(process.execPath, ["scripts/smoke-staging.mjs"], {
     stdio: "inherit",
     env: process.env,
   });

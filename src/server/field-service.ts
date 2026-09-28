@@ -393,10 +393,7 @@ export async function createWorkOrder(raw: unknown, requested?: string | null) {
                 create: {
                   title: `${definition.title} (Vorlage v${template!.version})`,
                   items: {
-                    create: definition.items.map((item) => ({
-                      ...item,
-                      tenantId,
-                    })),
+                    create: definition.items,
                   },
                 },
               },
@@ -656,7 +653,8 @@ export async function addChecklist(
         tenantId,
         workOrderId: id,
         title: value.title,
-        items: { create: value.items.map((item) => ({ ...item, tenantId })) },
+        // Prisma inherits both checklistId and tenantId from the composite relation.
+        items: { create: value.items },
       },
     });
     await audit(tx, actor, tenantId, id, "checklist-created", {

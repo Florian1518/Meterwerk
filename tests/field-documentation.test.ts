@@ -566,7 +566,6 @@ describe("Tenantgesicherte Mutationen und Reconnect", () => {
             expect.objectContaining({
               title: "Prüfen",
               required: true,
-              tenantId: "a",
             }),
           ],
         },

@@ -64,3 +64,5 @@ Softwareseitige Treiber, Simulatoren und Protokollverträge sind nicht gleich re
 - [Software Acceptance](docs/SOFTWARE-ACCEPTANCE.md) · [RC Checklist](docs/checklists/RC-ACCEPTANCE-CHECKLIST.md) · [Acceptance Report](docs/acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
 
 Der aktuelle Code- und Validierungsstatus ist in Dokumentation und CI-Workflow maßgeblich; nicht ausgeführte Provider-, Staging- oder Hardwaretests werden nicht als bestanden dargestellt.
+
+Phase 5v Teil 2 verwendet einen separaten lokalen Acceptance-Cluster auf Port 55435 und eine Web-Testinstanz auf Port 3105. Einstieg: `node scripts/acceptance-local.mjs db`; weitere Voraussetzungen und die Grenzen des Windows-Laufs stehen in [Software Acceptance](docs/SOFTWARE-ACCEPTANCE.md). Der Teil-2-Stand ist keine RC-Freigabe: Die lokale Argon2-Sperre verhindert unter anderem erfolgreiche Login-Journeys und den Produktionsbuild.

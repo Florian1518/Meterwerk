@@ -1,4 +1,11 @@
-DO $$ BEGIN ALTER TABLE "Dashboard" ADD CONSTRAINT "Dashboard_id_tenantId_key" UNIQUE ("id","tenantId"); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_constraint
+  WHERE conrelid = '"Dashboard"'::regclass AND conname = 'Dashboard_id_tenantId_key'
+ ) THEN
+  ALTER TABLE "Dashboard" ADD CONSTRAINT "Dashboard_id_tenantId_key" UNIQUE ("id","tenantId");
+ END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS "DashboardWidget" (
  "id" TEXT NOT NULL, "tenantId" TEXT NOT NULL, "dashboardId" TEXT NOT NULL, "title" TEXT NOT NULL, "type" TEXT NOT NULL, "dataSource" TEXT NOT NULL,
  "medium" "MeterType", "meterId" TEXT, "propertyId" TEXT, "period" TEXT NOT NULL, "aggregation" TEXT NOT NULL, "unit" TEXT,

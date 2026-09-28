@@ -16,7 +16,8 @@ CREATE TABLE "DashboardWidget" (
  CONSTRAINT "DashboardWidget_pkey" PRIMARY KEY ("id"),
  CONSTRAINT "DashboardWidget_dashboardId_tenantId_fkey" FOREIGN KEY ("dashboardId","tenantId") REFERENCES "Dashboard"("id","tenantId") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE UNIQUE INDEX "Dashboard_id_tenantId_key" ON "Dashboard"("id","tenantId");
+-- The UNIQUE table constraint above already creates this index.
+CREATE UNIQUE INDEX IF NOT EXISTS "Dashboard_id_tenantId_key" ON "Dashboard"("id","tenantId");
 CREATE INDEX "Dashboard_tenantId_visibility_idx" ON "Dashboard"("tenantId","visibility");
 CREATE INDEX "Dashboard_tenantId_ownerId_idx" ON "Dashboard"("tenantId","ownerId");
 CREATE UNIQUE INDEX "DashboardWidget_id_tenantId_key" ON "DashboardWidget"("id","tenantId");

@@ -11,8 +11,12 @@ permissions:
 env:
   DATABASE_URL: postgresql://meterwerk:meterwerk@localhost:5432/meterwerk
   APP_URL: http://localhost:3000
-  SESSION_SECRET: ci-only-session-secret-change-me
+  SESSION_SECRET: ci-only-session-secret-for-isolated-tests-only
   NODE_ENV: test
+  METERWERK_ENV: test
+  SEED_DEMO: "true"
+  DEMO_PASSWORD: ci-only-synthetic-demo-password
+  GIT_COMMIT_SHA: ${{ github.sha }}
 
 jobs:
   fast:
@@ -47,7 +51,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm test
+      - run: pnpm security:regression
 
   integration:
     name: Integration and migration tests
@@ -78,6 +84,9 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:generate
+      - run: pnpm db:seed
+      - run: pnpm migration:check
       - run: pnpm test:integration
       - run: pnpm test:security
         env: { SEED_DEMO: "true" }
@@ -90,6 +99,17 @@ jobs:
     name: Browser and mobile tests
     needs: unit
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meterwerk
+          POSTGRES_PASSWORD: meterwerk
+          POSTGRES_DB: meterwerk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U meterwerk -d meterwerk"
+          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { persist-credentials: false }
@@ -99,7 +119,21 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - run: pnpm db:generate
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:seed
+      - run: pnpm build
+        env: { NODE_ENV: production }
+      - name: Start isolated web application
+        run: |
+          NODE_ENV=production pnpm start > /tmp/meterwerk-web.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:3000/api/health/ready > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      # Stored visual baselines are Windows-specific; functional journeys run on Linux.
+      - run: pnpm test:e2e --grep-invert @visual
         env: { BROWSER_E2E_BASE_URL: http://localhost:3000 }
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -123,3 +157,4 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env: { NODE_ENV: production }

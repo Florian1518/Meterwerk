@@ -9,10 +9,13 @@ WORKDIR /app
 RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
 ENV NODE_ENV=production NODE_OPTIONS=--enable-source-maps
 COPY --from=deps --chown=meterwerk:meterwerk /app/node_modules ./node_modules
-COPY --chown=meterwerk:meterwerk package.json prisma prisma.config.ts src scripts ./
+COPY --chown=meterwerk:meterwerk package.json tsconfig.json prisma.config.ts ./
+COPY --chown=meterwerk:meterwerk prisma ./prisma
+COPY --chown=meterwerk:meterwerk src ./src
+COPY --chown=meterwerk:meterwerk scripts ./scripts
+RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build node node_modules/prisma/build/index.js generate
 USER meterwerk
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "process.exit(0)"
 ARG VERSION=unknown
 ARG GIT_SHA=unknown
-ENV BUILD_VERSION=$VERSION BUILD_GIT_SHA=$GIT_SHA
+ENV BUILD_VERSION=$VERSION GIT_COMMIT_SHA=$GIT_SHA
 ENTRYPOINT ["node", "node_modules/tsx/dist/cli.mjs", "--conditions=react-server"]

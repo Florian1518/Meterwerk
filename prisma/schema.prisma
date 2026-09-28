@@ -345,6 +345,10 @@ model SupportCase {
   updatedAt     DateTime            @updatedAt
   resolvedAt    DateTime?
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property      Property?           @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  device        Device?             @relation(fields: [deviceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  gateway       Gateway?            @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  meter         Meter?              @relation(fields: [meterId, tenantId], references: [id, tenantId], onDelete: Restrict)
   timeline      SupportCaseEvent[]
   incidents     Incident[]
 
@@ -490,6 +494,7 @@ model WebhookEndpoint {
 
   @@unique([id, tenantId])
   @@index([tenantId, active])
+  @@index([events], type: Gin)
 }
 
 model WebhookDelivery {
@@ -831,17 +836,18 @@ model DeviceRateLimit {
 }
 
 model Property {
-  workOrders WorkOrder[]
-  id         String          @id @default(cuid())
-  tenantId   String
-  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name       String
-  address    String
-  city       String
-  createdAt  DateTime        @default(now())
-  buildings  Building[]
-  grants     PropertyGrant[]
-  rules      Rule[]
+  supportCases SupportCase[]
+  workOrders   WorkOrder[]
+  id           String          @id @default(cuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name         String
+  address      String
+  city         String
+  createdAt    DateTime        @default(now())
+  buildings    Building[]
+  grants       PropertyGrant[]
+  rules        Rule[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -887,6 +893,7 @@ model Unit {
 }
 
 model Meter {
+  supportCases       SupportCase[]
   workOrders         WorkOrder[]
   id                 String               @id @default(cuid())
   tenantId           String
@@ -921,6 +928,7 @@ model Meter {
 }
 
 model Gateway {
+  supportCases       SupportCase[]
   workOrders         WorkOrder[]
   id                 String              @id @default(cuid())
   tenantId           String
@@ -993,6 +1001,7 @@ model TechnicalAlert {
 }
 
 model Device {
+  supportCases           SupportCase[]
   id                     String                       @id @default(cuid())
   tenantId               String
   meterId                String
@@ -1443,6 +1452,7 @@ model Rule {
   @@unique([id, tenantId])
   @@index([tenantId, active, priority])
   @@index([tenantId, trigger, active])
+  @@index([tenantId, nextScheduledAt])
 }
 
 model RuleVersion {
@@ -1637,12 +1647,12 @@ enum RestoreTestStatus {
 }
 
 model BackupRecord {
-  id                 String       @id @default(cuid())
+  id                 String           @id @default(cuid())
   type               String
   environment        String
   startedAt          DateTime
   completedAt        DateTime?
-  status             BackupStatus @default(PENDING)
+  status             BackupStatus     @default(PENDING)
   appVersion         String
   gitCommit          String
   migrationVersion   String
@@ -1651,62 +1661,62 @@ model BackupRecord {
   storageReference   String
   retentionExpiresAt DateTime?
   errorReason        String?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   restoreTests       RestoreTestRun[]
 
   @@index([environment, status, startedAt])
 }
 
 model RestoreTestRun {
-  id              String            @id @default(cuid())
-  backupId        String
-  backup          BackupRecord      @relation(fields: [backupId], references: [id], onDelete: Restrict)
-  targetDatabase  String
-  status          RestoreTestStatus @default(NOT_TESTED)
-  startedAt       DateTime
-  completedAt     DateTime?
-  checks          Json              @default("{}")
-  errorReason     String?
-  createdAt       DateTime          @default(now())
+  id             String            @id @default(cuid())
+  backupId       String
+  backup         BackupRecord      @relation(fields: [backupId], references: [id], onDelete: Restrict)
+  targetDatabase String
+  status         RestoreTestStatus @default(NOT_TESTED)
+  startedAt      DateTime
+  completedAt    DateTime?
+  checks         Json              @default("{}")
+  errorReason    String?
+  createdAt      DateTime          @default(now())
 
   @@index([backupId, createdAt])
 }
 
 model BackupSchedule {
-  id                 String   @id @default(cuid())
-  environment        String
-  cron               String
-  enabled            Boolean  @default(true)
-  dailyKeep          Int      @default(7)
-  weeklyKeep        Int      @default(4)
-  monthlyKeep       Int      @default(12)
-  nextRunAt          DateTime
-  lastStartedAt      DateTime?
-  lastCompletedAt    DateTime?
-  lastSuccessfulAt   DateTime?
-  status             String   @default("IDLE")
-  attempts           Int      @default(0)
-  nextRetryAt        DateTime?
-  lastError          String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String    @id @default(cuid())
+  environment      String
+  cron             String
+  enabled          Boolean   @default(true)
+  dailyKeep        Int       @default(7)
+  weeklyKeep       Int       @default(4)
+  monthlyKeep      Int       @default(12)
+  nextRunAt        DateTime
+  lastStartedAt    DateTime?
+  lastCompletedAt  DateTime?
+  lastSuccessfulAt DateTime?
+  status           String    @default("IDLE")
+  attempts         Int       @default(0)
+  nextRetryAt      DateTime?
+  lastError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([environment])
 }
 
 model BackupObjectVersion {
-  id            String   @id @default(cuid())
-  tenantId      String?
-  objectKey     String
-  versionId     String?
-  etag          String?
-  sha256        String?
-  sizeBytes     BigInt?
-  status        String   @default("ACTIVE")
-  backupId      String?
-  createdAt     DateTime @default(now())
-  deletedAt     DateTime?
+  id        String    @id @default(cuid())
+  tenantId  String?
+  objectKey String
+  versionId String?
+  etag      String?
+  sha256    String?
+  sizeBytes BigInt?
+  status    String    @default("ACTIVE")
+  backupId  String?
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([tenantId, objectKey, createdAt])
   @@index([backupId])
@@ -1729,33 +1739,33 @@ enum DrFindingStatus {
 }
 
 model DrDrill {
-  id                   String        @id @default(cuid())
-  type                 String
-  environment          String
-  plannedAt            DateTime?
-  performedAt          DateTime?
-  ownerId              String?
-  status               DrDrillStatus @default(PLANNED)
-  rpoStatus            String        @default("UNKNOWN")
-  rtoStatus            String        @default("UNKNOWN")
-  rpoTargetSeconds     Int?
-  rpoObservedSeconds   Int?
-  rtoTargetSeconds     Int?
-  rtoObservedSeconds   Int?
-  incidentStartedAt    DateTime?
-  recoveryStartedAt    DateTime?
-  dbReadyAt            DateTime?
-  storageValidatedAt   DateTime?
-  webReadyAt           DateTime?
-  workerReadyAt        DateTime?
-  criticalValidatedAt  DateTime?
-  completedAt          DateTime?
-  findings             Json          @default("[]")
-  actions              Json          @default("[]")
-  nextDrillAt          DateTime?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  drFindings           DrFinding[]
+  id                  String        @id @default(cuid())
+  type                String
+  environment         String
+  plannedAt           DateTime?
+  performedAt         DateTime?
+  ownerId             String?
+  status              DrDrillStatus @default(PLANNED)
+  rpoStatus           String        @default("UNKNOWN")
+  rtoStatus           String        @default("UNKNOWN")
+  rpoTargetSeconds    Int?
+  rpoObservedSeconds  Int?
+  rtoTargetSeconds    Int?
+  rtoObservedSeconds  Int?
+  incidentStartedAt   DateTime?
+  recoveryStartedAt   DateTime?
+  dbReadyAt           DateTime?
+  storageValidatedAt  DateTime?
+  webReadyAt          DateTime?
+  workerReadyAt       DateTime?
+  criticalValidatedAt DateTime?
+  completedAt         DateTime?
+  findings            Json          @default("[]")
+  actions             Json          @default("[]")
+  nextDrillAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  drFindings          DrFinding[]
 
   @@index([environment, status, plannedAt])
 }
@@ -1779,14 +1789,14 @@ model DrFinding {
 }
 
 model DemoScenarioState {
-  id           String   @id @default(cuid())
-  environment  String   @unique
-  scenario     String
-  seed         Int      @default(20260925)
-  activatedAt  DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  updatedBy    String?
-  metadata     Json     @default("{}")
+  id          String   @id @default(cuid())
+  environment String   @unique
+  scenario    String
+  seed        Int      @default(20260925)
+  activatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+  metadata    Json     @default("{}")
 }
 
 enum CommissioningStatus {
