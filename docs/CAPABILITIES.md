@@ -5,9 +5,12 @@ Aktueller Abnahmestand: **29.09.2026, keine RC-Freigabe**. Die Fortsetzung auf
 2 Browserfälle), geprüfte kanonische 47-Migrations-Pfade, lokale Performancewerte
 mit bestandenem Regression-Gate und eine transitive SBOM mit lokalen Build-Artefakten.
 Eine ergänzte mobile Field-Service-Journey prüft den Wartungsabschluss ohne API-Mocks.
-Bestandsbaseline, Audit-Provenance, Container-Images, Signing, Staging und CI
-sind noch offen. Das lokale Windows-x64-Standalone-Artefakt bestand einen
-entpackten Health-/Readiness-/Login-/Dashboard-Smoke. Historischer
+Die v1.0-Datenbankbaseline ist auf die 47 kanonischen Migrationen festgelegt;
+Upgrade ab `v0.4b-pilot-ready` (7 Migrationen) und Dependency-Audit auf dem
+aktuellen Lockfile sind bestanden. Nicht getaggte interne/dev-Basen sind nicht
+unterstützt. Container-Images, Signing, Staging und CI sind noch offen. Das
+lokale Windows-x64-Standalone-Artefakt bestand einen entpackten
+Health-/Readiness-/Login-/Dashboard-Smoke. Historischer
 Teil-3-Text unten beschreibt den Commit, nicht die nachfolgende Fortsetzung.
 Siehe [aktueller Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
 

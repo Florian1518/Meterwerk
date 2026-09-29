@@ -1,20 +1,33 @@
-# Datenbank-Baseline für die v1.0-Vorbereitung
+# Meterwerk v1.0 canonical database baseline
 
-Stand: 28.09.2026, Arbeitsstand auf WIP `e88b1de`. Dies ist keine RC-Freigabe.
+Entscheidung: 29.09.2026, geprüft auf Commit `4932f0087cf263988c599e498ac682fac1d93f5c`.
+Die Baseline ist festgelegt; dies ist keine RC-Freigabe.
 
 ## Nachweisbarer Projektstand
 
-Das Repository hat keinen konfigurierten Remote. Der vorhandene Tag
-`v0.4b-pilot-ready` zeigt auf `a5b3011`; dort existieren die Dashboard-Migrationen
-008/009 noch nicht. Beide Dateien stammen aus `9b8c485`. Ihre korrigierten
-Fassungen sind bereits Bestandteil des übernommenen WIP-Commits `e88b1de` und
-wurden in dieser Fortsetzung nicht erneut geändert.
+Das Repository hat keinen konfigurierten Remote und genau einen versionierten
+Tag: `v0.4b-pilot-ready` auf `a5b3011` (18.09.2026). Dieser dokumentierte
+Pilot-Ausgangspunkt enthält sieben Migrationen (`202609170001` bis
+`202609180004`); Dashboard-Migrationen 008/009 sind nicht darin enthalten.
+Sie wurden erst am 23.09.2026 im nicht getaggten Entwicklungscommit `9b8c485`
+hinzugefügt. Es gibt keinen versionierten Release oder dokumentierten
+Supportvertrag für einen Zwischenstand, der die Originaldateien enthält.
 
-Diese Git-Belege beweisen **nicht**, dass außerhalb des Repositorys keine
-unterstützte/geteilte Installation existiert. Die entsprechende Betriebsfrage
-ist offen. Fall A (keine unterstützte externe Installation mit Originalhistorie)
-ist deshalb noch nicht bestätigt. Keine unbekannte Datenbank wird als
-kompatibel deklariert. Dieser Punkt bleibt ein RELEASE_BLOCKER.
+Damit gilt **Fall A für die offiziell versionierte Supportgrenze**: Es gibt
+keine belegte, offiziell versionierte externe/geteilte Datenbankbaseline, die
+008/009 mit den Originalchecksummen registriert haben könnte. Daraus folgt
+nicht, dass niemals jemand einen ungetaggten Entwicklungsstand betrieben hat.
+Solche nicht versionierten internen/dev Datenbanken sind ausdrücklich keine
+unterstützte v1.0-Upgradebaseline; ihr Zustand wird nicht automatisch
+übernommen.
+
+Die **Meterwerk v1.0 canonical database baseline** ist die aktuelle vollständige
+47-Migrations-History. Unterstützter Upgradeursprung ist der dokumentierte Tag
+`v0.4b-pilot-ready` mit sieben Migrationen. Installationen können außerdem neu
+auf einer leeren Datenbank beginnen. Interne/dev Datenbanken, die nach dem Tag
+entstanden sind oder unbekannte/abweichende Checksummen aufweisen, benötigen
+eine ausdrücklich geprüfte Datenübernahme oder Neuaufsetzung aus exportierten
+Daten. Der Preflight verweigert sie unverändert und ohne History-Manipulation.
 
 ## Ursache und Checksummen
 
@@ -50,29 +63,42 @@ eine vorher abbrechende 008 bei einer leeren Installation nicht reparieren.
 
 ## Getestete Baselines und sichere Strategie
 
-1. Leere isolierte PostgreSQL-17.10-Datenbank: 47 aktuelle Migrationen,
-   Prisma-Seed und Demo-Verify erfolgreich; App-Start, Liveness, Readiness und
-   Login-Seite geprüft.
-2. Definierter synthetischer kanonischer Stand mit 39 Migrationen bis
-   `202609240020_scaling_performance`: Upgrade auf 47, identische Daten in
-   19 Tabellen einschließlich Tenant, Dashboard und DashboardWidget;
-   validierte Fremdschlüssel, Cross-Tenant-Abweisungen und Prisma-Diff ohne Drift.
-   App-Start, Liveness, Readiness und Login-Seite geprüft.
-3. Lokale WIP-Acceptance-DB mit 46 kanonischen Migrationen: neue 47. Migration
-   angewendet; Produkt-/HTTP-Abnahme gegen diese DB bestanden.
+1. **Clean Install:** leere isolierte PostgreSQL-17.10-Datenbank, alle 47
+   Migrationen, Prisma-Seed und Demo-Verify erfolgreich; App-Start, Liveness,
+   Readiness und Login-Seite geprüft (6/6 HTTP-Smokes über Clean- und Upgrade-DB).
+2. **Unterstütztes Upgrade:** die tatsächlichen sieben Migrationen aus
+   `v0.4b-pilot-ready` wurden aus Git angewendet, anschließend sieben synthetische
+   Datensätze aus Tenant, User, Property, Building, Unit, Meter und Reading
+   angelegt und mit dem aktuellen Stand auf 47 Migrationen aktualisiert.
+   Alle sieben Datenbereiche blieben bitwertgleich; sieben alte
+   `_prisma_migrations`-Zeilen blieben unverändert. Die neuen 008/009-Zeilen
+   haben die Prüfsummen der korrigierten kanonischen Dateien. Prisma Validate,
+   Schema-Diff ohne Drift sowie App-Start, Liveness, Readiness und Login-Seite
+   bestanden. Der bereinigte [Upgradebeleg](acceptance/SUPPORTED-UPGRADE-V0.4B-4932F00.json)
+   enthält die konkreten Prüfergebnisse.
+3. **Zusätzlicher kanonischer Upgradebeleg:** der bereits ausgeführte
+   synthetische 39→47-Pfad erhielt dieselben Datensätze in 19 Tabellen,
+   validierte 127 Fremdschlüssel, Cross-Tenant-Abweisungen und Prisma-Diff ohne
+   Drift. Er ist ergänzende Regression, nicht die definierte Release-Ursprungsbaseline.
 
-Der v1.0-Supportumfang kann auf diese kanonische pre-v1.0-Baseline festgelegt
-werden, **sobald** Fall A bestätigt ist. Bis dahin handelt es sich um den
-technisch getesteten Umfang, nicht um eine Entscheidung über externe
-Supportverpflichtungen. Die 39-Migrations-Baseline enthält bereits die
-korrigierten 008/009; sie ist kein Originalhistorien-Test.
+### Release-Entscheidung zu 008/009
 
-Bei Fall B: Datenbank unverändert sichern und ihre registrierte Historie sowie
-das tatsächliche Schema lesend inventarisieren. Erst danach einen separaten
-Forward-/Upgradepfad gegen eine isolierte Kopie implementieren und abnehmen.
-Es gibt hier keinen getesteten pauschalen Upgradepfad für Originalchecksummen.
-Keine Manipulation von `_prisma_migrations`, kein kaschierendes `migrate resolve`,
-kein `db push`, kein Reset einer Bestandsdatenbank.
+Die Originalchecksummen sind aus Commit `9b8c485` rekonstruiert; die aktuellen
+kanonischen LF-Prüfsummen stehen in der Tabelle oben. Migration 008 legte den
+Unique-Index bereits durch die `UNIQUE`-Tabellenconstraint an und versuchte,
+denselben Namen erneut anzulegen (PostgreSQL `42P07`). Migration 009 fing
+`duplicate_object`, nicht den reproduzierten `42P07`-Konflikt beim erneuten
+Anlegen. Die Korrekturen sind für Clean Install erforderlich.
+
+Der dokumentierte und getestete v0.4b-Supportursprung enthält beide Migrationen
+nicht; sie werden beim Upgrade aus den aktuellen korrigierten Dateien erstmalig
+angewendet. Die reale Upgradeprüfung bestätigt, dass weder alte Historieneinträge
+geändert noch Originalchecksummen künstlich eingetragen werden.
+
+Folglich ist der Migrations-RELEASE_BLOCKER für die definierte v1.0-Supportgrenze
+geschlossen. Datenbanken mit originalen 008/009-Checksummen sind nicht Teil dieser
+Grenze und werden vom Preflight gestoppt. Es wurde keine `_prisma_migrations`-
+Tabelle manuell verändert, kein `migrate resolve` und kein `db push` verwendet.
 
 ## Reproduktion
 
@@ -84,7 +110,9 @@ Lokale Abnahme: `node scripts/acceptance-local.mjs db`, anschließend
 `node scripts/acceptance-local.mjs run rc-databases scripts/acceptance-rc-databases.mjs`.
 Der Erzeuger verweigert bereits existierende RC-Datenbanken ausdrücklich.
 Clean Install über Modus `cleanrc`, Upgrade über Modus `upgraderc` und
-`scripts/acceptance-database.mjs`; historische SQL-Proben über
+`scripts/acceptance-database.mjs`; offizieller v0.4b→47-Test über
+`node scripts/acceptance-local.mjs run pilot-upgrade scripts/acceptance-supported-upgrade.mjs`.
+Historische SQL-Proben über
 `scripts/migration-history-report.mjs` im Modus `run`.
 Private Konfiguration und vollständige lokale Logs liegen ausschließlich unter
 `.local/acceptance/` und gehören nicht ins Repository.

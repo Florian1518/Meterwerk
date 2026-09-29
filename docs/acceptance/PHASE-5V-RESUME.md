@@ -109,26 +109,39 @@ Die maschinenlesbare [Belegübersicht](PHASE-5V-RESUME-EVIDENCE.json) enthält
 Prüfmetadaten und SHA-256-Werte ausgewählter lokaler Reports. Private Konfiguration,
 Sitzungsdaten und vollständige lokale Logs werden nicht ins Repository übernommen.
 
+## Fortsetzung ab WIP `4932f00`
+
+- Die versionshistorische Supportgrenze wurde auf den einzigen dokumentierten
+  Tag `v0.4b-pilot-ready` (7 Migrationen) und die neue 47-Migrations-v1.0-
+  Baseline festgelegt. 008/009 fehlen im alten Tag und wurden später nur in
+  einem nicht getaggten Entwicklungscommit eingeführt. Ungetaggte interne/dev-
+  Historien sind nicht Teil der v1.0-Upgradeunterstützung; der Preflight stoppt
+  unbekannte oder abweichende Checksummen. Details und Hashes: [Baseline](../MIGRATION-BASELINE.md).
+- Unterstützter Upgradepfad v0.4b→v1.0 isoliert bestanden: 7→47 Migrationen,
+  7/7 synthetische Datensätze aus Tenant, User, Property, Building, Unit, Meter
+  und Reading erhalten; 7/7 vorherige Migrationszeilen unverändert; 008/009
+  zuerst in der korrigierten Fassung registriert; Prisma Validate, Schema-Diff
+  ohne Drift und 3/3 App-Smokes bestanden. Kein History-Resolve oder -Edit.
+  [Detaillierter Migrationsbeleg](SUPPORTED-UPGRADE-V0.4B-4932F00.json).
+- Clean Install 47 Migrationen, Seed/Verify und Clean-/Upgrade-HTTP-Health-Smoke
+  waren bereits auf dem unveränderten Code bestanden und wurden nicht wiederholt.
+- Dependency Audit `pnpm audit --json`: PASSED, pnpm 12.5.1/Linux WSL, Exit 0,
+  765 Dependencies, 0 info/low/moderate/high/critical Advisories. Git SHA und
+  Lockfile-SHA sind im [Audit-Beleg](DEPENDENCY-AUDIT-4932F00.json) dokumentiert.
+
 ## Offene Release-Gates
 
-1. **RELEASE_BLOCKER: unterstützte Bestandsbaseline.** Unbekannt, ob externe oder
-   geteilte Installationen Originalchecksummen von 008/009 besitzen. Die
-   [Baseline-Strategie](../MIGRATION-BASELINE.md) enthält die geprüften kanonischen
-   Pfade und verweigert unbekannte Historien. Keine pauschale Kompatibilitätsfreigabe.
-2. **Audit-Provenance:** vorhandenen Null-Finding-Report nicht mit einem
-   reproduzierbaren Audit für den Release-SHA gleichsetzen. Ein belastbarer
-   Aufruf-/Exit-/Lockfile-Beleg fehlt; kein Advisory ist dadurch bewiesen.
-3. **Artefakt-/Image-Abnahme:** lokales Windows-Paket strukturell geprüft und
+1. **Container-/Image-Abnahme:** lokales Windows-Paket strukturell geprüft und
    aus frischem entpacktem Verzeichnis mit Health-/Readiness- und echtem
    synthetischem Login/Dashboard-Smoke bestanden. Web-/Worker-Container noch
    nicht gebaut oder abgenommen. Docker CLI vorhanden, Linux-Daemon-Pipe am
    29.09. nicht erreichbar. Keine Image-Digests.
-4. **Signing/Provenance:** `NOT_CONFIGURED_NOT_VERIFIED`, keine Signatur und
+2. **Signing/Provenance:** `NOT_CONFIGURED_NOT_VERIFIED`, keine Signatur und
    keine verifizierte Releaseidentität. Prüfsummen sind kein Signaturnachweis.
-5. **CI/Staging/finaler SHA:** kein Remote, keine Actions-Ausführung, keine
+3. **CI/Staging/finaler SHA:** kein Remote, keine Actions-Ausführung, keine
    Staging-Bereitstellung/-Abnahme. Arbeitsbaum dirty, Paketversion 0.1.0,
    unveränderlicher v1.0-RC weiterhin nicht vorhanden.
-6. **Produktionskapazität/Failover:** lokale Performance-Grenzwerte bestanden;
+4. **Produktionskapazität/Failover:** lokale Performance-Grenzwerte bestanden;
    konkurrierende Last, gefüllte Worker-Queues und produktionsähnlicher Betrieb
    sind nicht gemessen.
 
@@ -146,9 +159,7 @@ LoRaWAN und Herstellergeräte. Keine reale Hardware angeschlossen oder geprüft.
 
 ## Nächster Schritt
 
-Zuerst den Supportumfang der Bestandsdatenbank-Baseline klären. Bei vorhandener
-Originalhistorie nur lesende Inventur und anschließend isolierte Kopie mit
-separater Upgradeabnahme; keine Checksum-Umschreibung. Danach Audit-Provenance,
-Artefaktlaufzeit/Images, Signing und isolierte Staging-/CI-Abnahme für einen
-festgelegten SHA vervollständigen. Erst nach allen relevanten Gates über den
-finalen RC entscheiden.
+Als Nächstes Container-/Worker-Images, Signing, CI/Staging und betriebliche
+Kapazitäts-/Failover-Gates für einen festgelegten SHA abnehmen. Der v1.0-Support
+bleibt auf die dokumentierte Baseline und den getesteten Upgradepfad begrenzt.
+Erst nach den offenen Gates über den finalen RC entscheiden.

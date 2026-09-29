@@ -1,6 +1,6 @@
 # Software Acceptance Result
 
-> **Aktueller Stand: 29.09.2026, Fortsetzung auf `e88b1de`, keine RC-Freigabe.**
+> **Aktueller Stand: 29.09.2026, Fortsetzung auf `4932f00`, keine RC-Freigabe.**
 > Die historischen Teil-2-/Teil-3-Aussagen unten bleiben als Verlauf erhalten.
 > Maßgeblich für die Fortsetzung sind [Phase-5v-Fortsetzungsbericht](PHASE-5V-RESUME.md)
 > und [RC-Checkliste](../checklists/RC-ACCEPTANCE-CHECKLIST.md).
@@ -8,15 +8,19 @@
 ### Phase 5v Fortsetzung — aktueller Gate-Stand
 
 Demo-Produktwirkungen, lokale Performance-Regression, transitive Lockfile-SBOM
-und das lokale Windows-x64-Standalone-Paket wurden nachgewiesen. Das entpackte
-Paket bestand Health-/Readiness-, synthetischen Login- und authentifizierten
-Dashboard-Smoke; das native Argon2-Binding ist im Artefakt enthalten. Offen
-bleiben die unterstützte Bestandsbaseline (**RELEASE_BLOCKER**), Audit-Provenance,
-Container-/Worker-Images, Signing/Provenance, CI/Staging für einen unveränderlichen
-SHA sowie Kapazitäts-/Failoverabnahme. Provider- und Hardwarestatus siehe unten.
-Einzelbelege stehen im [Fortsetzungsbericht](PHASE-5V-RESUME.md).
+und das lokale Windows-x64-Standalone-Paket wurden nachgewiesen. Die
+v1.0-Datenbankbaseline ist auf die 47 kanonischen Migrationen festgelegt; der
+einzige dokumentierte Vorläufer `v0.4b-pilot-ready` mit sieben Migrationen
+bestand den Upgrade-Smoke auf 47. Die unveränderte Lockfile-Abhängigkeit bestand
+`pnpm audit --json` (pnpm 12.5.1, Exit 0, 0 Advisories in allen Schweregraden).
+Migrations- und Dependency-Audit-Gates sind damit für diese Supportgrenze
+geschlossen. Offen bleiben Container-/Worker-Images, Signing/Provenance,
+CI/Staging für einen unveränderlichen SHA sowie Kapazitäts-/Failoverabnahme.
+Provider- und Hardwarestatus siehe unten. Einzelbelege stehen im
+[Fortsetzungsbericht](PHASE-5V-RESUME.md), [Baseline-Entscheid](../MIGRATION-BASELINE.md)
+und [Audit-Provenance](DEPENDENCY-AUDIT-4932F00.json).
 
-- Baseline / HEAD: `f444ea62207ed532b4329c29b9396e4703902ecc`
+- Historischer Acceptance-Ausgangsstand in der folgenden Dokumentation: `f444ea62207ed532b4329c29b9396e4703902ecc`
 - Package version: `0.1.0`
 - Recorded at: `2026-09-25T14:13:17.704Z`
 - Scope: local software checks executed by `pnpm acceptance:software`.
@@ -116,7 +120,7 @@ These checks require isolated services, credentials, provider infrastructure, or
 - **Sonstige bereits bestätigte Teil-2-Ergebnisse:** Field-Service-Unit 53/53, Utility Integration 8/8, Public API 8/8, Webhooks 10/10, Rules 7/7, Protocol/Ingestion 5 Pfade und Production Guards 2/2 PASSED; Dokumentationslinks 92 und Referenzen 13 geprüft.
 - **Nicht ausgeführt / weiterhin pending:** Performance Gate; Docker-Images/Worker-Image (Daemon fehlt); echte MQTT-Broker-/Provider-/Staging-/PITR-/Full-Restore-Prüfungen; Hardware. Die CI-Konfiguration wurde statisch geprüft, GitHub Actions aber nicht ausgeführt. Die SBOM umfasst 34 direkte Abhängigkeiten, 32 noch mit Versionsbereichen; keine aufgelöste transitive SBOM, Image-Checksummen oder Signatur.
 
-### Offene RC-Blocker und Grenzen
+### Historische offene RC-Blocker am Stand vor Commit `e88b1de` (28.09.2026)
 
 - **RELEASE_BLOCKER — Demo-Szenarioverhalten:** Die Szenariowahl NORMAL, WATER_LEAK, HIGH_ELECTRICITY etc. erzeugt bislang keine szenariospezifischen Messwert-, Alarm-, Gateway-/Firmware- oder Wartungszustände. Vor RC muss dieses Verhalten implementiert und je zentralem Szenario gegen persistierte Produktdaten geprüft werden oder die beworbenen Szenarien müssen aus dem RC-Umfang entfernt werden.
 - **RELEASE_BLOCKER — Migrationshistorie:** Die älteren Migrationen `202609240008_dashboards` und `202609240009_dashboard_recovery` wurden geändert, um Clean Install zu ermöglichen. Vor RC muss für jede zu unterstützende Bestandsdatenbank der tatsächliche Prisma-Migrationsstatus abgeglichen werden. Wo eine geänderte Migration bereits als angewendet registriert ist, ist eine sichere Forward-Migration/History-Strategie festzulegen; die lokalen Clean-Install-/39→46-Tests belegen dies nicht für beliebige Produktionshistorien.

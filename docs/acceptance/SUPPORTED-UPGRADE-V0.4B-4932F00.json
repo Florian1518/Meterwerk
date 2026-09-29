@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-09-29T12:32:10.208Z",
+  "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+  "baselineTag": "v0.4b-pilot-ready",
+  "baselineMigrations": 7,
+  "targetMigrations": 47,
+  "newMigrationsApplied": 40,
+  "environment": "Isolated synthetic PostgreSQL 17.10; no production/customer data",
+  "status": "PASSED",
+  "preservedData": {
+    "Tenant": 1,
+    "User": 1,
+    "Property": 1,
+    "Building": 1,
+    "Unit": 1,
+    "Meter": 1,
+    "Reading": 1,
+    "totalRows": 7
+  },
+  "migrationHistory": {
+    "preexistingRowsPreserved": 7,
+    "preexistingChecksumsChanged": false,
+    "previousDashboard008Or009Rows": 0,
+    "new008And009ChecksumsMatchCanonicalFiles": true,
+    "manualHistoryChanges": false,
+    "migrateResolveUsed": false
+  },
+  "checks": {
+    "prismaValidate": "PASSED",
+    "migrationPreflight": "PASSED",
+    "allMigrationsApplied": "PASSED",
+    "dataRowsUnchanged": "PASSED",
+    "schemaDiffNoDrift": "PASSED",
+    "applicationStart": "PASSED",
+    "liveness": "PASSED",
+    "readiness": "PASSED",
+    "loginPage": "PASSED"
+  }
+}

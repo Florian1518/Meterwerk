@@ -2,20 +2,20 @@
 
 ## Aktueller Fortsetzungsstand — 29.09.2026
 
-Baseline/HEAD: `e88b1de65364ab606dc848ccf652acd85b9f49a4`, Branch `master`.
-Arbeitsbaum bereits bei Wiederaufnahme verändert. Kein RC-Commit/Tag erzeugt.
+WIP/HEAD bei Fortsetzung: `4932f0087cf263988c599e498ac682fac1d93f5c`, Branch `master`.
+Kein finaler RC-Commit/Tag erzeugt.
 Die leere Freigabevorlage und historischen Einträge unten sind keine aktuelle Freigabe.
 Details und Beleggrenzen: [Fortsetzungsbericht](../acceptance/PHASE-5V-RESUME.md).
 
 | Gate                           | Aktueller Nachweis                                                                         | Verbleibende Grenze                                                                                             |
 | ------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | Demo-Szenariowirkungen         | PASSED: vorhandene 13 Szenarien / 266 DB-/HTTP-Checks; neu 2 Browserprojekte               | Keine Hardware-/Providerzustellung                                                                              |
-| Clean Install / Upgrade        | PASSED: vorhandene 47 Migrationen / 39→47, 19 Tabellen erhalten, 127 FKs, 6 Startup-Checks | Kanonische Historie; keine Originalchecksum-Bestandsdatenbank                                                   |
-| Unterstützte DB-Baseline       | RELEASE_BLOCKER                                                                            | Externe Supportverpflichtungen unbekannt; siehe [Baseline](../MIGRATION-BASELINE.md)                            |
+| Clean Install / Upgrade        | PASSED: 47 clean; offizieller Tag 7→47; ergänzend 39→47, 19 Tabellen, 127 FKs, 6 Smokes    | Nicht getaggte interne/dev-Historien sind nicht Teil der v1.0-Supportgrenze                                     |
+| Unterstützte DB-Baseline       | PASSED: v1.0 canonical 47; Upgrade `v0.4b-pilot-ready` 7→47                                | Nicht getaggte interne/dev-Basen mit unbekannter History ausdrücklich nicht unterstützt                         |
 | Unit / DB / Integration / HTTP | PASSED laut vorhandenen Logs                                                               | 285 Unit, 24 DB, 9 Field-DB, 18 Auth-, 8 Import-, 6 Quality-, 7 Rules-, 84 HTTP-Checks; nicht erneut ausgeführt |
 | Produktpfade / PWA             | PASSED im dokumentierten Umfang                                                            | 44 vorhandene HTTP-/DB-Checks und 2 PWA-Browserfälle; zusätzlich 1 echte mobile Field-Service-Journey           |
 | Prisma / Types / Build         | PASSED laut vorhandenen Logs                                                               | Letzter Build 28.09.2026 12:56:15 UTC; kein erneuter App-Build erforderlich                                     |
-| Dependency Audit               | Vorhandener Report: 0 Advisories                                                           | Aufruf/Exit/Lockfile-Zuordnung im Report fehlen; reproduzierbarer Auditbeleg für Release-SHA offen              |
+| Dependency Audit               | PASSED: `pnpm audit --json`, pnpm 12.5.1, Exit 0, 0 Advisories                             | Beleg mit SHA/Lockfile-Provenance: [Audit-Report](../acceptance/DEPENDENCY-AUDIT-4932F00.json)                  |
 | Performance                    | PASSED: Gate jetzt auf vorhandenen Messwerten ausgewertet                                  | 7×30 sequenzielle lokale Messungen, Worker-Queues leer; keine Kapazitäts-/Failoverabnahme                       |
 | Transitive SBOM                | PASSED: 750 gelockte Komponenten, 751 Graphknoten                                          | Lockfile-SBOM einschließlich Dev-/Optional-Abhängigkeiten, keine Container-OS-SBOM                              |
 | Lokale Artefakte               | PASSED: Web-Tar, 3 Worker-Bundles, 6 Checksummen; entpackter Runtime-Login/Dashboard-Smoke | Windows-x64 only; Docker images and cross-platform runtime not verified                                         |
@@ -23,8 +23,9 @@ Details und Beleggrenzen: [Fortsetzungsbericht](../acceptance/PHASE-5V-RESUME.md
 | Signing                        | NOT_CONFIGURED_NOT_VERIFIED                                                                | Keine Signatur oder verifizierte Identität                                                                      |
 | Hardware                       | HARDWARE_VALIDATION_PENDING                                                                | Keine reale Hardware verbunden                                                                                  |
 
-**Entscheidung: NICHT FREIGABEFÄHIG.** Demo-Implementierungsblocker im geprüften
-Umfang geschlossen; Baseline-Blocker sowie die oben ausgewiesenen Release-Gates bleiben offen.
+**Entscheidung: NICHT FREIGABEFÄHIG.** Migrations- und Dependency-Audit-Gates
+sind für die dokumentierte Supportgrenze geschlossen; Container-/Worker-Images,
+Signing, CI/Staging und weitere oben ausgewiesene Release-Gates bleiben offen.
 
 ## Freigabevorlage
 

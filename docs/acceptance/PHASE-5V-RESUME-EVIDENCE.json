@@ -1,6 +1,6 @@
 {
-  "recordedAt": "2026-09-29T11:50:22.917Z",
-  "baseline": "e88b1de65364ab606dc848ccf652acd85b9f49a4",
+  "recordedAt": "2026-09-29T12:50:16.274Z",
+  "baseline": "4932f0087cf263988c599e498ac682fac1d93f5c",
   "branch": "master",
   "workingTree": "dirty",
   "releaseApproved": false,
@@ -8,7 +8,7 @@
     "modified": 14,
     "untracked": 12
   },
-  "sourceFingerprintSha256": "57a8c123f235f29dbfc9024ad0b08f4eebe030776a4156badef5bf4f0c0cbb59",
+  "sourceFingerprintSha256": "1a1222b215cae879ba6ecd945de844cf05725f04c08f4b087f0bbb59aabafb71",
   "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
   "inherited": {
     "scenarios": 13,
@@ -23,6 +23,14 @@
     "upgradeFromMigrations": 39,
     "preservedTables": 19
   },
+  "supportedDatabaseBaseline": {
+    "tag": "v0.4b-pilot-ready",
+    "migrations": 7,
+    "targetMigrations": 47,
+    "dataTables": 7,
+    "retainedRows": 7,
+    "preservedHistoryRows": 7
+  },
   "added": {
     "demoBrowserCases": 2,
     "fieldServiceBrowserCases": 1,
@@ -34,13 +42,22 @@
     "archiveEntries": 2855
   },
   "dependencyAudit": {
-    "reportFindings": 0,
-    "commandExitAndLockfileProvenance": "MISSING",
-    "rerun": false
+    "pnpm": "12.5.1",
+    "command": "pnpm audit --json",
+    "exitCode": 0,
+    "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+    "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0
+    },
+    "totalDependencies": 765
   },
-  "releaseBlockers": ["Supported external database baseline is unknown"],
+  "releaseBlockers": [],
   "gatesPending": [
-    "Dependency audit provenance for release SHA",
     "Container images and worker runtime",
     "Signing and provenance",
     "Staging and CI for immutable SHA",
@@ -563,12 +580,33 @@
       "provenance": "executed-this-resumption"
     },
     {
+      "file": ".local/acceptance/resume-standalone-server-final.json",
+      "sha256": "09ed60024542d579533b48eee567ac54e57d84dc80796256a19ce94b1502f11c",
+      "bytes": 231,
+      "startedAt": "2026-09-29T11:49:15.219Z",
+      "finishedAt": "2026-09-29T11:50:49.150Z",
+      "exitCode": 4294967295,
+      "provenance": "executed-this-resumption"
+    },
+    {
       "file": ".local/acceptance/resume-artifact-login-final.json",
       "sha256": "d3845f6caf48910985b62f3549d9056cbd888a7ba9c901ff7c0ed91e5b41b7a5",
       "bytes": 235,
       "startedAt": "2026-09-29T11:49:30.444Z",
       "finishedAt": "2026-09-29T11:49:33.501Z",
       "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/dependency-audit-provenance.json",
+      "sha256": "db4da356284fd5cdc73080725018750b74bce78c86a904c2e77b2e240a32115d",
+      "bytes": 1182,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/supported-upgrade-v04b.json",
+      "sha256": "9c895f5ea6b8e407a2d4bca1bbabb45e15354b5c2c25b0a4713e6927b559f44d",
+      "bytes": 1070,
       "provenance": "executed-this-resumption"
     }
   ]

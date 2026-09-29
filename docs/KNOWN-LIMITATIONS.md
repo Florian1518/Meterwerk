@@ -11,14 +11,19 @@ prüfen Steuerung und sichtbaren Zählerstatus. Die Aussage „nur Metadaten“ 
 für diesen Arbeitsstand überholt. Refresh wendet das aktuelle Szenario mit seinem
 stabilen UTC-Anker erneut an; es ist kein laufender Messwertgenerator.
 
-Kanonische 47-Migrations-Clean-Install-/39→47-Upgradepfade sind lokal belegt.
-Die Festlegung der unterstützten Bestandsdatenbankhistorie bleibt ein
-**RELEASE_BLOCKER**. Der lesende Preflight verweigert unbekannte/abweichende
-Checksummen; er repariert keine historische Installation. Siehe [Baseline](MIGRATION-BASELINE.md).
+Die 47-Migrations-Clean-Installation sowie das Upgrade von der einzigen
+versionierten Pilotbaseline `v0.4b-pilot-ready` (7 Migrationen) auf 47 sind
+isoliert belegt; sieben synthetische Datenbereiche blieben erhalten. 008/009
+existierten in diesem Tag noch nicht und werden beim Upgrade erstmalig aus den
+korrigierten kanonischen Dateien angewendet. Die v1.0-Baseline ist ausdrücklich
+auf diese getaggte Herkunft und neue Clean Installs begrenzt. Nicht getaggte
+interne/dev-Datenbanken mit unbekannten oder abweichenden Checksummen sind nicht
+unterstützt; der lesende Preflight stoppt sie ohne Reparatur oder
+`_prisma_migrations`-Änderung. Siehe [Baseline](MIGRATION-BASELINE.md).
 
-Ein lokaler Audit-JSON-Report enthält null Advisories, aber keinen aufgezeichneten
-Aufruf, Exitcode oder Lockfile-Hash. Deshalb keine uneingeschränkte Auditfreigabe
-für einen Release-SHA. Das lokale Performance-Gate besteht mit vorhandenen
+Der reproduzierbare Dependency Audit auf Commit `4932f00` bestand mit pnpm 12.5.1,
+Exitcode 0 und null Advisories aller Schweregrade; Lockfile-SHA und Befehl stehen
+im [Provenance-Artefakt](acceptance/DEPENDENCY-AUDIT-4932F00.json). Das lokale Performance-Gate besteht mit vorhandenen
 Messwerten; sequenzielle Requests und leere Worker-Queues belegen keine Lastkapazität.
 
 Die transitive Lockfile-SBOM enthält nun 750 Komponenten. Web-Tar, drei

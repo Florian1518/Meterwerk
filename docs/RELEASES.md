@@ -25,8 +25,10 @@ Der Web-Build benötigt passende installierte Lockfile-Dependencies und startet
 und installierte Dependencies. Die lokale Windows-Verpackung ist kein portables
 Containerimage. Der vorhandene Build wurde wiederverwendet, nicht erneut gebaut.
 Metadata trennt SHA, Dirty-Status, Build-ID, Plattform und Signing-Status.
-Signierung bleibt `NOT_CONFIGURED_NOT_VERIFIED`; Image-Build, Runtime-Abnahme
-des entpackten Pakets und Staging bleiben offen. Siehe [Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
+Signierung bleibt `NOT_CONFIGURED_NOT_VERIFIED`; Container-Image-Build und
+Staging bleiben offen. Das entpackte lokale Windows-x64-Webpaket besteht
+Health-/Readiness-/Login-Smoke, belegt aber keine Container- oder
+plattformübergreifende Runtime. Siehe [Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
 
 ## Vor Freigabe
 

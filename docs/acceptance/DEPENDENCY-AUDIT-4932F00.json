@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-09-29T12:32:53Z",
+  "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+  "branch": "master",
+  "packageVersion": "0.1.0",
+  "workingTree": "acceptance test/documentation additions only; package.json and pnpm-lock.yaml unchanged",
+  "tool": {
+    "name": "pnpm",
+    "version": "12.5.1",
+    "runtime": "Node.js 22.22.1 on Ubuntu WSL 26.04 x86_64",
+    "execution": "official pnpm 12.5.1 Linux x64 executable from the pinned pnpm package; Windows Application Control unchanged"
+  },
+  "lockfile": {
+    "file": "pnpm-lock.yaml",
+    "sha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+    "additionalPackageManagerLockfiles": []
+  },
+  "command": "pnpm audit --json",
+  "exitCode": 0,
+  "status": "PASSED",
+  "advisories": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "findings": []
+  },
+  "auditedDependencyCounts": {
+    "dependencies": 281,
+    "devDependencies": 419,
+    "optionalDependencies": 176,
+    "total": 765
+  },
+  "rawPnpmJson": "pnpm audit --json output; advisories object empty",
+  "rawOutputSha256": "a3b70152da4ede2651380c4e3f5fbc96ab70fc8ed58feb05f736a55c1120c99a"
+}
