@@ -1,5 +1,21 @@
 # Software Acceptance Result
 
+> **Aktueller Stand: 29.09.2026, Fortsetzung auf `e88b1de`, keine RC-Freigabe.**
+> Die historischen Teil-2-/Teil-3-Aussagen unten bleiben als Verlauf erhalten.
+> Maßgeblich für die Fortsetzung sind [Phase-5v-Fortsetzungsbericht](PHASE-5V-RESUME.md)
+> und [RC-Checkliste](../checklists/RC-ACCEPTANCE-CHECKLIST.md).
+
+### Phase 5v Fortsetzung — aktueller Gate-Stand
+
+Demo-Produktwirkungen, lokale Performance-Regression, transitive Lockfile-SBOM
+und das lokale Windows-x64-Standalone-Paket wurden nachgewiesen. Das entpackte
+Paket bestand Health-/Readiness-, synthetischen Login- und authentifizierten
+Dashboard-Smoke; das native Argon2-Binding ist im Artefakt enthalten. Offen
+bleiben die unterstützte Bestandsbaseline (**RELEASE_BLOCKER**), Audit-Provenance,
+Container-/Worker-Images, Signing/Provenance, CI/Staging für einen unveränderlichen
+SHA sowie Kapazitäts-/Failoverabnahme. Provider- und Hardwarestatus siehe unten.
+Einzelbelege stehen im [Fortsetzungsbericht](PHASE-5V-RESUME.md).
+
 - Baseline / HEAD: `f444ea62207ed532b4329c29b9396e4703902ecc`
 - Package version: `0.1.0`
 - Recorded at: `2026-09-25T14:13:17.704Z`

@@ -2,7 +2,13 @@ import "server-only";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
-import { AccessError, requireManage, tenantScope, type Actor } from "./policy";
+import {
+  AccessError,
+  requireManage,
+  tenantScope,
+  propertyScope,
+  type Actor,
+} from "./policy";
 
 const insightInput = z
   .object({
@@ -197,7 +203,12 @@ export async function anomalies(
       ? { unit: { building: { propertyId: input.propertyId } } }
       : {};
   const meters = await db.meter.findMany({
-    where: { tenantId, ...scope },
+    where: {
+      AND: [
+        { tenantId, ...scope },
+        { unit: { building: { property: propertyScope(actor, tenantId) } } },
+      ],
+    },
     select: {
       id: true,
       type: true,
@@ -205,6 +216,8 @@ export async function anomalies(
     },
   });
   const ids = meters.map((m) => m.id);
+  if (input.meterId && !ids.length)
+    throw new AccessError(404, "Zähler nicht gefunden.");
   const historyFrom = new Date(input.from.getTime() - 30 * 86400000);
   const rows = await db.reading.findMany({
     where: {
@@ -255,7 +268,10 @@ export async function benchmarks(
   const tenantId = tenantScope(actor, requested);
   const input = insightInput.parse(raw);
   const meters = await db.meter.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      unit: { building: { property: propertyScope(actor, tenantId) } },
+    },
     select: {
       id: true,
       type: true,
@@ -352,7 +368,13 @@ export async function listAnomalies(
     .optional()
     .parse((raw as { status?: unknown }).status);
   const rows = await db.analyticsAnomaly.findMany({
-    where: { tenantId, ...(status ? { status } : {}) },
+    where: {
+      tenantId,
+      ...(status ? { status } : {}),
+      meter: {
+        unit: { building: { property: propertyScope(actor, tenantId) } },
+      },
+    },
     orderBy: { detectedAt: "desc" },
     take: 500,
   });

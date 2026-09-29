@@ -3,6 +3,8 @@ import { db } from "./db";
 import { requireActor } from "./auth";
 import { requirePlatform, type Actor, AccessError } from "./policy";
 import { getEnvironment, isDemoEnvironment } from "@/lib/environment";
+import { z } from "zod";
+import { applyDemoProductState } from "./demo-product-state";
 
 export const DEMO_SCENARIOS = [
   "NORMAL",
@@ -33,52 +35,83 @@ export function assertDemoScenario(value: string): DemoScenario {
     throw new AccessError(400, "Unbekanntes Demo-Szenario.");
   return value as DemoScenario;
 }
-export async function getDemoScenario(actor: Actor) {
+async function demoTenant(actor: Actor, requested?: string) {
   requirePlatform(actor);
-  const environment = assertDemoScenarioEnvironment();
-  return db.demoScenarioState.findUnique({ where: { environment } });
+  assertDemoScenarioEnvironment();
+  const tenantId = z.enum(["demo-tenant-0", "demo-tenant-1"]).parse(requested);
+  if (
+    !(await db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true },
+    }))
+  )
+    throw new AccessError(404, "Demo-Mandant fehlt. Demo-Seed erforderlich.");
+  return tenantId;
 }
-export async function setDemoScenario(actor: Actor, value: string) {
-  requirePlatform(actor);
+export async function getDemoScenario(actor: Actor, requested?: string) {
+  const tenantId = await demoTenant(actor, requested);
   const environment = assertDemoScenarioEnvironment();
-  const scenario = assertDemoScenario(value);
-  const state = await db.demoScenarioState.upsert({
-    where: { environment },
-    create: { environment, scenario, updatedBy: actor.id },
-    update: { scenario, updatedBy: actor.id, activatedAt: new Date() },
+  return db.demoScenarioState.findUnique({
+    where: { environment_tenantId: { environment, tenantId } },
   });
-  await db.auditEvent.create({
-    data: {
-      actorId: actor.id,
-      entityId: state.id,
-      action: "demo.scenario.activated",
-      details: { environment, scenario },
+}
+export async function setDemoScenario(
+  actor: Actor,
+  value: string,
+  requested?: string,
+) {
+  const tenantId = await demoTenant(actor, requested);
+  const environment = assertDemoScenarioEnvironment();
+  const scenario = z.enum(DEMO_SCENARIOS).parse(value);
+  return db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
+      const previous = await tx.demoScenarioState.findUnique({
+        where: { environment_tenantId: { environment, tenantId } },
+      });
+      // Stable UTC reference persists across reset/apply; visible in API metadata.
+      const anchor =
+        previous?.activatedAt ??
+        new Date(Math.floor(Date.now() / 3600000) * 3600000);
+      const metadata = await applyDemoProductState(
+        tx,
+        tenantId,
+        scenario,
+        actor.id,
+        anchor,
+      );
+      const state = await tx.demoScenarioState.upsert({
+        where: { environment_tenantId: { environment, tenantId } },
+        create: {
+          environment,
+          tenantId,
+          scenario,
+          activatedAt: anchor,
+          updatedBy: actor.id,
+          metadata,
+        },
+        update: { scenario, updatedBy: actor.id, metadata },
+      });
+      await tx.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: actor.id,
+          entityId: state.id,
+          action: "demo.scenario.activated",
+          details: { environment, scenario, ...metadata },
+        },
+      });
+      return state;
     },
-  });
-  return state;
+    { timeout: 30000 },
+  );
 }
-export async function resetDemoScenario(actor: Actor) {
-  return setDemoScenario(actor, "NORMAL");
+export async function resetDemoScenario(actor: Actor, requested?: string) {
+  return setDemoScenario(actor, "NORMAL", requested);
 }
-export async function refreshDemoData(actor: Actor) {
-  requirePlatform(actor);
-  const environment = assertDemoScenarioEnvironment();
-  await db.auditEvent.create({
-    data: {
-      actorId: actor.id,
-      entityId: environment,
-      action: "demo.data.refreshed",
-      details: { environment, seed: 20260925 },
-    },
-  });
-  return {
-    environment,
-    seed: 20260925,
-    refreshedAt: new Date(),
-    scenario:
-      (await db.demoScenarioState.findUnique({ where: { environment } }))
-        ?.scenario ?? "NORMAL",
-  };
+export async function refreshDemoData(actor: Actor, requested?: string) {
+  const state = await getDemoScenario(actor, requested);
+  return setDemoScenario(actor, state?.scenario ?? "NORMAL", requested);
 }
 export async function requireDemoActor() {
   const actor = await requireActor();

@@ -1,5 +1,33 @@
 # Release Candidate Acceptance Checklist
 
+## Aktueller Fortsetzungsstand — 29.09.2026
+
+Baseline/HEAD: `e88b1de65364ab606dc848ccf652acd85b9f49a4`, Branch `master`.
+Arbeitsbaum bereits bei Wiederaufnahme verändert. Kein RC-Commit/Tag erzeugt.
+Die leere Freigabevorlage und historischen Einträge unten sind keine aktuelle Freigabe.
+Details und Beleggrenzen: [Fortsetzungsbericht](../acceptance/PHASE-5V-RESUME.md).
+
+| Gate                           | Aktueller Nachweis                                                                         | Verbleibende Grenze                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Demo-Szenariowirkungen         | PASSED: vorhandene 13 Szenarien / 266 DB-/HTTP-Checks; neu 2 Browserprojekte               | Keine Hardware-/Providerzustellung                                                                              |
+| Clean Install / Upgrade        | PASSED: vorhandene 47 Migrationen / 39→47, 19 Tabellen erhalten, 127 FKs, 6 Startup-Checks | Kanonische Historie; keine Originalchecksum-Bestandsdatenbank                                                   |
+| Unterstützte DB-Baseline       | RELEASE_BLOCKER                                                                            | Externe Supportverpflichtungen unbekannt; siehe [Baseline](../MIGRATION-BASELINE.md)                            |
+| Unit / DB / Integration / HTTP | PASSED laut vorhandenen Logs                                                               | 285 Unit, 24 DB, 9 Field-DB, 18 Auth-, 8 Import-, 6 Quality-, 7 Rules-, 84 HTTP-Checks; nicht erneut ausgeführt |
+| Produktpfade / PWA             | PASSED im dokumentierten Umfang                                                            | 44 vorhandene HTTP-/DB-Checks und 2 PWA-Browserfälle; zusätzlich 1 echte mobile Field-Service-Journey           |
+| Prisma / Types / Build         | PASSED laut vorhandenen Logs                                                               | Letzter Build 28.09.2026 12:56:15 UTC; kein erneuter App-Build erforderlich                                     |
+| Dependency Audit               | Vorhandener Report: 0 Advisories                                                           | Aufruf/Exit/Lockfile-Zuordnung im Report fehlen; reproduzierbarer Auditbeleg für Release-SHA offen              |
+| Performance                    | PASSED: Gate jetzt auf vorhandenen Messwerten ausgewertet                                  | 7×30 sequenzielle lokale Messungen, Worker-Queues leer; keine Kapazitäts-/Failoverabnahme                       |
+| Transitive SBOM                | PASSED: 750 gelockte Komponenten, 751 Graphknoten                                          | Lockfile-SBOM einschließlich Dev-/Optional-Abhängigkeiten, keine Container-OS-SBOM                              |
+| Lokale Artefakte               | PASSED: Web-Tar, 3 Worker-Bundles, 6 Checksummen; entpackter Runtime-Login/Dashboard-Smoke | Windows-x64 only; Docker images and cross-platform runtime not verified                                         |
+| Images / Staging / CI          | NOT_EXECUTED / EXTERNAL_VALIDATION_PENDING                                                 | Docker-Daemon nicht erreichbar; kein Git-Remote und keine CI-Ausführung                                         |
+| Signing                        | NOT_CONFIGURED_NOT_VERIFIED                                                                | Keine Signatur oder verifizierte Identität                                                                      |
+| Hardware                       | HARDWARE_VALIDATION_PENDING                                                                | Keine reale Hardware verbunden                                                                                  |
+
+**Entscheidung: NICHT FREIGABEFÄHIG.** Demo-Implementierungsblocker im geprüften
+Umfang geschlossen; Baseline-Blocker sowie die oben ausgewiesenen Release-Gates bleiben offen.
+
+## Freigabevorlage
+
 RC version: \***\*\_\_\*\*** Git SHA: \***\*\_\_\*\*** Environment: \***\*\_\_\*\*** Date: \***\*\_\_\*\***
 
 Mark each item `PASSED`, `FAILED`, `NOT_EXECUTED`, `EXTERNAL_VALIDATION_PENDING` or `HARDWARE_VALIDATION_PENDING`. Attach evidence or finding reference; do not treat unchecked/unknown as passed.

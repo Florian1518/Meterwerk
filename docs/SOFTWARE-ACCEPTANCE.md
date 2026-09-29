@@ -1,5 +1,9 @@
 # Software Acceptance
 
+Aktueller Fortsetzungsstand auf `e88b1de`: [Belegbericht vom 29.09.2026](acceptance/PHASE-5V-RESUME.md).
+Die folgenden Teil-1-/Teil-2-Angaben sind historisch. Bereits dokumentierte
+erfolgreiche Suites werden bei einer Fortsetzung nicht pauschal neu gestartet.
+
 ## Zweck und Baseline
 
 Dieses Dokument definiert die nachvollziehbare Software-Abnahme für den Meterwerk v1.0 Release Candidate. Baseline bei Start von Phase 5v Teil 1: Commit `f444ea62207ed532b4329c29b9396e4703902ecc`, Branch `master`, Paketversion `0.1.0`; Ausgangsarbeitsbaum clean.

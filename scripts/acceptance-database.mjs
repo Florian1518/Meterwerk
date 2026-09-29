@@ -10,7 +10,7 @@ const url = new URL(process.env.DATABASE_URL ?? "");
 assert.equal(process.env.METERWERK_ENV, "test");
 assert.equal(url.hostname, "127.0.0.1");
 assert.equal(url.port, "55435");
-assert.match(url.pathname, /^\/meterwerk_upgrade(?:_final)?$/);
+assert.match(url.pathname, /^\/meterwerk_upgrade(?:_final|_rc)?$/);
 const client = new pg.Client({ connectionString: url.href });
 await client.connect();
 const output = resolve(".local/acceptance");
@@ -207,6 +207,23 @@ try {
         entityId: id("workorder"),
         action: "acceptance.fixture",
       });
+      await insert("Dashboard", {
+        id: id("dashboard"),
+        tenantId,
+        ownerId: id("user"),
+        name: "Synthetic upgrade dashboard",
+        description: "Preservation fixture",
+      });
+      await insert("DashboardWidget", {
+        id: id("widget"),
+        tenantId,
+        dashboardId: id("dashboard"),
+        title: "Synthetic widget",
+        type: "KPI",
+        dataSource: "READINGS",
+        period: "MONTH",
+        aggregation: "SUM",
+      });
       await insert("Attachment", {
         id: id("attachment"),
         tenantId,
@@ -245,6 +262,8 @@ try {
       "WorkOrder",
       "SupportCase",
       "AuditEvent",
+      "Dashboard",
+      "DashboardWidget",
       "Attachment",
       "PropertyGrant",
       "PublicApiKey",

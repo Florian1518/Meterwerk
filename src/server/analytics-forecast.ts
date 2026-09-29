@@ -2,7 +2,7 @@ import "server-only";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
-import { tenantScope, type Actor } from "./policy";
+import { tenantScope, propertyScope, AccessError, type Actor } from "./policy";
 
 const schema = z
   .object({
@@ -48,10 +48,16 @@ export async function forecast(
   const tenantId = tenantScope(actor, requested);
   const input = schema.parse(raw);
   const meters = await db.meter.findMany({
-    where: { tenantId, ...(input.meterId ? { id: input.meterId } : {}) },
+    where: {
+      tenantId,
+      ...(input.meterId ? { id: input.meterId } : {}),
+      unit: { building: { property: propertyScope(actor, tenantId) } },
+    },
     select: { id: true, type: true },
   });
   const since = new Date(input.asOf.getTime() - 90 * 86400000);
+  if (input.meterId && !meters.length)
+    throw new AccessError(404, "Zähler nicht gefunden.");
   const rows = await db.reading.findMany({
     where: {
       tenantId,

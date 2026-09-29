@@ -1,0 +1,575 @@
+{
+  "recordedAt": "2026-09-29T11:50:22.917Z",
+  "baseline": "e88b1de65364ab606dc848ccf652acd85b9f49a4",
+  "branch": "master",
+  "workingTree": "dirty",
+  "releaseApproved": false,
+  "originalWorktree": {
+    "modified": 14,
+    "untracked": 12
+  },
+  "sourceFingerprintSha256": "57a8c123f235f29dbfc9024ad0b08f4eebe030776a4156badef5bf4f0c0cbb59",
+  "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+  "inherited": {
+    "scenarios": 13,
+    "scenarioChecks": 266,
+    "productChecks": 44,
+    "pwaBrowserCases": 2,
+    "unitTests": 285,
+    "databaseTests": 24,
+    "fieldDatabaseTests": 9,
+    "httpChecks": 84,
+    "migrations": 47,
+    "upgradeFromMigrations": 39,
+    "preservedTables": 19
+  },
+  "added": {
+    "demoBrowserCases": 2,
+    "fieldServiceBrowserCases": 1,
+    "performanceGate": "PASSED_EXISTING_MEASUREMENTS",
+    "sbomComponents": 750,
+    "sbomDependencyNodes": 751,
+    "artifactChecksums": 6,
+    "standaloneRuntime": "PASSED_HEALTH_READINESS_SYNTHETIC_LOGIN_AUTHENTICATED_DASHBOARD",
+    "archiveEntries": 2855
+  },
+  "dependencyAudit": {
+    "reportFindings": 0,
+    "commandExitAndLockfileProvenance": "MISSING",
+    "rerun": false
+  },
+  "releaseBlockers": ["Supported external database baseline is unknown"],
+  "gatesPending": [
+    "Dependency audit provenance for release SHA",
+    "Container images and worker runtime",
+    "Signing and provenance",
+    "Staging and CI for immutable SHA",
+    "Production capacity/failover"
+  ],
+  "externalValidation": "EXTERNAL_VALIDATION_PENDING",
+  "hardwareValidation": "HARDWARE_VALIDATION_PENDING",
+  "reports": [
+    {
+      "file": ".local/acceptance/rc-clean.json",
+      "sha256": "630fb083ad93006f8903078d04c4a955dfa4aaeb68558bbb27b05e1491927419",
+      "bytes": 216,
+      "startedAt": "2026-09-28T12:39:42.651Z",
+      "finishedAt": "2026-09-28T12:39:45.948Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-upgrade.json",
+      "sha256": "4149179e190a397ecc3f35fedaf6013009849213528f220247ddeae8c3b6d9dc",
+      "bytes": 186,
+      "startedAt": "2026-09-28T12:39:46.192Z",
+      "finishedAt": "2026-09-28T12:39:54.054Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/database-results.json",
+      "sha256": "8f30c7fffbbaf6ccbdbde39b3d2a3763ba7a8ec9b6d22f6a5d7f7351215ca2e5",
+      "bytes": 3563,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/database-health.json",
+      "sha256": "91d586127af19da25520f11c84dd589decbc9c19e133b7470633b082d5d7505a",
+      "bytes": 602,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-baseline-clean.json",
+      "sha256": "a3ded53ab55ad2915101502356db1a2493b50af8fa75932c18f3246e63bc1b90",
+      "bytes": 199,
+      "startedAt": "2026-09-28T12:50:54.342Z",
+      "finishedAt": "2026-09-28T12:50:54.588Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-baseline-upgrade.json",
+      "sha256": "5caaf5a0b7576f76ae6942544291ffe991aa73b5bd80499b8e2bd4969f73c626",
+      "bytes": 201,
+      "startedAt": "2026-09-28T12:50:54.825Z",
+      "finishedAt": "2026-09-28T12:50:55.066Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/migration-history.json",
+      "sha256": "a22b0bf60c3ce387e423ab92e9d9223c6dab8b23ac8ab1d1bc769df87c57ecb1",
+      "bytes": 1459,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-scenarios.json",
+      "sha256": "b7fd36a0879dd5e3bad44eb37ec3020b065fdf660c69ff174c22b164a7b5a52a",
+      "bytes": 250,
+      "startedAt": "2026-09-28T12:47:13.888Z",
+      "finishedAt": "2026-09-28T12:47:19.901Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/demo-scenarios-result.json",
+      "sha256": "070c441c05bc97d1f7c012226733badeb2c98b4aba950e75cbb06eaf90d3f562",
+      "bytes": 1271,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/dependency-audit.json",
+      "sha256": "a3b70152da4ede2651380c4e3f5fbc96ab70fc8ed58feb05f736a55c1120c99a",
+      "bytes": 282,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-performance.json",
+      "sha256": "14ff843a7d07623544282addba7b81ad9ae05e7cea55520ae53d76c6ea6eb1e5",
+      "bytes": 250,
+      "startedAt": "2026-09-28T12:47:34.875Z",
+      "finishedAt": "2026-09-28T12:47:49.519Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/performance-results.json",
+      "sha256": "e8496775fcc37da06d1dcf3b0f8a7dc100dec3600cbd734aa1f4ea560811fe26",
+      "bytes": 1498,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-product-adapter.json",
+      "sha256": "2873ef15a855c19a5b396033981a306d88cbc6c5fdc0148897e4b01686a449b3",
+      "bytes": 255,
+      "startedAt": "2026-09-28T12:50:55.301Z",
+      "finishedAt": "2026-09-28T12:50:57.558Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/product-path-results.json",
+      "sha256": "e7438fc4c25aca7967b7404afd77a30e3e2c25472dd30cfd9d81e0ea7404e459",
+      "bytes": 346,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-pwa.json",
+      "sha256": "a7567e5b13d75a413fd39606f59cf3c11496c32407983692080b79671acedefa",
+      "bytes": 284,
+      "startedAt": "2026-09-28T12:48:05.359Z",
+      "finishedAt": "2026-09-28T12:48:14.692Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-unit.json",
+      "sha256": "d3c59e42080f275e9daf9fa969d7c91ce2a50665750864fba9b9691a86193ebb",
+      "bytes": 193,
+      "startedAt": "2026-09-28T12:42:14.695Z",
+      "finishedAt": "2026-09-28T12:42:22.667Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-db-services-retry.json",
+      "sha256": "d931d623e089038ad26aa998720671f1d2368f47bade811721d2220a656fdccf",
+      "bytes": 257,
+      "startedAt": "2026-09-28T12:48:05.724Z",
+      "finishedAt": "2026-09-28T12:48:10.008Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-field-db-correct.json",
+      "sha256": "03a801889fb30731f39bdee307614e28d758c70242539b46242039166e88cea9",
+      "bytes": 259,
+      "startedAt": "2026-09-28T12:54:42.966Z",
+      "finishedAt": "2026-09-28T12:54:46.112Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-auth-integration.json",
+      "sha256": "1f322a6242f88630af96cc7c5f19bd89f51b10789d0f2df9ad2fa317fd454ba7",
+      "bytes": 244,
+      "startedAt": "2026-09-28T12:51:59.675Z",
+      "finishedAt": "2026-09-28T12:52:01.102Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-import-integration.json",
+      "sha256": "47f5ab726317d500d042f433f24b120dfa872e1c8de3794d1f8dd28530d28c7d",
+      "bytes": 253,
+      "startedAt": "2026-09-28T12:52:02.840Z",
+      "finishedAt": "2026-09-28T12:52:04.157Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-quality-integration.json",
+      "sha256": "f4023079cfe7d4fe0f9f47c9181fd288d837a870e13624e6b1421d341a326d57",
+      "bytes": 260,
+      "startedAt": "2026-09-28T12:52:04.390Z",
+      "finishedAt": "2026-09-28T12:52:06.321Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-rules-integration.json",
+      "sha256": "96c6a9cda06f43b6d02fe796464266179fc1364b2413896129afc053427037be",
+      "bytes": 251,
+      "startedAt": "2026-09-28T12:52:06.540Z",
+      "finishedAt": "2026-09-28T12:52:07.705Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-security-integration.json",
+      "sha256": "cdcaf208a4f4920fb783aa2cfc61c6b7c69c76ab22f8273a5cda6813660b9c42",
+      "bytes": 257,
+      "startedAt": "2026-09-28T12:52:01.324Z",
+      "finishedAt": "2026-09-28T12:52:02.618Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-http.json",
+      "sha256": "17e0327be498223b044249bd40ced4c8d1912c95ae81c347e25c40df942fd878",
+      "bytes": 225,
+      "startedAt": "2026-09-28T12:48:10.262Z",
+      "finishedAt": "2026-09-28T12:48:15.666Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/scenario-validate.json",
+      "sha256": "1415a620b5259cc6c4220b4968054ed2e2eaacbe2fd01bb0c214cda5970f2647",
+      "bytes": 212,
+      "startedAt": "2026-09-28T12:38:57.469Z",
+      "finishedAt": "2026-09-28T12:38:59.701Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/scenario-generate.json",
+      "sha256": "76cd3a82b1be5433a185490fa5da2ff2dc8323e12243fe5442879bd3d39e2146",
+      "bytes": 212,
+      "startedAt": "2026-09-28T12:34:01.909Z",
+      "finishedAt": "2026-09-28T12:34:05.100Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-lint.json",
+      "sha256": "6f6412d78ffbd0b2a1bccfb7df064af4a7bbb5d47f9512512c020c00d4119178",
+      "bytes": 194,
+      "startedAt": "2026-09-28T12:46:38.325Z",
+      "finishedAt": "2026-09-28T12:46:54.995Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-final-types.json",
+      "sha256": "4efa3ab964c5642f2388fe719aaf9ec2b6956e04867df7967063dc7d159561da",
+      "bytes": 206,
+      "startedAt": "2026-09-28T12:55:11.470Z",
+      "finishedAt": "2026-09-28T12:55:19.139Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/rc-final-build.json",
+      "sha256": "fe67036f07eb95c2b2ba04315164593bd95ff9c7c0482b5446a5dce173501ebc",
+      "bytes": 203,
+      "startedAt": "2026-09-28T12:55:59.353Z",
+      "finishedAt": "2026-09-28T12:56:15.516Z",
+      "exitCode": 0,
+      "provenance": "found-on-disk-not-rerun"
+    },
+    {
+      "file": ".local/acceptance/resume-performance-gate.json",
+      "sha256": "e152e186ea9892c94a79389339b1f6ba9f9f6b95493c12dc8fc6996da85b7569",
+      "bytes": 252,
+      "startedAt": "2026-09-29T06:31:06.346Z",
+      "finishedAt": "2026-09-29T06:31:06.448Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-sbom.json",
+      "sha256": "5d3b9439a7f0735e3b5610fa0d9a795f22f69633c9a59d8a646dcf52c552d10e",
+      "bytes": 181,
+      "startedAt": "2026-09-29T06:32:59.688Z",
+      "finishedAt": "2026-09-29T06:33:00.110Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact.json",
+      "sha256": "6d75cd9519f35103c52f1844eb61b899820e230f560606c04b925c4d4c31125e",
+      "bytes": 188,
+      "startedAt": "2026-09-29T06:33:00.365Z",
+      "finishedAt": "2026-09-29T06:33:02.909Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-verify.json",
+      "sha256": "11507b8dde343c1a68816c431b45f5aba66b5e9af91f8fdc69e097ef25026263",
+      "bytes": 202,
+      "startedAt": "2026-09-29T06:34:16.637Z",
+      "finishedAt": "2026-09-29T06:34:17.142Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-results.json",
+      "sha256": "74bb67d358d9acbbb332a397b4ef5b88355851d881a205c7a1757fd5156ba55a",
+      "bytes": 437,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-demo-browser.json",
+      "sha256": "f17f087517ca423ff80650dacb9e7665f2363e969a5dfdbe1597d75bf311a394",
+      "bytes": 308,
+      "startedAt": "2026-09-29T06:36:45.158Z",
+      "finishedAt": "2026-09-29T06:36:53.943Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-demo-browser-context.json",
+      "sha256": "8b6688762c3c2b5a0ff35e7fd2ad837b6e8e6551aaaf7cada29a13d6a602aea3",
+      "bytes": 316,
+      "startedAt": "2026-09-29T06:37:11.673Z",
+      "finishedAt": "2026-09-29T06:37:22.605Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-demo-browser-final.json",
+      "sha256": "48beabceec2c5ff511dc6eeb287f60f8b0abdc9995f059f355afe96602fa8bae",
+      "bytes": 314,
+      "startedAt": "2026-09-29T06:37:55.506Z",
+      "finishedAt": "2026-09-29T06:38:06.144Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-field-browser.json",
+      "sha256": "ec08cc233a6b019c47405f12068d411de5bcd42f40a9b007df1df1687b67aada",
+      "bytes": 283,
+      "startedAt": "2026-09-29T06:49:17.709Z",
+      "finishedAt": "2026-09-29T06:49:21.160Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-field-browser-scheduled.json",
+      "sha256": "d99955b3907a6b210d0d8f2cda6e931cedb813f3299988e408261c15cb1f6d3c",
+      "bytes": 293,
+      "startedAt": "2026-09-29T06:53:05.566Z",
+      "finishedAt": "2026-09-29T06:53:27.606Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-field-browser-final.json",
+      "sha256": "d0f9a8e84d1e16e386a404c243a50df69708a1e19171d6bab1205f6c9ec85a54",
+      "bytes": 289,
+      "startedAt": "2026-09-29T06:55:32.082Z",
+      "finishedAt": "2026-09-29T06:55:39.518Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-field-browser-past-times.json",
+      "sha256": "a832ed8f5225dc82028322c8b8292bfe6b43e7a328b4aca8c6fb5a8de7e66047",
+      "bytes": 294,
+      "startedAt": "2026-09-29T06:56:11.888Z",
+      "finishedAt": "2026-09-29T06:56:20.005Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-lint.json",
+      "sha256": "e53c35c7aa9034123d5eb1bd1e1d2ec44b50a4149ba56619c7ce586b02a5e4ef",
+      "bytes": 394,
+      "startedAt": "2026-09-29T06:57:53.519Z",
+      "finishedAt": "2026-09-29T06:58:01.119Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-types.json",
+      "sha256": "ae51ef4936ab2ed3cae19914f57c41fbf649ed191bf1f02c014ef4f77a546996",
+      "bytes": 204,
+      "startedAt": "2026-09-29T06:58:01.359Z",
+      "finishedAt": "2026-09-29T06:58:07.418Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-docs-links.json",
+      "sha256": "700c086ea94f466ab36c5af9f839e21e65a867c0900fd19f1c1dd9f2ffb4e7e2",
+      "bytes": 184,
+      "startedAt": "2026-09-29T06:59:07.403Z",
+      "finishedAt": "2026-09-29T06:59:07.620Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-docs-references.json",
+      "sha256": "3bbd819296f20da9e21a108fe70f20957e12b745a11ade65f49995d8c498a4b1",
+      "bytes": 194,
+      "startedAt": "2026-09-29T06:59:07.845Z",
+      "finishedAt": "2026-09-29T06:59:07.983Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-secrets.json",
+      "sha256": "f179a12f253f78572d158d8908083457042a51610e9e47fbfdf2031b91634675",
+      "bytes": 182,
+      "startedAt": "2026-09-29T06:59:08.214Z",
+      "finishedAt": "2026-09-29T06:59:08.547Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-format.json",
+      "sha256": "5530f48d5092c7ce286700b74fc2e003d392b5927b95b73372c54a45294e13f5",
+      "bytes": 870,
+      "startedAt": "2026-09-29T06:59:08.796Z",
+      "finishedAt": "2026-09-29T06:59:09.735Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-format-final.json",
+      "sha256": "bbff8db3cbc6eb1ea176d2f7f9438b3493206b468ff137bd41e4cbbf64ed11ae",
+      "bytes": 575,
+      "startedAt": "2026-09-29T11:50:05.080Z",
+      "finishedAt": "2026-09-29T11:50:05.769Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-runtime.json",
+      "sha256": "76fcfd0fa58c40ab31fc48913c795618060a1793795b7d45fcc303a9e2447bdc",
+      "bytes": 204,
+      "startedAt": "2026-09-29T07:00:54.382Z",
+      "finishedAt": "2026-09-29T07:00:54.747Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-runtime-results.json",
+      "sha256": "aa70f7d8a3cba550f74bb2adeace00b227eece6d2fcf93e3a8ad4a7660936378",
+      "bytes": 519,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-rollout-load.json",
+      "sha256": "bfbd07940fc2c67c5790959bf5d419be0fec40aa3969c084e19d9309fc47d7d3",
+      "bytes": 245,
+      "startedAt": "2026-09-29T07:00:55.001Z",
+      "finishedAt": "2026-09-29T07:00:55.326Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-demo-credential-check.json",
+      "sha256": "03de87b7fdb3b9d69f96b1750b1b6dd0c88ed83d522db0b437410eddb7cdf392",
+      "bytes": 284,
+      "startedAt": "2026-09-29T11:36:00.921Z",
+      "finishedAt": "2026-09-29T11:36:02.264Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-login-diagnostic.json",
+      "sha256": "24471f8670642530898ae424c537276677b5dcc4569a0d8c71fc1f83f3166cbb",
+      "bytes": 240,
+      "startedAt": "2026-09-29T11:36:02.561Z",
+      "finishedAt": "2026-09-29T11:36:14.464Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-login-trace.json",
+      "sha256": "1a06e685069c09444e5cb3e0613bd260a2326310247148e4340a141666f03679",
+      "bytes": 235,
+      "startedAt": "2026-09-29T11:38:51.847Z",
+      "finishedAt": "2026-09-29T11:39:03.046Z",
+      "exitCode": 1,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-standalone-artifact-fixed.json",
+      "sha256": "245f96476bf7a55084149d341501cbc1a7dca95c176dbc584b7b5b60f05d6feb",
+      "bytes": 205,
+      "startedAt": "2026-09-29T11:43:03.834Z",
+      "finishedAt": "2026-09-29T11:43:06.931Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-standalone-verify-fixed.json",
+      "sha256": "350dad95b2c90e02c392a2da2959afd38409a695f80db5460ef26bb132502a05",
+      "bytes": 210,
+      "startedAt": "2026-09-29T11:43:12.786Z",
+      "finishedAt": "2026-09-29T11:43:13.235Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-standalone-server-fixed.json",
+      "sha256": "fd4e9336f3fd519e2a086e35b1a3f31eabbf7537cc330ed5afb874bbedfa9567",
+      "bytes": 231,
+      "startedAt": "2026-09-29T11:44:06.712Z",
+      "finishedAt": "2026-09-29T11:49:15.017Z",
+      "exitCode": 4294967295,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-login-fixed.json",
+      "sha256": "63f35a3759076ecea874a4cfb4e15805ef232433b73947d5b843216f53b86b9b",
+      "bytes": 235,
+      "startedAt": "2026-09-29T11:44:22.024Z",
+      "finishedAt": "2026-09-29T11:44:25.829Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-standalone-artifact-final.json",
+      "sha256": "4152aee6fe251fd1eadc0fda13ef733de121971ee1ef18cbf0933334e1143bac",
+      "bytes": 205,
+      "startedAt": "2026-09-29T11:48:16.374Z",
+      "finishedAt": "2026-09-29T11:48:17.974Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-standalone-verify-final.json",
+      "sha256": "7c1533fdd4461c6ba5f36ab714ded938eae936619b20eee18cf56a6ac145a1ba",
+      "bytes": 210,
+      "startedAt": "2026-09-29T11:48:18.246Z",
+      "finishedAt": "2026-09-29T11:48:18.687Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    },
+    {
+      "file": ".local/acceptance/resume-artifact-login-final.json",
+      "sha256": "d3845f6caf48910985b62f3549d9056cbd888a7ba9c901ff7c0ed91e5b41b7a5",
+      "bytes": 235,
+      "startedAt": "2026-09-29T11:49:30.444Z",
+      "finishedAt": "2026-09-29T11:49:33.501Z",
+      "exitCode": 0,
+      "provenance": "executed-this-resumption"
+    }
+  ]
+}

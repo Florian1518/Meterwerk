@@ -2,7 +2,7 @@ import "server-only";
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { db } from "./db";
-import { tenantScope, type Actor } from "./policy";
+import { tenantScope, propertyScope, AccessError, type Actor } from "./policy";
 
 export const resolutions = [
   "15m",
@@ -103,7 +103,12 @@ export async function analytics(
       ? { unit: { building: { propertyId: input.propertyId } } }
       : {};
   const meters = await db.meter.findMany({
-    where: { tenantId, ...meterScope },
+    where: {
+      AND: [
+        { tenantId, ...meterScope },
+        { unit: { building: { property: propertyScope(actor, tenantId) } } },
+      ],
+    },
     select: {
       id: true,
       type: true,
@@ -113,6 +118,8 @@ export async function analytics(
     },
   });
   const meterIds = meters.map((m) => m.id);
+  if (input.meterId && !meterIds.length)
+    throw new AccessError(404, "Zähler nicht gefunden.");
   const duration = input.to.getTime() - input.from.getTime();
   const previousFrom = new Date(input.from.getTime() - duration);
   const [readings, previousReadings, tariffs] = await Promise.all([

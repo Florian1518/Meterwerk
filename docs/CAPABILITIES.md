@@ -1,5 +1,16 @@
 # Produktfähigkeiten und Validierungsstatus
 
+Aktueller Abnahmestand: **29.09.2026, keine RC-Freigabe**. Die Fortsetzung auf
+`e88b1de` enthält echte Demo-Szenariowirkungen (13/266 DB-/HTTP-Checks; zusätzlich
+2 Browserfälle), geprüfte kanonische 47-Migrations-Pfade, lokale Performancewerte
+mit bestandenem Regression-Gate und eine transitive SBOM mit lokalen Build-Artefakten.
+Eine ergänzte mobile Field-Service-Journey prüft den Wartungsabschluss ohne API-Mocks.
+Bestandsbaseline, Audit-Provenance, Container-Images, Signing, Staging und CI
+sind noch offen. Das lokale Windows-x64-Standalone-Artefakt bestand einen
+entpackten Health-/Readiness-/Login-/Dashboard-Smoke. Historischer
+Teil-3-Text unten beschreibt den Commit, nicht die nachfolgende Fortsetzung.
+Siehe [aktueller Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
+
 Status: **IMPLEMENTED** = Code vorhanden; **TESTED** = durch automatisierte Softwaretests abgedeckt; **ENVIRONMENT_TEST_PENDING** = Zielumgebung noch zu validieren; **HARDWARE_VALIDATION_PENDING** = reale Geräteprüfung offen; **PROVIDER_VALIDATION_PENDING** = konkreter externer Provider nicht validiert. Status behauptet keine Kundenfreigabe oder SLA.
 
 | Bereich                                     | Status                                                | Hinweis                                                                                    |

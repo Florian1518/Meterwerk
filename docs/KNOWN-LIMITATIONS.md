@@ -2,6 +2,37 @@
 
 Diese Liste beschreibt Einschränkungen, die sich aus aktuellem Code und Repository-Konfiguration ergeben. Sie ist keine Zusage, dass jeder Providerbetrieb getestet wurde.
 
+## Aktuelle Ergänzung — 29.09.2026
+
+Die Teil-2-/Teil-3-Abschnitte unten sind historische Befunde. Die vorhandene
+uncommittete Fortsetzung implementiert inzwischen alle 13 Demo-Szenarien mit
+persistierten Produktwirkungen (266 DB-/HTTP-Checks); zwei ergänzte Browserfälle
+prüfen Steuerung und sichtbaren Zählerstatus. Die Aussage „nur Metadaten“ ist
+für diesen Arbeitsstand überholt. Refresh wendet das aktuelle Szenario mit seinem
+stabilen UTC-Anker erneut an; es ist kein laufender Messwertgenerator.
+
+Kanonische 47-Migrations-Clean-Install-/39→47-Upgradepfade sind lokal belegt.
+Die Festlegung der unterstützten Bestandsdatenbankhistorie bleibt ein
+**RELEASE_BLOCKER**. Der lesende Preflight verweigert unbekannte/abweichende
+Checksummen; er repariert keine historische Installation. Siehe [Baseline](MIGRATION-BASELINE.md).
+
+Ein lokaler Audit-JSON-Report enthält null Advisories, aber keinen aufgezeichneten
+Aufruf, Exitcode oder Lockfile-Hash. Deshalb keine uneingeschränkte Auditfreigabe
+für einen Release-SHA. Das lokale Performance-Gate besteht mit vorhandenen
+Messwerten; sequenzielle Requests und leere Worker-Queues belegen keine Lastkapazität.
+
+Die transitive Lockfile-SBOM enthält nun 750 Komponenten. Web-Tar, drei
+Worker-Bundles und sechs Prüfsummen wurden erzeugt und strukturell geprüft.
+Ein frisch entpacktes Windows-x64-Webpaket bestand Health-/Readiness- und
+synthetischen Login-/Dashboard-Smoke; das erforderliche native Argon2-Binding
+wird beim Packaging explizit eingeschlossen. Das ersetzt keine Images oder
+Runtime-Abnahme anderer Plattformen. Docker-Daemon, Staging, CI,
+Signierung/Provenance und Providerbetrieb bleiben unbestätigt. Zusätzlich zu den 44 vorhandenen Produktpfad-Checks besteht nun
+eine mobile Field-Service-Journey mit echter HTTP-Zuweisung, Checkliste,
+Arbeitsbericht, Zeit/Material, Technikerbestätigung und Abschluss. Das belegt
+den synthetischen Wartungspfad; andere Einsatztypen und physische
+Inbetriebnahme werden dadurch nicht pauschal abgenommen. Siehe [Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
+
 - Reale Zähler, physische RS485/Modbus RTU, M-Bus/W-MBus, Pulse, LoRaWAN-Netze und Hersteller-APIs wurden nicht als Hardwarevalidierung nachgewiesen.
 - S3-kompatible Storage-Abstraktion ist vorhanden, aber ein konkreter externer Provider, Versionierung, Restore und Ende-zu-Ende-Berechtigungsbetrieb müssen noch validiert werden.
 - PITR benötigt WAL-Archivierung und Provider-Infrastruktur; keine produktive PITR-Prüfung pauschal belegt.

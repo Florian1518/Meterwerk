@@ -1,9 +1,11 @@
 import { requirePageActor } from "@/server/auth";
-import { getDemoScenario } from "@/server/demo-scenarios";
+import { assertDemoScenarioEnvironment } from "@/server/demo-scenarios";
+import { requirePlatform } from "@/server/policy";
 import { DemoScenarioPanel } from "@/components/demo-scenario-panel";
 export default async function DemoAdminPage() {
   const actor = await requirePageActor();
-  const state = await getDemoScenario(actor);
+  requirePlatform(actor);
+  assertDemoScenarioEnvironment();
   return (
     <>
       <div className="page-heading">
@@ -16,7 +18,7 @@ export default async function DemoAdminPage() {
           </p>
         </div>
       </div>
-      <DemoScenarioPanel initial={state?.scenario ?? "NORMAL"} />
+      <DemoScenarioPanel initial="NORMAL" />
     </>
   );
 }

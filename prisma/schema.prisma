@@ -287,6 +287,7 @@ enum BillingInterval {
 }
 
 model Tenant {
+  demoScenarioStates DemoScenarioState[]
   checklistTemplates     ChecklistTemplate[]
   workOrders             WorkOrder[]
   id                     String                  @id @default(cuid())
@@ -1790,13 +1791,17 @@ model DrFinding {
 
 model DemoScenarioState {
   id          String   @id @default(cuid())
-  environment String   @unique
+  environment String
+  tenantId    String?
   scenario    String
+  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   seed        Int      @default(20260925)
   activatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
   updatedBy   String?
   metadata    Json     @default("{}")
+
+  @@unique([environment, tenantId])
 }
 
 enum CommissioningStatus {

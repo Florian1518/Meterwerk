@@ -228,3 +228,23 @@ SupportCases referenzieren Property, Meter, Device und Gateway über zusammenges
 Bei verschachtelten Prisma-ChecklistItem-Erstellungen werden `checklistId` und `tenantId` von der zusammengesetzten Parent-Relation übernommen. Die redundante explizite Angabe von `tenantId` wurde entfernt, weil Prisma sie zur Laufzeit ablehnt. Die tatsächlich gespeicherten Mandanten sowie Fremd-ID-/Grant-Sperren werden mit PostgreSQL geprüft.
 
 Die Acceptance-Infrastruktur ist lokal getrennt. DB-Serviceprüfungen mit injiziertem Actor, echtes HTTP, Browserkomponenten mit Testantworten und vollständige E2E-Journeys werden im Bericht getrennt ausgewiesen. Siehe [Software Acceptance](SOFTWARE-ACCEPTANCE.md).
+
+## Fortsetzung Phase 5v auf e88b1de
+
+DemoScenarioState ist über `(environment, tenantId)` eindeutig. SUPER_ADMIN wählt
+einen der zwei synthetischen Demo-Mandanten ausdrücklich; DEMO/TEST wird serverseitig
+erzwungen. Apply sperrt den Tenant und schreibt Fixturezustand, Szenarioauswahl und
+Audit atomar. Ein stabiler UTC-Anker macht Verbrauchsprofile reproduzierbar;
+Refresh ist erneutes Anwenden, kein fortlaufender Simulator. Der explizite lokale
+Command-Adapter verarbeitet nur STATUS_REQUEST für das VIRTUAL-Szenariogerät,
+ohne Socket oder Hardwarezustellung. Analytics, Forecast und Insights wenden
+PropertyGrant-Sichtbarkeit auch auf Aggregationen an.
+
+Migration 47 ergänzt die Tenantbindung. Der lesende Migrationspreflight akzeptiert
+nur bekannte Checksummen einschließlich äquivalenter Zeilenenden. Historische
+Migrationen werden in dieser Fortsetzung nicht erneut editiert; externe
+Supportgrenzen bleiben nach [Migrationsbaseline](MIGRATION-BASELINE.md) offen.
+
+Release-SBOM und Verpackung verwenden denselben Versionswert. Lokale Pakete tragen
+Git-SHA, Dirty-Status, Plattform, Build-ID und SHA-256-Prüfsummen. Das ist keine
+signierte Provenance; Images, portabler Runtimebetrieb und Staging sind separate Gates.

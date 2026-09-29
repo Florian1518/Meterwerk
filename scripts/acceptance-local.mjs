@@ -120,7 +120,26 @@ if (mode === "db") {
       "/meterwerk_acceptance",
       "/meterwerk_acceptance_final",
     );
+  if (mode === "cleanrc" || mode === "upgraderc")
+    env.DATABASE_URL = env.DATABASE_URL.replace(
+      "/meterwerk_acceptance",
+      mode === "cleanrc" ? "/meterwerk_acceptance_rc" : "/meterwerk_upgrade_rc",
+    );
   if (mode === "web" || mode === "build") env.NODE_ENV = "production";
+  if (mode === "webscan") {
+    env.NODE_ENV = "production";
+    env.CLAMAV_HOST = "127.0.0.1";
+    env.CLAMAV_PORT = "13310";
+  }
+  if (mode === "webcleanrc" || mode === "webupgraderc") {
+    env.NODE_ENV = "production";
+    env.DATABASE_URL = env.DATABASE_URL.replace(
+      "/meterwerk_acceptance",
+      mode === "webcleanrc"
+        ? "/meterwerk_acceptance_rc"
+        : "/meterwerk_upgrade_rc",
+    );
+  }
   if (mode === "webdev") env.NODE_ENV = "development";
   if (mode === "worker") env.RUN_WORKER = "true";
   const startedAt = new Date().toISOString();

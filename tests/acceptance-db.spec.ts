@@ -146,15 +146,20 @@ describe.sequential(
       ).rejects.toMatchObject({ status: 403 });
     });
     it.each(DEMO_SCENARIOS)(
-      "demo metadata persists %s (no simulated product effects claimed)",
+      "demo scenario persists %s atomically with audit",
       async (scenario) => {
         auth.actor = platform;
-        const row = await setDemoScenario(platform, scenario);
+        const row = await setDemoScenario(platform, scenario, "demo-tenant-0");
         expect(row.scenario).toBe(scenario);
         expect(
           (
             await db.demoScenarioState.findUniqueOrThrow({
-              where: { environment: "test" },
+              where: {
+                environment_tenantId: {
+                  environment: "test",
+                  tenantId: "demo-tenant-0",
+                },
+              },
             })
           ).scenario,
         ).toBe(scenario);
@@ -173,7 +178,9 @@ describe.sequential(
       await expect(setDemoScenario(admin, "NORMAL")).rejects.toMatchObject({
         status: 403,
       });
-      expect((await resetDemoScenario(platform)).scenario).toBe("NORMAL");
+      expect(
+        (await resetDemoScenario(platform, "demo-tenant-0")).scenario,
+      ).toBe("NORMAL");
     });
     it("DR registers explicitly pending synthetic metadata and audits it", async () => {
       auth.actor = platform;
