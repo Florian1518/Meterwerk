@@ -4,31 +4,37 @@ Versionen folgen SemVer (`MAJOR.MINOR.PATCH`); Vorabversionen verwenden etwa `-r
 
 ## Prüf- und Promotion-Ablauf
 
-CI prüft frozen-lockfile Installation, Prisma-Validierung/Generierung, TypeScript, Lint, Format, Tests, Audit, Secret Scan und Build. Release Workflow kann per Tag oder manuell gestartet werden, ruft CI auf, baut Release-Artefakt und SBOM und lädt ein befristet gespeichertes Artefakt hoch. GitHub Actions verwenden minimale Permissions und gepinnte Actions.
+Die Workflows verwenden statisch geprüfte, gepinnte Actions, `contents: read`,
+`persist-credentials: false`, pnpm 12.5.1 und frozen-lockfile Installation. CI
+enthält Prisma-Validierung/Generierung, Typecheck, Lint/Format, Unit-,
+Integrations-, Security- und Browser-Tests, Audit, Secret Scan und Build. Das
+Release-Workflow baut SBOM und Release-Artefakt und lädt dieses befristet hoch.
+Aktuell fehlen darin ein Dokumentations-Gate sowie der Aufruf des Artefakt-
+Verifiers. Der Workflow wurde für den WIP-SHA `a873a87` nicht ausgeführt; die
+statische Prüfung ist `CONFIG_VERIFIED`, nicht `CI PASSED`.
 
 Release Candidate: erfolgreichen CI-Lauf und SHA bestimmen, RC-Artefakt unveränderlich bauen, anschließend in isoliertem STAGING deployen. Migration, Readiness, Worker-Status, Smoke-/E2E-Tests, Security Guards und Demo Acceptance dokumentieren. Promotion ist eine manuelle Freigabeentscheidung. Der vorhandene Workflow deployt weder Staging noch Produktion automatisch; Produktionsrelease erfordert explizite externe Freigabe und separates Deployment.
 
 `pnpm release:gate` prüft bei gesetztem `RELEASE_GATE_URL` Readiness und Build-Info per HTTP; ohne URL überspringt es die Remoteprüfung. Das ist keine Gesamtfreigabe. `pnpm sbom` generiert eine transitive Lockfile-Komponentenliste. SBOM bedeutet nicht, dass Artefakte signiert oder Provenance attestiert sind. Signierung darf nur behauptet werden, wenn sie in der jeweiligen Release-Infrastruktur eingerichtet und geprüft wurde.
 
-## Lokale Vorbereitung auf e88b1de
+## Lokale Artefaktabnahme auf `a873a87`
 
-Nach einem erfolgreichen Build erzeugen `pnpm sbom` und
-`node scripts/release-artifact.mjs` unter `release-artifacts/<Version>/` ein
-Web-Tar, drei Worker-Bundles, SBOM, Metadaten und SHA-256-Prüfsummen.
-RELEASE_VERSION muss für beide Schritte identisch sein. Das Paket enthält
-Migrationen und den Migrationspreflight, keine `.env` oder privaten Schlüssel.
-`node scripts/verify-release-artifact.mjs` prüft Inventar, SBOM-Referenzen,
-Worker-Syntax und Checksummen; lokale Acceptance-Ausgabe benötigt `.local/acceptance/`.
+Für `a873a87fbce94f2f8f547343e8347a1507c80ba0` wurden Production Build,
+Lockfile-SBOM, Web-Tar, drei Worker-Bundles, Metadaten und sechs SHA-256-
+Prüfsummen neu erzeugt. Der Verifier prüfte 2.855 Archiv-Einträge; das Paket
+enthält das Windows-x64-Argon2-Binding. Der entpackte Standalone-Smoke bestand
+4/4 Prüfungen auf Loopback. Messwerte und Hashes stehen im
+[Artefaktnachweis](acceptance/RELEASE-ARTIFACT-A873A87.json). Das Paket ist
+Windows-x64-spezifisch, hat Paketversion `0.1.0` und Zielversion `1.0.0`; es ist
+kein finales RC-Artefakt.
 
-Der Web-Build benötigt passende installierte Lockfile-Dependencies und startet
-über `next start`; Worker-Bundles benötigen Node mit `--conditions=react-server`
-und installierte Dependencies. Die lokale Windows-Verpackung ist kein portables
-Containerimage. Der vorhandene Build wurde wiederverwendet, nicht erneut gebaut.
-Metadata trennt SHA, Dirty-Status, Build-ID, Plattform und Signing-Status.
-Signierung bleibt `NOT_CONFIGURED_NOT_VERIFIED`; Container-Image-Build und
-Staging bleiben offen. Das entpackte lokale Windows-x64-Webpaket besteht
-Health-/Readiness-/Login-Smoke, belegt aber keine Container- oder
-plattformübergreifende Runtime. Siehe [Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
+Web- und Worker-Images wurden nicht gebaut, weil der Docker-Desktop-Linux-Daemon
+nicht erreichbar war. Statische Prüfung fand im Worker-Dockerfile `tsx` als
+Laufzeitaufruf aus den Dev-Dependencies sowie ungefiltertes `node_modules` im
+Runtime-Image. Dieses Image-Gate bleibt bis zur Korrektur und echtem Build offen.
+Provenance enthält SHA, Build-Zeit, SBOM und Prüfsummen; tatsächliche Signatur
+und Verifikation fehlen (`SIGNING_PREPARED_NOT_VERIFIED`). Staging bleibt
+`EXTERNAL_VALIDATION_PENDING`.
 
 ## Vor Freigabe
 

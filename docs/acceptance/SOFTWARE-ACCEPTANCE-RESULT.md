@@ -1,11 +1,37 @@
 # Software Acceptance Result
 
-> **Aktueller Stand: 29.09.2026, Fortsetzung auf `4932f00`, keine RC-Freigabe.**
+> **Aktueller Stand: 29.09.2026, WIP `a873a87`, keine RC-Freigabe.**
 > Die historischen Teil-2-/Teil-3-Aussagen unten bleiben als Verlauf erhalten.
 > Maßgeblich für die Fortsetzung sind [Phase-5v-Fortsetzungsbericht](PHASE-5V-RESUME.md)
 > und [RC-Checkliste](../checklists/RC-ACCEPTANCE-CHECKLIST.md).
 
-### Phase 5v Fortsetzung — aktueller Gate-Stand
+### Phase 5v Fortsetzung — aktueller Gate-Stand auf `a873a87`
+
+Der Production-Build wurde für `a873a87fbce94f2f8f547343e8347a1507c80ba0`
+neu erstellt (Next.js 16.3.5, 69 Seiten, Windows x64). Standalone-Web-Tar,
+drei Worker-Bundles, Lockfile-SBOM mit 750 Komponenten/751 Graphknoten und
+sechs SHA-256-Prüfsummen stimmen mit Commit und Lockfile überein. Der Artefakt-
+Verifier bestand; das frisch entpackte Paket bestand 4/4 Loopback-Smokes:
+Liveness, Readiness, synthetischer Login und authentifiziertes Dashboard.
+Details und Hashes: [lokaler Artefaktnachweis](RELEASE-ARTIFACT-A873A87.json).
+Die statische CI-Konfigurationsprüfung ist in
+[CI-Review](CI-CONFIG-REVIEW-A873A87.json) festgehalten.
+
+Docker Desktop CLI ist vorhanden, der Linux-Daemon jedoch nicht erreichbar;
+Web-/Worker-Images und Image-SBOM sind daher `NOT_EXECUTED`. Zusätzlich führt
+`Dockerfile.worker` zur Laufzeit `tsx` aus den Dev-Dependencies aus und kopiert
+das ungefilterte `node_modules`; die Runtime-Minimierung ist nicht erfüllt und
+bleibt ein Software-Release-Blocker bis zu Fix und Image-Verifikation.
+Signing-Status: `SIGNING_PREPARED_NOT_VERIFIED`; Metadaten/SBOM/Checksummen
+liefern lokale Provenance, aber es gibt weder echte Signatur noch Verifikation.
+Die CI-Dateien sind statisch `CONFIG_VERIFIED` für gepinnte Actions,
+`contents: read`, `persist-credentials: false`, pnpm 12.5.1 und frozen lockfile.
+CI fehlt weiterhin ein Dokumentations-Gate und die Ausführung des Artefakt-
+Verifiers; GitHub Actions wurde für diesen SHA nicht ausgeführt. Es gibt kein
+Git-Remote. Staging und Provider-/Hardwareprüfungen bleiben pending.
+
+Die lokalen Release-Artefakte nennen Paketversion `0.1.0` und Zielversion
+`1.0.0`; sie sind keine finalen RC-Artefakte und keine RC-Freigabe.
 
 Demo-Produktwirkungen, lokale Performance-Regression, transitive Lockfile-SBOM
 und das lokale Windows-x64-Standalone-Paket wurden nachgewiesen. Die
@@ -91,7 +117,11 @@ und [Audit-Provenance](DEPENDENCY-AUDIT-4932F00.json).
 
 ## Release blocker assessment
 
-No software release blocker was proven by the executed local checks. This is not a release approval: database-dependent and environment acceptance remains incomplete.
+Ein Software-Release-Blocker bleibt offen: Das Worker-Image benötigt aktuell
+`tsx` aus den Dev-Dependencies und installiert zusätzlich ungefilterte
+Dev-Dependencies. Die Container-Runtime wurde mangels Docker-Daemon nicht
+gebaut oder ausgeführt. Der lokale Standalone-Web-Artefakt-Smoke ist davon
+getrennt bestanden; dies ist keine RC-Freigabe.
 
 ## Findings fixed during this acceptance
 

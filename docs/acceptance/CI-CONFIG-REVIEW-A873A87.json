@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-09-29T13:09:27Z",
+  "gitShaReviewed": "a873a87fbce94f2f8f547343e8347a1507c80ba0",
+  "configurationStatus": "CONFIG_VERIFIED",
+  "executionStatus": "NOT_EXECUTED",
+  "reasonExecutionNotPerformed": "No Git remote is configured; no GitHub Actions run exists for this immutable SHA.",
+  "verified": {
+    "pnpm": "12.5.1 consistent with packageManager and frozen lockfile installs",
+    "actions": "All external actions pinned to full commit SHA",
+    "permissions": "contents: read at workflow and artifact-job scope",
+    "checkout": "persist-credentials: false",
+    "services": ["PostgreSQL 16", "Eclipse Mosquitto 2"],
+    "checks": [
+      "Prisma validate and generate",
+      "migration check",
+      "unit tests",
+      "integration tests",
+      "security regression and security tests",
+      "browser/Playwright tests",
+      "production build",
+      "dependency audit (high threshold; separate full audit provenance is for unchanged lockfile)",
+      "secret scan",
+      "release artifact and SBOM generation",
+      "artifact upload"
+    ],
+    "immutableSha": "Workflow context exposes github.sha; artifact metadata uses git rev-parse HEAD. No tag push performed."
+  },
+  "gaps": [
+    "No documentation link/reference validation job",
+    "No invocation of scripts/verify-release-artifact.mjs after artifact generation",
+    "No image build, image SBOM, or image security scan in workflows",
+    "No signing or provenance attestation step"
+  ],
+  "workerImageFinding": "Dockerfile.worker invokes tsx from devDependencies and copies the unpruned node_modules directory into the runtime image. Runtime dependency minimization is not satisfied.",
+  "dockerExecution": "NOT_EXECUTED: Docker Desktop Linux daemon was unavailable",
+  "staging": "EXTERNAL_VALIDATION_PENDING"
+}

@@ -1,7 +1,7 @@
 # Produktfähigkeiten und Validierungsstatus
 
-Aktueller Abnahmestand: **29.09.2026, keine RC-Freigabe**. Die Fortsetzung auf
-`e88b1de` enthält echte Demo-Szenariowirkungen (13/266 DB-/HTTP-Checks; zusätzlich
+Aktueller Abnahmestand: **29.09.2026, WIP `a873a87`, keine RC-Freigabe**. Die
+Fortsetzung enthält echte Demo-Szenariowirkungen (13/266 DB-/HTTP-Checks; zusätzlich
 2 Browserfälle), geprüfte kanonische 47-Migrations-Pfade, lokale Performancewerte
 mit bestandenem Regression-Gate und eine transitive SBOM mit lokalen Build-Artefakten.
 Eine ergänzte mobile Field-Service-Journey prüft den Wartungsabschluss ohne API-Mocks.
@@ -9,8 +9,11 @@ Die v1.0-Datenbankbaseline ist auf die 47 kanonischen Migrationen festgelegt;
 Upgrade ab `v0.4b-pilot-ready` (7 Migrationen) und Dependency-Audit auf dem
 aktuellen Lockfile sind bestanden. Nicht getaggte interne/dev-Basen sind nicht
 unterstützt. Container-Images, Signing, Staging und CI sind noch offen. Das
-lokale Windows-x64-Standalone-Artefakt bestand einen entpackten
-Health-/Readiness-/Login-/Dashboard-Smoke. Historischer
+lokale Windows-x64-Standalone-Artefakt wurde für `a873a87` frisch gebaut und
+bestand den entpackten Health-/Readiness-/Login-/Dashboard-Smoke (4/4). Die
+Worker-Image-Runtime hat einen Software-Release-Blocker: sie führt `tsx` aus
+Dev-Dependencies aus und kopiert alle Entwicklungsabhängigkeiten. Image-Build,
+Signing, CI-Lauf und Staging bleiben offen. Historischer
 Teil-3-Text unten beschreibt den Commit, nicht die nachfolgende Fortsetzung.
 Siehe [aktueller Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
 

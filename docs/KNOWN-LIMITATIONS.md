@@ -4,6 +4,20 @@ Diese Liste beschreibt Einschränkungen, die sich aus aktuellem Code und Reposit
 
 ## Aktuelle Ergänzung — 29.09.2026
 
+Auf WIP `a873a87` wurde das Windows-x64-Production-Paket frisch gebaut und
+verifiziert. Der Standalone-Smoke bestand 4/4 Prüfungen. Der lokale Docker-
+Daemon war nicht verfügbar; Images und Image-SBOM sind nicht ausgeführt. Die
+statische Prüfung des Worker-Dockerfiles fand `tsx` aus Dev-Dependencies als
+Runtime-Entrypoint und das Kopieren ungefilterter `node_modules`. Vor einem
+Worker-Image-Release muss die Runtime auf erforderliche Production-Dependencies
+beschränkt und das Image danach gebaut und geprüft werden. Dies ist ein offener
+Software-Release-Blocker. Signing ist vorbereitet, aber weder signiert noch
+verifiziert; GitHub Actions und Staging wurden für den SHA nicht ausgeführt.
+Die Workflow-Konfiguration ist nur statisch `CONFIG_VERIFIED`; ihr fehlen ein
+Dokumentations-Gate und der Artefakt-Verifier. Es gibt kein konfiguriertes
+Git-Remote. Details zum lokalen Paket stehen in
+[Artefaktnachweis](acceptance/RELEASE-ARTIFACT-A873A87.json).
+
 Die Teil-2-/Teil-3-Abschnitte unten sind historische Befunde. Die vorhandene
 uncommittete Fortsetzung implementiert inzwischen alle 13 Demo-Szenarien mit
 persistierten Produktwirkungen (266 DB-/HTTP-Checks); zwei ergänzte Browserfälle

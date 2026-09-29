@@ -1,31 +1,37 @@
 # Release Candidate Acceptance Checklist
 
-## Aktueller Fortsetzungsstand — 29.09.2026
+## Aktueller Fortsetzungsstand — WIP `a873a87`, 29.09.2026
 
-WIP/HEAD bei Fortsetzung: `4932f0087cf263988c599e498ac682fac1d93f5c`, Branch `master`.
+WIP/HEAD bei Fortsetzung: `a873a87fbce94f2f8f547343e8347a1507c80ba0`, Branch `master`.
 Kein finaler RC-Commit/Tag erzeugt.
 Die leere Freigabevorlage und historischen Einträge unten sind keine aktuelle Freigabe.
 Details und Beleggrenzen: [Fortsetzungsbericht](../acceptance/PHASE-5V-RESUME.md).
 
-| Gate                           | Aktueller Nachweis                                                                         | Verbleibende Grenze                                                                                             |
-| ------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Demo-Szenariowirkungen         | PASSED: vorhandene 13 Szenarien / 266 DB-/HTTP-Checks; neu 2 Browserprojekte               | Keine Hardware-/Providerzustellung                                                                              |
-| Clean Install / Upgrade        | PASSED: 47 clean; offizieller Tag 7→47; ergänzend 39→47, 19 Tabellen, 127 FKs, 6 Smokes    | Nicht getaggte interne/dev-Historien sind nicht Teil der v1.0-Supportgrenze                                     |
-| Unterstützte DB-Baseline       | PASSED: v1.0 canonical 47; Upgrade `v0.4b-pilot-ready` 7→47                                | Nicht getaggte interne/dev-Basen mit unbekannter History ausdrücklich nicht unterstützt                         |
-| Unit / DB / Integration / HTTP | PASSED laut vorhandenen Logs                                                               | 285 Unit, 24 DB, 9 Field-DB, 18 Auth-, 8 Import-, 6 Quality-, 7 Rules-, 84 HTTP-Checks; nicht erneut ausgeführt |
-| Produktpfade / PWA             | PASSED im dokumentierten Umfang                                                            | 44 vorhandene HTTP-/DB-Checks und 2 PWA-Browserfälle; zusätzlich 1 echte mobile Field-Service-Journey           |
-| Prisma / Types / Build         | PASSED laut vorhandenen Logs                                                               | Letzter Build 28.09.2026 12:56:15 UTC; kein erneuter App-Build erforderlich                                     |
-| Dependency Audit               | PASSED: `pnpm audit --json`, pnpm 12.5.1, Exit 0, 0 Advisories                             | Beleg mit SHA/Lockfile-Provenance: [Audit-Report](../acceptance/DEPENDENCY-AUDIT-4932F00.json)                  |
-| Performance                    | PASSED: Gate jetzt auf vorhandenen Messwerten ausgewertet                                  | 7×30 sequenzielle lokale Messungen, Worker-Queues leer; keine Kapazitäts-/Failoverabnahme                       |
-| Transitive SBOM                | PASSED: 750 gelockte Komponenten, 751 Graphknoten                                          | Lockfile-SBOM einschließlich Dev-/Optional-Abhängigkeiten, keine Container-OS-SBOM                              |
-| Lokale Artefakte               | PASSED: Web-Tar, 3 Worker-Bundles, 6 Checksummen; entpackter Runtime-Login/Dashboard-Smoke | Windows-x64 only; Docker images and cross-platform runtime not verified                                         |
-| Images / Staging / CI          | NOT_EXECUTED / EXTERNAL_VALIDATION_PENDING                                                 | Docker-Daemon nicht erreichbar; kein Git-Remote und keine CI-Ausführung                                         |
-| Signing                        | NOT_CONFIGURED_NOT_VERIFIED                                                                | Keine Signatur oder verifizierte Identität                                                                      |
-| Hardware                       | HARDWARE_VALIDATION_PENDING                                                                | Keine reale Hardware verbunden                                                                                  |
+| Gate                           | Aktueller Nachweis                                                                      | Verbleibende Grenze                                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Demo-Szenariowirkungen         | PASSED: vorhandene 13 Szenarien / 266 DB-/HTTP-Checks; neu 2 Browserprojekte            | Keine Hardware-/Providerzustellung                                                                              |
+| Clean Install / Upgrade        | PASSED: 47 clean; offizieller Tag 7→47; ergänzend 39→47, 19 Tabellen, 127 FKs, 6 Smokes | Nicht getaggte interne/dev-Historien sind nicht Teil der v1.0-Supportgrenze                                     |
+| Unterstützte DB-Baseline       | PASSED: v1.0 canonical 47; Upgrade `v0.4b-pilot-ready` 7→47                             | Nicht getaggte interne/dev-Basen mit unbekannter History ausdrücklich nicht unterstützt                         |
+| Unit / DB / Integration / HTTP | PASSED laut vorhandenen Logs                                                            | 285 Unit, 24 DB, 9 Field-DB, 18 Auth-, 8 Import-, 6 Quality-, 7 Rules-, 84 HTTP-Checks; nicht erneut ausgeführt |
+| Produktpfade / PWA             | PASSED im dokumentierten Umfang                                                         | 44 vorhandene HTTP-/DB-Checks und 2 PWA-Browserfälle; zusätzlich 1 echte mobile Field-Service-Journey           |
+| Prisma / Types / Build         | PASSED: Prisma 7.10.0 Generate und Production Build auf `a873a87`                       | Frischer Build: Next.js 16.3.5, 69 Seiten                                                                       |
+| Dependency Audit               | PASSED: `pnpm audit --json`, pnpm 12.5.1, Exit 0, 0 Advisories                          | Beleg mit SHA/Lockfile-Provenance: [Audit-Report](../acceptance/DEPENDENCY-AUDIT-4932F00.json)                  |
+| Performance                    | PASSED: Gate jetzt auf vorhandenen Messwerten ausgewertet                               | 7×30 sequenzielle lokale Messungen, Worker-Queues leer; keine Kapazitäts-/Failoverabnahme                       |
+| Kapazität / Failover           | EXTERNAL_VALIDATION_PENDING                                                             | Lokale sequenzielle Regression ersetzt keine produktionsähnliche Last- oder Failoverabnahme                     |
+| Transitive SBOM                | PASSED: 750 gelockte Komponenten, 751 Graphknoten                                       | Lockfile-SBOM einschließlich Dev-/Optional-Abhängigkeiten, keine Container-OS-SBOM                              |
+| Lokale Artefakte               | PASSED auf `a873a87`: Production Build, SBOM, Verifier, 4/4 Runtime-Smokes              | Windows-x64 only; siehe [Artefaktnachweis](../acceptance/RELEASE-ARTIFACT-A873A87.json)                         |
+| Worker-Image Runtime           | RELEASE_BLOCKER                                                                         | `tsx` aus Dev-Dependencies wird zur Laufzeit genutzt; komplettes `node_modules` wird kopiert                    |
+| Images / Image-SBOM            | NOT_EXECUTED                                                                            | Docker CLI vorhanden, lokaler Linux-Daemon nicht erreichbar                                                     |
+| CI-Konfiguration               | CONFIG_VERIFIED                                                                         | Actions/Permissions/Lockfile statisch geprüft; Docs-Gate/Artefakt-Verifier fehlen; CI selbst nicht gelaufen     |
+| Staging / unveränderlicher SHA | EXTERNAL_VALIDATION_PENDING                                                             | Kein Git-Remote; keine GitHub-Actions-Ausführung oder Staging-Umgebung                                          |
+| Signing                        | SIGNING_PREPARED_NOT_VERIFIED                                                           | Metadaten/SBOM/Checksummen vorhanden; keine echte Signatur oder Verifikation                                    |
+| Provider / PITR / Restore      | EXTERNAL_VALIDATION_PENDING                                                             | Kein externer Provider, PITR- oder vollständiger Restore-Drill in dieser lokalen Prüfung                        |
+| Hardware                       | HARDWARE_VALIDATION_PENDING                                                             | Keine reale Hardware verbunden                                                                                  |
 
 **Entscheidung: NICHT FREIGABEFÄHIG.** Migrations- und Dependency-Audit-Gates
-sind für die dokumentierte Supportgrenze geschlossen; Container-/Worker-Images,
-Signing, CI/Staging und weitere oben ausgewiesene Release-Gates bleiben offen.
+sind für die dokumentierte Supportgrenze geschlossen. Worker-Image-Runtime ist
+ein offener Software-Release-Blocker; Images, Signing, CI/Staging und weitere
+oben ausgewiesene Release-Gates sind nicht abgeschlossen.
 
 ## Freigabevorlage
 

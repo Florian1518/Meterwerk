@@ -1,6 +1,34 @@
-# Phase 5v — Fortsetzung auf e88b1de
+# Phase 5v — Fortsetzungsbericht, aktueller WIP `a873a87`
 
 Stand: 29.09.2026. **Keine RC-Freigabe, kein RC-Commit, kein Tag.**
+
+## Verifikation des WIP `a873a87`
+
+Der Production-Build (Prisma Client 7.10.0, Next.js 16.3.5) wurde mit 69
+generierten Seiten neu erstellt. SBOM, Standalone-Web-Tar und drei Worker-
+Bundles tragen Commit `a873a87fbce94f2f8f547343e8347a1507c80ba0`; die Lockfile-
+SBOM hat 750 Komponenten und 751 Graphknoten. Der Release-Verifier bestand mit
+2.855 Archiv-Einträgen und 6/6 Datei-Checksummen. Das Windows-x64-Argon2-Binding
+2.2.1 ist im Archiv vorhanden. Der entpackte Runtime-Smoke bestand 4/4:
+Liveness, Readiness, synthetischer Login und authentifiziertes Dashboard; er
+nutzte ausschließlich Loopback und die isolierte synthetische Acceptance-DB.
+Siehe [Artefaktnachweis](RELEASE-ARTIFACT-A873A87.json).
+
+Docker CLI ist installiert, aber der Docker-Desktop-Linux-Daemon fehlt.
+Web-/Worker-Images sowie Image-SBOM sind `NOT_EXECUTED`. Die statische Prüfung
+fand im `Dockerfile.worker` den Dev-Dependency-Runner `tsx` und ungefilterte
+`node_modules` im Runtime-Image; dies bleibt ein Software-Release-Blocker.
+Signing ist `SIGNING_PREPARED_NOT_VERIFIED`: Commit, Build-Zeit, SBOM und
+Checksummen bilden Provenance, es wurde keine Signatur erzeugt/verifiziert.
+
+CI-Dateien sind statisch `CONFIG_VERIFIED`: gepinnte Actions, minimale
+`contents: read` Permissions, deaktivierte persistente Checkout-Credentials,
+pnpm 12.5.1 und frozen lockfile. Vorhanden sind PostgreSQL-/MQTT-Services,
+Migration-Check, Unit-/Integration-/Security-/Browser-Tests, Build, Audit,
+Secret Scan und Release-Artefakt-/SBOM-Upload. Im CI fehlt ein Docs-Gate und der
+Release-Artefakt-Verifier. Es wurde keine GitHub Action für diesen SHA gestartet;
+ein Git-Remote und eine Staging-Umgebung sind nicht vorhanden. Der nachfolgende
+Abschnitt dokumentiert die frühere Unterbrechung und bleibt Historie.
 
 ## Rekonstruktion des Unterbrechungspunkts
 

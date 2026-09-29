@@ -1,0 +1,88 @@
+{
+  "recordedAt": "2026-09-29T13:09:27Z",
+  "status": "LOCAL_ARTIFACT_VERIFIED_NOT_RC_APPROVED",
+  "git": {
+    "branch": "master",
+    "sha": "a873a87fbce94f2f8f547343e8347a1507c80ba0",
+    "workingTreeAtBuild": "clean"
+  },
+  "build": {
+    "packageVersion": "0.1.0",
+    "targetVersion": "1.0.0",
+    "buildTimestamp": "2026-09-29T12:59:42.783Z",
+    "buildId": "T-EqAZ0VNZ0TAWgnLp1Me",
+    "node": "v24.19.0",
+    "next": "16.3.5",
+    "prisma": "7.10.0",
+    "platform": "win32-x64",
+    "productionPagesGenerated": 69
+  },
+  "sbom": {
+    "format": "CycloneDX 1.5",
+    "components": 750,
+    "dependencyGraphNodes": 751,
+    "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+    "sha256": "9202a23633eb0d87ff6e84ab8e592fcbb692af28a0e83c359447a23769d9cfe2"
+  },
+  "artifacts": {
+    "webArchive": {
+      "file": "release-artifacts/0.1.0/web-build.tar",
+      "sha256": "d1e2c2d853670c4b78c038318cbeae61b04dca9af69c1f172cabc1cf50061d6a",
+      "entries": 2855,
+      "runtimeFilesVerified": [
+        "server.js",
+        "start.mjs",
+        ".next/BUILD_ID",
+        "pnpm-lock.yaml",
+        "prisma/schema.prisma"
+      ],
+      "nativeArgon2": "@node-rs/argon2-win32-x64-msvc 2.2.1 included"
+    },
+    "workers": {
+      "rules-worker.js": "e02220a7c9e2a9cbcfbfcc9fd8d70c991ad889ef42a814ea94ed73969f214244",
+      "mqtt-worker.js": "cb35cac2ec7c0207ade21bfc0abdf29f8b11c2cccb34d7a5cf35f454daba689c",
+      "rollout-worker.js": "76e16861701a82c4bf78bb5b972e3cce8251d71b92a6cb2a777a8fed03486bb7"
+    },
+    "metadataSha256": "6daba3f7639629788f9a0cb007facedfec181b1b054d81d82252c9fa01a48e5c",
+    "checksumFileCount": 6,
+    "verifier": {
+      "command": "node scripts/verify-release-artifact.mjs",
+      "exitCode": 0
+    }
+  },
+  "standaloneRuntimeSmoke": {
+    "status": "PASSED",
+    "checksPassed": 4,
+    "checks": [
+      "liveness",
+      "readiness",
+      "synthetic login",
+      "authenticated dashboard"
+    ],
+    "environment": "Loopback only; isolated local PostgreSQL acceptance database; synthetic demo user"
+  },
+  "images": {
+    "status": "NOT_EXECUTED",
+    "reason": "Docker CLI exists; local Docker Desktop Linux daemon unavailable"
+  },
+  "signing": {
+    "status": "SIGNING_PREPARED_NOT_VERIFIED",
+    "signatureCreated": false,
+    "signatureVerified": false,
+    "preparedProvenance": [
+      "Git SHA",
+      "build timestamp",
+      "SBOM",
+      "SHA-256 checksums"
+    ],
+    "intendedSignedArtifacts": [
+      "web-build.tar",
+      "three worker bundles",
+      "sbom.cdx.json",
+      "checksums.sha256",
+      "metadata.json"
+    ],
+    "verificationRequired": "Configure an authorized CI signing identity/key, sign the exact immutable artifact set, and verify signer identity and signatures before release."
+  },
+  "staging": "EXTERNAL_VALIDATION_PENDING"
+}
