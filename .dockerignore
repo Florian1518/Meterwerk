@@ -3,6 +3,10 @@ node_modules
 .git
 .local
 .env*
+*.pem
+*.key
+*.p12
+*.pfx
 *.log
 coverage
 test-results

@@ -1,6 +1,24 @@
 # Release Candidate Acceptance Checklist
 
-## Aktueller Fortsetzungsstand — WIP `a873a87`, 29.09.2026
+## Worker-Runtime-Fix ab WIP `edda867`
+
+| Gate                                        | Stand                                                                                               | Nachweisgrenze                                                    |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Worker Build / Runtime                      | PASSED: 3 JS-Bundles, `pnpm install --prod`, `tsx` fehlt im 317-Paket-Produktionsabschluss          | Image-Runtime bleibt separat extern ausstehend                    |
+| Statische Image-Prüfung                     | PASSED: 4 Stages, 3 Bundles, 0 Source Maps, keine ungefilterte Dev-Runtime-Dependency               | Kein Ersatz für einen tatsächlichen Image-Build                   |
+| Web-/Worker-Image Build und Runtime         | `NOT_EXECUTED` — Docker 29.8.0 CLI vorhanden, Linux-Daemon unerreichbar                             | `EXTERNAL_VALIDATION_PENDING`; keine Digests/Image-SBOM behauptet |
+| Standalone Runtime Smoke                    | PASSED 4/4: Liveness, Readiness, synthetischer Login, Dashboard                                     | Loopback, synthetische Testdatenbank                              |
+| Provenance                                  | PASSED: Commit/Lockfile, Audit-Beleg, SBOM-Umfang, Plattform, Buildzeit und Prüfbefehl im Metadatum | Audit-Beleg referenziert SHA `4932f00`; echte Signatur fehlt      |
+| Performance                                 | Vorhandener Messlauf 210 Requests, 0 Fehler                                                         | Lokale Testumgebung, keine Produktionskapazität                   |
+| Failover / Staging / Signing / CI final-SHA | Offen                                                                                               | Externe Validierung erforderlich                                  |
+
+Worker-Softwarefehler ist nach den lokalen Produktions-Build-, Bundle- und
+statischen Abhängigkeitsprüfungen behoben. Docker CLI 29.8.0 ist vorhanden,
+der Linux-Daemon jedoch nicht erreichbar; Images, Image-Runtime, Digest und
+Image-SBOM bleiben `NOT_EXECUTED` / `EXTERNAL_VALIDATION_PENDING`. Kein
+CI-Lauf auf dem späteren finalen Commit wurde ausgeführt.
+
+## Historischer Fortsetzungsstand — WIP `a873a87`, 29.09.2026
 
 WIP/HEAD bei Fortsetzung: `a873a87fbce94f2f8f547343e8347a1507c80ba0`, Branch `master`.
 Kein finaler RC-Commit/Tag erzeugt.

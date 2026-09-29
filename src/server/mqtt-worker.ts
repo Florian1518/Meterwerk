@@ -8,6 +8,7 @@ import { mqttConnection } from "../lib/mqtt-connection";
 import { log } from "../lib/logger";
 import { recordWorkerHealth } from "./system-status";
 import { deliverNextWebhook } from "./webhooks";
+import { db } from "./db";
 const receiptKey = await readFile(
   process.env.MQTT_RECEIPT_KEY_PATH ?? ".local/receipt-private.pem",
   "utf8",
@@ -101,18 +102,33 @@ const webhookTimer = setInterval(() => {
       deliveringWebhook = false;
     });
 }, 1000);
+let shuttingDown = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const)
-  process.on(signal, () => {
+  process.once(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     clearInterval(timer);
     clearInterval(webhookTimer);
-    void pending.finally(async () => {
+    void (async () => {
+      await pending;
       await recordWorkerHealth(
         false,
         false,
         errorStreak,
         lastIngestionAt,
       ).catch(() => undefined);
+      try {
+        await new Promise<void>((resolve, reject) =>
+          client.end(true, (error) => (error ? reject(error) : resolve())),
+        );
+      } finally {
+        await db.$disconnect();
+      }
+      log("INFO", "ingestion", "worker.stopped");
+    })().catch(() => {
+      log("ERROR", "ingestion", "worker.shutdown.failed");
+      process.exitCode = 1;
       client.end(true);
-      process.exit(0);
+      void db.$disconnect();
     });
   });

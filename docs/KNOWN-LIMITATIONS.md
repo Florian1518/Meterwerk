@@ -2,7 +2,7 @@
 
 Diese Liste beschreibt Einschränkungen, die sich aus aktuellem Code und Repository-Konfiguration ergeben. Sie ist keine Zusage, dass jeder Providerbetrieb getestet wurde.
 
-## Aktuelle Ergänzung — 29.09.2026
+## Historischer Stand — 29.09.2026, WIP `a873a87`
 
 Auf WIP `a873a87` wurde das Windows-x64-Production-Paket frisch gebaut und
 verifiziert. Der Standalone-Smoke bestand 4/4 Prüfungen. Der lokale Docker-
@@ -11,12 +11,32 @@ statische Prüfung des Worker-Dockerfiles fand `tsx` aus Dev-Dependencies als
 Runtime-Entrypoint und das Kopieren ungefilterter `node_modules`. Vor einem
 Worker-Image-Release muss die Runtime auf erforderliche Production-Dependencies
 beschränkt und das Image danach gebaut und geprüft werden. Dies ist ein offener
-Software-Release-Blocker. Signing ist vorbereitet, aber weder signiert noch
-verifiziert; GitHub Actions und Staging wurden für den SHA nicht ausgeführt.
-Die Workflow-Konfiguration ist nur statisch `CONFIG_VERIFIED`; ihr fehlen ein
-Dokumentations-Gate und der Artefakt-Verifier. Es gibt kein konfiguriertes
-Git-Remote. Details zum lokalen Paket stehen in
+Software-Release-Blocker auf diesem historischen Stand. Signing ist vorbereitet,
+aber weder signiert noch verifiziert; GitHub Actions und Staging wurden für den
+SHA nicht ausgeführt. Der nachfolgende Worker-Runtime-Abschnitt aktualisiert
+diesen Befund. Details zum lokalen Paket stehen in
 [Artefaktnachweis](acceptance/RELEASE-ARTIFACT-A873A87.json).
+
+## Aktueller Worker-Runtime-Stand — 29.09.2026
+
+Der Worker-Code wird in drei JavaScript-Bundles gebaut. Das Worker-Image
+installiert für die Laufzeit ausschließlich Produktionsabhängigkeiten, kopiert
+den generierten Prisma-Client und Bundles und startet unter `meterwerk`; `tsx`
+und Dev-Abhängigkeiten sind im statisch ermittelten Runtime-Abschluss nicht
+enthalten. Die lokale Regression bestand Build, Rules-Integration,
+Artefakt-Verifier, statische Worker-Prüfung und Standalone-Smoke.
+
+Der Docker-Desktop-Linux-Daemon war nicht erreichbar. Web-/Worker-Image-Builds,
+Container-Runtime, Image-Digests und Image-SBOM sind darum
+`NOT_EXECUTED` / `EXTERNAL_VALIDATION_PENDING`. Signing bleibt
+`SIGNING_PREPARED_NOT_VERIFIED`; Staging, CI-Lauf auf unveränderlichem finalem
+SHA und Betriebs-Failover bleiben offen. Lokale Performance ist synthetisch,
+sequenziell und keine Produktionskapazitätsaussage. Hardware ist
+`HARDWARE_VALIDATION_PENDING`.
+
+Ein lokaler SIGTERM-Lifecycle-Versuch für Rules/Rollout war unter Windows nicht
+auswertbar und zählt nicht als Shutdown-Nachweis; Linux-Container-Smokes stehen
+noch aus.
 
 Die Teil-2-/Teil-3-Abschnitte unten sind historische Befunde. Die vorhandene
 uncommittete Fortsetzung implementiert inzwischen alle 13 Demo-Szenarien mit
@@ -82,3 +102,16 @@ Vor Pilot/Produktion offene Punkte anhand [CAPABILITIES.md](CAPABILITIES.md), [P
 - Dependency Audit bleibt NOT_EXECUTED: Windows Application Control blockiert `pnpm-native.exe` 12.5.1. Sicherheitsfindings sind damit unbekannt.
 - `performance-fixture.mjs` erstellt nur Metadaten und simuliert keine Datenbank- oder HTTP-Last. Ohne echte Messdatei wurde kein Performance Gate ausgeführt.
 - Transitive SBOM mit gelockten Versionen, Web-/Worker-Images und zugehörige Prüfsummen fehlen. Docker war nicht verfügbar. Signierung ist nicht konfiguriert, Staging nicht ausgeführt und GitHub Actions nicht für diesen Arbeitsstand gestartet.
+
+# Phase 5v aktueller Zwischenstand
+
+- Worker-Image-Runtime wurde auf kompilierte Worker-Bundles und
+  Produktionsabhängigkeiten umgestellt. Bis die gezielten Build- und
+  Static-Verification-Ergebnisse vorliegen, bleibt die Softwarekorrektur in
+  Prüfung.
+- Lokaler Docker-Desktop-Linux-Daemon ist derzeit nicht erreichbar. Reale
+  Container-Builds, Start-/Health-Smokes, Image-Digests und Image-SBOM sind
+  `NOT_EXECUTED` / `EXTERNAL_VALIDATION_PENDING`.
+- Lokaler Performance-Nachweis ist kein HA-/Failover- oder Produktionslasttest.
+- Staging, Providerintegration, CI-Lauf auf unveränderlichem finalem SHA,
+  Signaturverifikation und Hardware bleiben ausstehend.

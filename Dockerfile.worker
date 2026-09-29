@@ -1,21 +1,47 @@
-FROM node:22-alpine AS deps
+ARG VERSION=unknown
+ARG GIT_SHA=unknown
+ARG BUILD_TIMESTAMP=unknown
+
+FROM node:22-alpine AS build-deps
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
+
+FROM node:22-alpine AS worker-build
+WORKDIR /app
+ARG VERSION
+ARG GIT_SHA
+ARG BUILD_TIMESTAMP
+ENV GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+RUN corepack enable
+COPY --from=build-deps /app/node_modules ./node_modules
+COPY . .
+RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build pnpm db:generate
+RUN node scripts/build-worker-bundles.mjs /app/dist
+
+FROM node:22-alpine AS runtime-deps
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
+ARG VERSION
+ARG GIT_SHA
+ARG BUILD_TIMESTAMP
+LABEL org.opencontainers.image.version=$VERSION \
+  org.opencontainers.image.revision=$GIT_SHA \
+  org.opencontainers.image.created=$BUILD_TIMESTAMP \
+  org.opencontainers.image.base.name=node:22-alpine
+ENV NODE_ENV=production \
+  BUILD_VERSION=$VERSION GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
 RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
-ENV NODE_ENV=production NODE_OPTIONS=--enable-source-maps
-COPY --from=deps --chown=meterwerk:meterwerk /app/node_modules ./node_modules
-COPY --chown=meterwerk:meterwerk package.json tsconfig.json prisma.config.ts ./
-COPY --chown=meterwerk:meterwerk prisma ./prisma
-COPY --chown=meterwerk:meterwerk src ./src
-COPY --chown=meterwerk:meterwerk scripts ./scripts
-RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build node node_modules/prisma/build/index.js generate
+COPY --from=runtime-deps --chown=meterwerk:meterwerk /app/node_modules ./node_modules
+COPY --from=worker-build --chown=meterwerk:meterwerk /app/src/generated/prisma ./src/generated/prisma
+COPY --from=worker-build --chown=meterwerk:meterwerk /app/dist ./dist
+COPY --chown=meterwerk:meterwerk package.json ./package.json
 USER meterwerk
-ARG VERSION=unknown
-ARG GIT_SHA=unknown
-ENV BUILD_VERSION=$VERSION GIT_COMMIT_SHA=$GIT_SHA
-ENTRYPOINT ["node", "node_modules/tsx/dist/cli.mjs", "--conditions=react-server"]
+ENTRYPOINT ["node", "--conditions=react-server"]
+CMD ["dist/rules-worker.js"]

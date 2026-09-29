@@ -35,6 +35,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm docs:check
+      - run: pnpm docs:validate
+      - run: node scripts/verify-ci-release-config.mjs
       - run: git diff --check
       - run: pnpm audit --audit-level high
       - run: pnpm security:secrets

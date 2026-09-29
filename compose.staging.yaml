@@ -56,7 +56,7 @@ services:
       }
   rules-worker:
     image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
-    command: ["src/server/rules-worker.ts"]
+    command: ["dist/rules-worker.js"]
     environment:
       NODE_ENV: production
       METERWERK_ENV: staging
@@ -67,9 +67,8 @@ services:
     networks: [staging]
   rollout-worker:
     image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
-    command: ["src/server/rollout-worker.ts"]
+    command: ["dist/rollout-worker.js"]
     environment:
-      RUN_WORKER: "true"
       NODE_ENV: production
       METERWERK_ENV: staging
       APP_URL: ${STAGING_APP_URL:-http://localhost:3000}
@@ -79,7 +78,7 @@ services:
     networks: [staging]
   mqtt-worker:
     image: ${METERWERK_WORKER_IMAGE:?Set METERWERK_WORKER_IMAGE}
-    command: ["src/server/mqtt-worker.ts"]
+    command: ["dist/mqtt-worker.js"]
     environment:
       NODE_ENV: production
       METERWERK_ENV: staging

@@ -11,9 +11,9 @@ import {
   readlinkSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { createRequire } from "node:module";
-import { realpathSync } from "node:fs";
 import { resolve, relative, dirname, isAbsolute } from "node:path";
+import { buildWorkerBundles } from "./build-worker-bundles.mjs";
+import { copyArgon2Runtime } from "./copy-argon2-runtime.mjs";
 const version = process.env.RELEASE_VERSION ?? "0.1.0";
 if (!/^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version))
   throw new Error("Invalid release version");
@@ -24,16 +24,31 @@ const output = resolve("release-artifacts", version);
 const sbom = JSON.parse(
   readFileSync(`release-artifacts/sbom-${version}.cdx.json`, "utf8"),
 );
+const lockfileSha256 = createHash("sha256")
+  .update(readFileSync("pnpm-lock.yaml"))
+  .digest("hex");
+const auditPath = resolve("docs/acceptance/DEPENDENCY-AUDIT-4932F00.json");
+const audit = JSON.parse(readFileSync(auditPath, "utf8"));
 if (
   sbom.metadata.component.version !== version ||
   sbom.metadata.properties.find((p) => p.name === "git.commit")?.value !==
     commit ||
   sbom.metadata.properties.find((p) => p.name === "pnpm.lockfile.sha256")
-    ?.value !==
-    createHash("sha256").update(readFileSync("pnpm-lock.yaml")).digest("hex")
+    ?.value !== lockfileSha256
 )
   throw new Error(
     "SBOM version, commit or lockfile does not match artifact input",
+  );
+if (
+  audit.status !== "PASSED" ||
+  audit.exitCode !== 0 ||
+  audit.lockfile.sha256 !== lockfileSha256 ||
+  ["critical", "high", "moderate", "low", "info"].some(
+    (severity) => audit.advisories[severity] !== 0,
+  )
+)
+  throw new Error(
+    "Dependency audit provenance does not match current lockfile",
   );
 const buildId = readFileSync(".next/BUILD_ID", "utf8").trim();
 if (!buildId) throw new Error("Completed Next production build required");
@@ -42,23 +57,8 @@ copyFileSync(
   `release-artifacts/sbom-${version}.cdx.json`,
   resolve(output, "sbom.cdx.json"),
 );
-const require = createRequire(realpathSync("node_modules/tsx/package.json"));
-const esbuild = require("esbuild");
-await esbuild.build({
-  entryPoints: [
-    "src/server/rules-worker.ts",
-    "src/server/mqtt-worker.ts",
-    "src/server/rollout-worker.ts",
-  ],
-  outdir: resolve(output, "worker"),
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  target: "node22",
-  packages: "external",
-  alias: { "next/headers": "next/headers.js" },
-  sourcemap: false,
-});
+copyFileSync(auditPath, resolve(output, "dependency-audit.json"));
+await buildWorkerBundles(resolve(output, "worker"));
 const standalone = resolve(".next/standalone");
 // Next's traced runtime preserves transitive dependencies of relocated packages.
 // Static/public files are explicitly excluded from Next's automatic copy.
@@ -68,47 +68,7 @@ cpSync(".next/static", resolve(standalone, ".next/static"), {
 cpSync("public", resolve(standalone, "public"), { recursive: true });
 cpSync("prisma", resolve(standalone, "prisma"), { recursive: true });
 // Optional N-API dependencies can be omitted by Next's standalone tracer.
-const argon2Package = require.resolve("@node-rs/argon2/package.json");
-const argon2Metadata = JSON.parse(readFileSync(argon2Package, "utf8"));
-const argon2Platform =
-  process.platform === "win32" && process.arch === "x64"
-    ? "@node-rs/argon2-win32-x64-msvc"
-    : process.platform === "win32" && process.arch === "arm64"
-      ? "@node-rs/argon2-win32-arm64-msvc"
-      : process.platform === "darwin" && process.arch === "x64"
-        ? "@node-rs/argon2-darwin-x64"
-        : process.platform === "darwin" && process.arch === "arm64"
-          ? "@node-rs/argon2-darwin-arm64"
-          : process.platform === "linux" && process.arch === "x64"
-            ? "@node-rs/argon2-linux-x64-gnu"
-            : process.platform === "linux" && process.arch === "arm64"
-              ? "@node-rs/argon2-linux-arm64-gnu"
-              : null;
-if (argon2Platform) {
-  const platformVersion = argon2Metadata.optionalDependencies?.[argon2Platform];
-  const storePath = resolve(
-    "node_modules/.pnpm",
-    `${argon2Platform.replaceAll("/", "+")}@${platformVersion}`,
-    "node_modules",
-    argon2Platform,
-  );
-  if (
-    !platformVersion ||
-    !statSync(storePath, { throwIfNoEntry: false })?.isDirectory()
-  )
-    throw new Error(
-      `Locked native Argon2 runtime package unavailable: ${argon2Platform}`,
-    );
-  cpSync(
-    storePath,
-    resolve(standalone, "node_modules", ...argon2Platform.split("/")),
-    { recursive: true },
-  );
-} else {
-  throw new Error(
-    `No explicit native Argon2 package mapping for ${process.platform}/${process.arch}`,
-  );
-}
+await copyArgon2Runtime(standalone);
 copyFileSync("prisma.config.ts", resolve(standalone, "prisma.config.ts"));
 mkdirSync(resolve(standalone, "scripts"), { recursive: true });
 copyFileSync(
@@ -199,7 +159,29 @@ writeFileSync(
       buildId,
       platform: process.platform,
       architecture: process.arch,
-      signing: "NOT_CONFIGURED_NOT_VERIFIED",
+      provenance: {
+        gitSha: commit,
+        buildTimestamp: process.env.BUILD_TIMESTAMP ?? new Date().toISOString(),
+        lockfile: { file: "pnpm-lock.yaml", sha256: lockfileSha256 },
+        dependencyAudit: {
+          file: "dependency-audit.json",
+          gitSha: audit.gitSha,
+          exitCode: audit.exitCode,
+          advisories: audit.advisories,
+        },
+        sbom: {
+          file: "sbom.cdx.json",
+          components: sbom.components.length,
+          dependencyNodes: sbom.dependencies.length,
+        },
+        artifactVerifier: {
+          command: "node scripts/verify-release-artifact.mjs",
+          status: "NOT_RUN",
+          exitCode: null,
+        },
+        platform: `${process.platform}-${process.arch}`,
+      },
+      signing: "SIGNING_PREPARED_NOT_VERIFIED",
       images: "NOT_EXECUTED",
       staging: "EXTERNAL_VALIDATION_PENDING",
       limitations:

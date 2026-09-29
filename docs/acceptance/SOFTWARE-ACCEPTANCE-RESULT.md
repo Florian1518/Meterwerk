@@ -1,11 +1,37 @@
 # Software Acceptance Result
 
-> **Aktueller Stand: 29.09.2026, WIP `a873a87`, keine RC-Freigabe.**
+### Phase 5v Worker-Runtime-Fix — lokaler Nachweis auf WIP `edda867`
+
+Der WIP-Stand `edda867` wird mit einer mehrstufigen Worker-Image-Struktur
+fortgesetzt: drei vorhandene TypeScript-Worker werden zu JavaScript-Bundles
+gebaut; das Runtime-Image erhält nur den per `pnpm install --prod` aufgelösten
+Produktions-Abhängigkeitsgraph, Prisma-Client und Worker-Bundles. `tsx` und
+Entwicklungsabhängigkeiten werden nicht in die Runtime kopiert. Rules und
+Rollout reagieren kontrolliert auf SIGINT/SIGTERM; MQTT leert die laufende
+Nachrichtenkette und schließt Broker/DB beim Herunterfahren.
+
+Die Änderungen bestanden TypeScript, ESLint, Prettier, Production Build,
+Rules-DB-Integration, SBOM-/Artefakt-Verifikation, Standalone-Smoke,
+Dokumentations- und Secret-Gates. Die Worker-Image-Statikprüfung zählte vier
+Build-/Runtime-Stages, 317 Pakete im Produktions-Abhängigkeitsabschluss,
+keinen `tsx`-Eintrag, drei JS-Bundles und keine Source Maps. Der Artefakt-
+Verifier prüfte 750 SBOM-Komponenten, 751 Graphknoten, 2.855 Archiv-Einträge
+und 8 SHA-256-Dateien; der frische Standalone-Smoke bestand 4/4 Checks. Details
+stehen im [Fortsetzungsbericht](PHASE-5V-RESUME.md).
+
+Die lokale Docker-CLI meldet Version 29.8.0, der Docker-Desktop-Linux-Daemon ist
+nicht erreichbar. Reale Web-/Worker-Image-Builds, Container-Smokes, Image-Digests
+und Image-SBOM bleiben `NOT_EXECUTED` / `EXTERNAL_VALIDATION_PENDING`; die
+statische Image-Prüfung ersetzt sie nicht. Performance wird aus dem vorhandenen
+HTTP-/DB-Lauf übernommen (210 Requests, 0 Fehler). Failover, Staging, ein
+GitHub-Actions-Lauf auf finalem SHA und Signaturverifikation bleiben offen.
+
+> **Historischer Stand: 29.09.2026, WIP `a873a87`; siehe den aktuellen Bericht oben.**
 > Die historischen Teil-2-/Teil-3-Aussagen unten bleiben als Verlauf erhalten.
 > Maßgeblich für die Fortsetzung sind [Phase-5v-Fortsetzungsbericht](PHASE-5V-RESUME.md)
 > und [RC-Checkliste](../checklists/RC-ACCEPTANCE-CHECKLIST.md).
 
-### Phase 5v Fortsetzung — aktueller Gate-Stand auf `a873a87`
+### Historischer Phase-5v-Gate-Stand auf `a873a87`
 
 Der Production-Build wurde für `a873a87fbce94f2f8f547343e8347a1507c80ba0`
 neu erstellt (Next.js 16.3.5, 69 Seiten, Windows x64). Standalone-Web-Tar,

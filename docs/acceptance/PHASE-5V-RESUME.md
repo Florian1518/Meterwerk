@@ -1,6 +1,70 @@
-# Phase 5v — Fortsetzungsbericht, aktueller WIP `a873a87`
+# Phase 5v — Fortsetzungsbericht, Worker-Runtime-Fix ab WIP `edda867`
 
-Stand: 29.09.2026. **Keine RC-Freigabe, kein RC-Commit, kein Tag.**
+## Worker-Runtime-Fortsetzung ab `edda867` — 29.09.2026
+
+Der Softwarefehler im Worker-Image lag darin, dass das Image TypeScript über
+`tsx` aus `devDependencies` startete und das vollständige, ungefilterte
+`node_modules` in die Runtime kopierte. Die drei tatsächlich vorhandenen
+Worker (Rules, MQTT-Ingestion, Rollout) werden jetzt in einem Build-Stage als
+Node-22-ESM-Bundles gebaut. Das finale Worker-Image installiert mit
+`pnpm install --prod --frozen-lockfile` nur den Produktions-Abhängigkeitsgraph,
+kopiert den erzeugten Prisma-Client und die drei Bundles und startet als
+nicht-root Nutzer über feste `node`-Entrypoints. Rules/Rollout beenden ihren
+Polling-Loop bei SIGINT/SIGTERM; MQTT leert die laufende Nachrichtenkette,
+schließt Client und Prisma beim Herunterfahren. Die Web-Image-Runtime kopiert
+keine vollständigen Builder-`node_modules` mehr; die plattformspezifische
+Argon2-Bindung wird explizit mitgeführt.
+
+Die lokale Regression auf dem Arbeitsstand bestand: Prisma Generate; TypeScript
+(Exit 0); ESLint (Exit 0); Prettier; Production Build (Next.js 16.3.5, 69
+Seiten); Rules-Unit 5/5 und Rules-DB-Integration 7/7; Release-Verifier (2/2)
+mit
+750 SBOM-Komponenten, 751 Graphknoten, 2.855 Archiv-Einträgen und 8/8
+SHA-256-Dateien; drei Worker-Bundle-Syntaxprüfungen; Standalone Runtime Smoke
+4/4 (Liveness, Readiness, synthetischer Login, authentifiziertes Dashboard);
+Dokumentationslinks (94 Markdown-Dateien), 13 Pflichtreferenzen, CI-Workflow-
+Statikprüfung sowie Secret Scan (0 Review-Funde, 18 erkannte Demo-/Vorlagenwerte).
+Die Worker-Image-Statikprüfung bestand mit vier Docker-Stages, 317 Paketen im
+Produktions-Abhängigkeitsabschluss, `tsx` ausgeschlossen, drei Entry-Bundles,
+null Source Maps und vorhandenen Release-Metadaten/SBOM/Checksummen.
+
+Die wiederverwendbare Provenance im Release-Paket bindet Commit, Buildzeit,
+Windows-x64-Buildplattform, Lockfile-SHA, vorhandenen pnpm-12.5.1-Auditbeleg,
+SBOM-Umfang und den Artifact-Verifier. Der Lockfile-Stand ist unverändert; daher
+wurde der zuvor bestandene Audit nicht wiederholt. Die statische CI-Prüfung
+bestätigte gepinnte Actions, `contents: read`, `persist-credentials: false`,
+Dokumentations-Gates sowie Artefakt-, Standalone-, Worker-Image- und SBOM-Gates.
+Das ist `CONFIG_VERIFIED`, keine GitHub-Actions-Ausführung auf einem finalen
+SHA.
+
+Docker 29.8.0 Client ist vorhanden; `docker version` und `docker info` konnten
+keinen Docker-Desktop-Linux-Daemon erreichen. Deshalb wurden Web-/Worker-Images
+nicht gebaut oder gestartet; Image-Digests und Image-SBOM sind nicht vorhanden.
+Status: `IMAGE_RUNTIME_VERIFICATION=EXTERNAL_VALIDATION_PENDING`. Keine
+Containerprüfung wird durch die statischen Ergebnisse ersetzt.
+
+Der bereits vorhandene lokale HTTP-/DB-Performance-Lauf wird übernommen:
+210 Requests, 0 Fehler; Dashboard p95 318,008 ms, Readings 20,689 ms, Analytics
+35,673 ms, Public API 34,418 ms, Fleet 49,506 ms, Queue Claim 1,666 ms und Worker
+4,405 ms. Umgebung: Windows 11, Node 24.19.0, PostgreSQL 17.10 auf Loopback mit
+synthetischen Daten. HA-/Kapazitäts- und echte Failover-Prüfungen sind damit
+nicht belegt. Worker-Neustart/Lease-Reclaim, Web-Neustart, MQTT-Reconnect,
+DB-Ausfall, echtes Staging, Signatur-Verifikation, CI auf finalem SHA und
+Providerprüfungen bleiben `EXTERNAL_VALIDATION_PENDING`; echte Geräte bleiben
+`HARDWARE_VALIDATION_PENDING`.
+
+Ein zusätzlicher Rules-/Rollout-SIGTERM-Lifecycle-Smoke war unter Windows nicht
+auswertbar: der Kindprozess wurde beendet, bevor der Node-Signalhandler einen
+kontrollierten Stop protokollieren konnte. Dies wird nicht als bestanden
+gezählt; die Linux-Container-Smokes in CI prüfen Startup und Graceful Shutdown
+für alle drei Worker, sind aber noch nicht gelaufen.
+
+Der Worker-Software-Release-Blocker ist mit den bestandenen Build-,
+Abhängigkeits- und statischen Image-Gates geschlossen. Ein finaler Commit wird
+erst nach Abschluss der übrigen lokalen Release-Gates beurteilt; kein Push,
+Tag oder Deployment wird vorgenommen.
+
+Stand: 29.09.2026. **Keine RC-Freigabe und kein Tag.** Der Software-Abschlussstand wird mit dem vorbereiteten RC-Commit gesichert; externe Validierung bleibt offen.
 
 ## Verifikation des WIP `a873a87`
 

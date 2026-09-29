@@ -1,6 +1,6 @@
 # Produktfähigkeiten und Validierungsstatus
 
-Aktueller Abnahmestand: **29.09.2026, WIP `a873a87`, keine RC-Freigabe**. Die
+Aktueller Abnahmestand: **29.09.2026, Worker-Runtime-Fix ab WIP `edda867`, keine RC-Freigabe**. Die
 Fortsetzung enthält echte Demo-Szenariowirkungen (13/266 DB-/HTTP-Checks; zusätzlich
 2 Browserfälle), geprüfte kanonische 47-Migrations-Pfade, lokale Performancewerte
 mit bestandenem Regression-Gate und eine transitive SBOM mit lokalen Build-Artefakten.
@@ -8,12 +8,12 @@ Eine ergänzte mobile Field-Service-Journey prüft den Wartungsabschluss ohne AP
 Die v1.0-Datenbankbaseline ist auf die 47 kanonischen Migrationen festgelegt;
 Upgrade ab `v0.4b-pilot-ready` (7 Migrationen) und Dependency-Audit auf dem
 aktuellen Lockfile sind bestanden. Nicht getaggte interne/dev-Basen sind nicht
-unterstützt. Container-Images, Signing, Staging und CI sind noch offen. Das
-lokale Windows-x64-Standalone-Artefakt wurde für `a873a87` frisch gebaut und
-bestand den entpackten Health-/Readiness-/Login-/Dashboard-Smoke (4/4). Die
-Worker-Image-Runtime hat einen Software-Release-Blocker: sie führt `tsx` aus
-Dev-Dependencies aus und kopiert alle Entwicklungsabhängigkeiten. Image-Build,
-Signing, CI-Lauf und Staging bleiben offen. Historischer
+unterstützt. Das lokale Windows-x64-Standalone-Artefakt bestand den
+Health-/Readiness-/Login-/Dashboard-Smoke (4/4). Der Worker-Image-
+Softwarefehler ist durch JS-Bundles und Produktionsabhängigkeiten behoben; die
+statische Prüfung und lokalen Release-Smokes bestanden. Reale Image-Builds und
+-Smokes waren mangels Docker-Linux-Daemon nicht ausführbar und bleiben extern
+pending. Signing, CI-Lauf auf finalem SHA und Staging bleiben offen. Historischer
 Teil-3-Text unten beschreibt den Commit, nicht die nachfolgende Fortsetzung.
 Siehe [aktueller Fortsetzungsbericht](acceptance/PHASE-5V-RESUME.md).
 
@@ -41,3 +41,14 @@ Status: **IMPLEMENTED** = Code vorhanden; **TESTED** = durch automatisierte Soft
 Hardwarestatus: softwareseitige Simulatoren/Verträge können automatisiert getestet sein. Physische Modbus/RS485, M-Bus, W-MBus, Pulse, LoRaWAN und Hersteller-API-Validierung steht aus. Siehe [Protokolle](PROTOCOLS.md), [Commissioning](COMMISSIONING.md) und [Known Limitations](KNOWN-LIMITATIONS.md).
 
 Phase-5v-Teil-3-Status (28.09.2026): Demo-Szenario-Auswahl ist vorhanden, erzeugt aber noch keine szenariospezifischen Produktzustände (**RELEASE_BLOCKER**). Clean Install und Upgrade von 39 auf 46 Migrationen sind für die geänderten lokalen Dateien in Teil 2 belegt; Kompatibilität mit vorab registrierten Originalchecksummen der Migrationen 008/009 bleibt **NOT_EXECUTED / RELEASE_BLOCKER**. Dependency Audit und Performance Gate sind **NOT_EXECUTED**. Transitive Lockfile-SBOM, Container-Images, Signierung und lokale Staging-Verifikation sind nicht belegt. Siehe [Software Acceptance Result](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md).
+
+# Phase 5v Release-Runtime-Status
+
+Die vorhandenen Worker (Rules, MQTT-Ingestion und Rollout) besitzen einen
+Produktions-Buildpfad zu JavaScript-Bundles; das geplante Worker-Containerimage
+verwendet eine Produktions-only Dependency-Installation und startet feste
+Node-Entrypoints unter einem nicht-root Nutzer. Tatsächliche Image-Läufe sind
+nicht bestätigt, solange der lokale Docker-Linux-Daemon nicht verfügbar ist.
+Der lokale Performance-Nachweis deckt synthetische HTTP-/DB-Last ab; Staging,
+externe Provider, Failover/HA, Signierung und Hardware sind gesonderte
+Validierungsschritte.
