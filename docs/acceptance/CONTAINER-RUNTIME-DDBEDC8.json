@@ -1,0 +1,1081 @@
+{
+  "recordedAt": "2026-10-01T12:27:52.944Z",
+  "gitSha": "ddbedc83c962248837bbdd81094504d6cb3209b8",
+  "workingTree": "dirty: pnpm-workspace.yaml Linux build-script allowance; documentation updated after measurements",
+  "docker": {
+    "client": "29.8.0",
+    "engine": "29.8.0",
+    "desktop": "4.91.0",
+    "context": "desktop-linux"
+  },
+  "images": {
+    "web": {
+      "id": "sha256:34e78eaf3a4dadce73cea59dc25d93167ded3d6aaac75262d3f5cc39411d5733",
+      "repoDigests": [
+        "meterwerk-web@sha256:34e78eaf3a4dadce73cea59dc25d93167ded3d6aaac75262d3f5cc39411d5733"
+      ],
+      "created": "2026-10-01T07:26:59.560412059Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "entrypoint": ["node"],
+      "cmd": ["server.js"],
+      "user": "meterwerk",
+      "workingDir": "/app",
+      "ports": {
+        "3000/tcp": {}
+      },
+      "labels": {
+        "org.opencontainers.image.base.name": "node:22-alpine",
+        "org.opencontainers.image.created": "2026-10-01T07:21:56Z",
+        "org.opencontainers.image.revision": "ddbedc83c962248837bbdd81094504d6cb3209b8",
+        "org.opencontainers.image.version": "0.1.0"
+      },
+      "sbom": {
+        "file": ".local/acceptance/web-image-sbom-ddbedc8.cdx.json",
+        "sha256": "1e278ea45303716fdb2c104e083bbd1dec9f843a929701a3ec19b3e6eaa1fd1f",
+        "components": 298,
+        "imageMatched": true
+      }
+    },
+    "worker": {
+      "id": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+      "repoDigests": [
+        "meterwerk-worker@sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556"
+      ],
+      "created": "2026-10-01T11:33:13.063953051Z",
+      "architecture": "amd64",
+      "os": "linux",
+      "entrypoint": ["node", "--conditions=react-server"],
+      "cmd": ["dist/rules-worker.js"],
+      "user": "meterwerk",
+      "workingDir": "/app",
+      "ports": {},
+      "labels": {
+        "org.opencontainers.image.base.name": "node:22-alpine",
+        "org.opencontainers.image.created": "2026-10-01T07:21:56Z",
+        "org.opencontainers.image.revision": "ddbedc83c962248837bbdd81094504d6cb3209b8",
+        "org.opencontainers.image.version": "0.1.0"
+      },
+      "sbom": {
+        "file": ".local/acceptance/worker-image-sbom-ddbedc8.cdx.json",
+        "sha256": "1dd21a99a421f296dffcb1c344020b5251b7569bab371923a87c244a4478322f",
+        "components": 623,
+        "imageMatched": true
+      }
+    }
+  },
+  "buildWorkspace": {
+    "matchesBuilder": true,
+    "normalizedSha256": "41391b8e9bc51f11c754c8dbefed8a213ec7020cd8d0ea9e901ce67825325cc7",
+    "dirtyAddition": "@embedded-postgres/linux-x64: true",
+    "buildLogs": [
+      "container-ddbedc8-web-build-fixed.log",
+      "container-ddbedc8-worker-build.log"
+    ]
+  },
+  "web": {
+    "containerId": "9e61540f194cc8f818258577303dd1dc49a85daa2b2e92d9e5650da6a25353ea",
+    "imageId": "sha256:34e78eaf3a4dadce73cea59dc25d93167ded3d6aaac75262d3f5cc39411d5733",
+    "mounts": 0,
+    "checks": {
+      "containerRunning": true,
+      "liveness": true,
+      "readiness": true
+    },
+    "browserSmoke": "Docker web acceptance 7/7 passed; SHA ddbedc83c962248837bbdd81094504d6cb3209b8; authenticated /api/meters 200, unauthenticated 401",
+    "passed": 8,
+    "failed": 0,
+    "sigterm": {
+      "exitCode": 143,
+      "shutdownMs": 1855.3348,
+      "oomKilled": false,
+      "signal": "SIGTERM",
+      "forcedKill": false
+    }
+  },
+  "webDrain": {
+    "recordedAt": "2026-10-01T12:24:28.730Z",
+    "scope": "Same real web container; authenticated dashboard request held by synthetic DB User-table lock while SIGTERM is delivered",
+    "pendingAtSignal": true,
+    "requestMs": 6436.8197,
+    "inFlightRequest": {
+      "status": 200,
+      "dashboard": true
+    },
+    "exitCode": 143,
+    "shutdownMs": 11903.246899999998,
+    "forcedKill": false,
+    "status": "PASSED",
+    "restartedReady": true
+  },
+  "workers": [
+    {
+      "name": "rules",
+      "containerId": "79d50703fc32d30d85fb22702b65d52244aef0b708f401398b111fffd5fc2d22",
+      "imageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+      "command": ["node", "--conditions=react-server", "dist/rules-worker.js"],
+      "started": true,
+      "immediateError": false,
+      "sigterm": {
+        "exitCode": 0,
+        "shutdownMs": 428.50290000000314,
+        "oomKilled": false,
+        "signal": "SIGTERM",
+        "forcedKill": false
+      },
+      "gracefulLog": true
+    },
+    {
+      "name": "rollout",
+      "containerId": "fa01187026da9510f7de30bc967ebaa62fd3da40e8fe7cb1da26d2f259e83930",
+      "imageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+      "command": [
+        "node",
+        "--conditions=react-server",
+        "dist/rollout-worker.js"
+      ],
+      "started": true,
+      "immediateError": false,
+      "sigterm": {
+        "exitCode": 0,
+        "shutdownMs": 344.14080000000104,
+        "oomKilled": false,
+        "signal": "SIGTERM",
+        "forcedKill": false
+      },
+      "gracefulLog": true
+    },
+    {
+      "name": "mqtt",
+      "containerId": "a529bda0291b438ba587102f54ebcc610ca4fa54e7d974e69c36f3ee2e72f2dd",
+      "imageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+      "command": ["node", "--conditions=react-server", "dist/mqtt-worker.js"],
+      "started": true,
+      "immediateError": false,
+      "sigterm": {
+        "exitCode": 0,
+        "shutdownMs": 547.7188000000024,
+        "oomKilled": false,
+        "signal": "SIGTERM",
+        "forcedKill": false
+      },
+      "gracefulLog": true
+    }
+  ],
+  "lease": {
+    "recordedAt": "2026-10-01T12:18:52.612Z",
+    "scope": "Real rules-worker bundle, isolated synthetic DB; EMAIL_PROVIDER=local; completion delayed 10s by test-only trigger",
+    "timeline": [
+      {
+        "event": "A claimed",
+        "status": "PROCESSING",
+        "attempts": 1,
+        "lockedUntil": "2026-10-01T12:19:55.362Z",
+        "leaseOwner": "e98b61e9-7fd1-48ab-ac9b-3e9b418bb33d",
+        "lastError": null,
+        "completions": 0
+      },
+      {
+        "event": "B result",
+        "status": "COMPLETED",
+        "attempts": 2,
+        "lockedUntil": null,
+        "leaseOwner": null,
+        "lastError": null,
+        "completions": 1
+      },
+      {
+        "event": "B restart no duplicate completion",
+        "status": "COMPLETED",
+        "attempts": 2,
+        "lockedUntil": null,
+        "leaseOwner": null,
+        "lastError": null,
+        "completions": 1
+      }
+    ],
+    "crash": {
+      "signal": "SIGKILL",
+      "purpose": "explicit fault injection only",
+      "exitCode": 137,
+      "databaseSessionTermination": [
+        {
+          "terminated": true
+        }
+      ]
+    },
+    "workerB": "ea906dac5d8c9538e2112cd41b1ff06e933747f27f214bd3203c765208674d1d",
+    "leaseElapsed": true,
+    "status": "PASSED",
+    "limit": "One committed completion proved; no exactly-once external side-effect guarantee. Local outbox from killed process is not a delivery receipt.",
+    "fixtureCleaned": true
+  },
+  "recovery": {
+    "web": {
+      "status": "PASSED",
+      "sameContainer": true,
+      "readyStatus": 200
+    },
+    "mqtt": {
+      "running": true,
+      "resubscribed": true,
+      "status": "PASSED",
+      "finalStop": {
+        "exitCode": 0,
+        "shutdownMs": 593.290399999998,
+        "oomKilled": false,
+        "signal": "SIGTERM",
+        "forcedKill": false
+      }
+    },
+    "worker": {
+      "restarted": true,
+      "status": "PASSED"
+    },
+    "database": {
+      "recordedAt": "2026-10-01T12:20:53.424Z",
+      "scope": "isolated mw5v-ddbedc8 DB; web and actual rules worker kept running",
+      "outageLiveness": {
+        "status": 200,
+        "elapsedMs": 221.11000000000013
+      },
+      "outageReadiness": {
+        "status": 503,
+        "elapsedMs": 5230.582200000001
+      },
+      "recoveredReadiness": {
+        "status": 200,
+        "elapsedMs": 96.22039999999834
+      },
+      "worker": {
+        "running": true,
+        "cycleFailureObserved": false,
+        "scope": "process survival across outage; resumed job processing verified separately by lease test",
+        "stopExitCode": 0
+      },
+      "browserAfterRecovery": "Docker web acceptance 7/7 passed; SHA ddbedc83c962248837bbdd81094504d6cb3209b8; authenticated /api/meters 200, unauthenticated 401",
+      "recoveryStatus": "PASSED",
+      "outageReadinessStatus": "PASSED"
+    }
+  },
+  "inspection": {
+    "recordedAt": "2026-10-01T12:11:00.495Z",
+    "web": {
+      "root": [
+        ".local",
+        ".next",
+        "node_modules",
+        "package.json",
+        "prisma",
+        "public",
+        "server.js"
+      ],
+      "forbiddenPaths": [],
+      "privateKeyFiles": [],
+      "testFiles": ["/app/.next/server/app/api/webhooks/[id]/test"],
+      "tsxResolved": false,
+      "dependencyErrors": [],
+      "bundles": [],
+      "imageConfigSecretMatches": 0,
+      "imageId": "sha256:34e78eaf3a4dadce73cea59dc25d93167ded3d6aaac75262d3f5cc39411d5733"
+    },
+    "worker": {
+      "root": ["dist", "node_modules", "package.json", "src"],
+      "forbiddenPaths": [],
+      "privateKeyFiles": [],
+      "testFiles": [
+        "/app/node_modules/.pnpm/@electric-sql+pglite-socket@0.1.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-socket/tests",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-socket@0.1.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-socket/tests/index.test.ts",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-socket@0.1.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-socket/tests/query-with-node-pg.test.ts",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-socket@0.1.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-socket/tests/query-with-postgres-js.test.ts",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-socket@0.1.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-socket/tests/server.test.ts",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-tools@0.3.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-tools/tests",
+        "/app/node_modules/.pnpm/@electric-sql+pglite-tools@0.3.3_@electric-sql+pglite@0.4.3/node_modules/@electric-sql/pglite-tools/tests/pg_dump.test.ts",
+        "/app/node_modules/.pnpm/@playwright+test@1.63.0/node_modules/@playwright/test",
+        "/app/node_modules/.pnpm/bl@6.1.6/node_modules/bl/test",
+        "/app/node_modules/.pnpm/events@3.3.0/node_modules/events/tests",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/ajv.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/component-safe-serialization.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/equal.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/ipv6-canonical.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/ipv6-validation.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/malformed-percent.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/malformed-urn.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/parse.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/query-fragment-normalization.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/reserved-path-normalization.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/resolve.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/rfc-3986.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/scheme-validation.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/security-normalization.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/security.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/serialize.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/uri-js-compatibility.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/uri-js.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/urn-full-input.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/util.test.js",
+        "/app/node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/test/websocket-query-preservation.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/case-insensitive.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraint.custom-versioning.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraint.custom.async.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraint.custom.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraint.default-versioning.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraint.host.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/constraints.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/custom-querystring-parser.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/errors.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/fastify-issue-3129.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/fastify-issue-3957.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/find-route.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/find.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/for-in-loop.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/full-url.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/has-route.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/host-storage.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/http2/constraint.host.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-101.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-104.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-110.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-132.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-145.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-149.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-151.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-154.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-161.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-17.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-175.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-182.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-190.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-20.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-206.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-221.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-234.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-238.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-240.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-241.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-247.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-254.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-28.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-280.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-285.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-330.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-44.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-46.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-49.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-59.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-62.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-63.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-67.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-6700.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/issue-93.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/lookup-async.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/lookup.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/matching-order.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/max-param-length.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/methods.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/null-object.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/on-bad-url.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/optional-params.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/params-collisions.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/path-params-match.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/path-utils.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/pretty-print-tree.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/pretty-print.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/querystring.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/regex.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/repro-issue-414.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/routes-registered.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/server.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/shorthands.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/store.test.js",
+        "/app/node_modules/.pnpm/find-my-way@9.7.0/node_modules/find-my-way/test/url-sanitizer.test.js",
+        "/app/node_modules/.pnpm/gensync@1.0.0-beta.2/node_modules/gensync/test",
+        "/app/node_modules/.pnpm/gensync@1.0.0-beta.2/node_modules/gensync/test/index.test.js",
+        "/app/node_modules/.pnpm/isexe@2.0.0/node_modules/isexe/test",
+        "/app/node_modules/.pnpm/json-schema-traverse@1.0.0/node_modules/json-schema-traverse/spec/index.spec.js",
+        "/app/node_modules/.pnpm/minimist@1.2.8/node_modules/minimist/test",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/diagnostics/build-diagnostics.test.js",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/telemetry/events/build.test.js",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/telemetry/events/mcp-telemetry.test.js",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/telemetry/post-telemetry-payload.test.js",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/trace/report/index.test.js",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/trace/trace.test.js",
+        "/app/node_modules/.pnpm/pg-protocol@1.16.0/node_modules/pg-protocol/dist/inbound-parser.test.js",
+        "/app/node_modules/.pnpm/pg-protocol@1.16.0/node_modules/pg-protocol/dist/outbound-serializer.test.js",
+        "/app/node_modules/.pnpm/pg-protocol@1.16.0/node_modules/pg-protocol/src/inbound-parser.test.ts",
+        "/app/node_modules/.pnpm/pg-protocol@1.16.0/node_modules/pg-protocol/src/outbound-serializer.test.ts",
+        "/app/node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/test",
+        "/app/node_modules/.pnpm/playwright@1.63.0/node_modules/playwright/lib/mcp/test",
+        "/app/node_modules/.pnpm/retry@0.12.0/node_modules/retry/test",
+        "/app/node_modules/.pnpm/rfdc@1.4.1/node_modules/rfdc/test",
+        "/app/node_modules/.pnpm/safe-regex2@5.1.1/node_modules/safe-regex2/test",
+        "/app/node_modules/.pnpm/safe-regex2@5.1.1/node_modules/safe-regex2/test/regex.test.js",
+        "/app/node_modules/.pnpm/typedarray@0.0.6/node_modules/typedarray/test",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/all-errors.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/anyunknown.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/array.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/async-parsing.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/async-refinements.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/base.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/bigint.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/branded.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/catch.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/coerce.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/complex.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/custom.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/date.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/deepmasking.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/default.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/description.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/discriminated-unions.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/enum.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/error.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/firstparty.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/firstpartyschematypes.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/function.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/generics.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/instanceof.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/intersection.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/language-server.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/literal.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/map.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/masking.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/mocker.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/nan.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/nativeEnum.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/nullable.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/number.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/object-augmentation.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/object-in-es5-env.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/object.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/optional.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/parseUtil.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/parser.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/partials.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/pickomit.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/pipeline.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/preprocess.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/primitive.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/promise.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/readonly.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/record.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/recursive.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/refine.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/safeparse.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/set.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/standard-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/string.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/transformer.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/tuple.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/unions.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/validations.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v3/tests/void.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/anyunknown.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/apply.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/array.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/assignability.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/async-parsing.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/async-refinements.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/base.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/bigint.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/brand.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/catch.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/coalesce.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/codec-examples.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/codec.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/coerce.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/continuability.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/credit-card.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/custom.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/cyclic-data.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/date.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/datetime.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/deep-partial.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/default-locale.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/default.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/describe-meta-checks.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/description.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/detached-methods.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/discriminated-unions.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/enum.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/error-utils.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/error.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/file.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/firstparty.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/fix-json-issue.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/from-json-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/function.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/generics.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/global-config.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/hash.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/iban.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/in-out.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/index.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/instance-footprint.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/instanceof.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/intersection.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/issue-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/jitless-allows-eval.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/json.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/lazy.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/literal.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/locales_ka.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/locales_ro.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/map.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/nan.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/nested-refine.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/nonoptional.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/nullable.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/number.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/object.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/optin-ladder.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/optional.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/partial.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/pickomit.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/pipe.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/prefault.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/preprocess-types.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/preprocess.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/primitive.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/promise.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/properties.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/prototypes.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/readonly.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/record.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/recursive-types.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/redos.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/refine.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/registries.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/set.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/standard-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/string-formats.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/string.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/stringbool.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/template-literal.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/to-json-schema-methods.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/to-json-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/transform.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/tuple.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/union.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/url.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/validate.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/validations.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/classic/tests/void.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/cached.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile-differential.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile-generative.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile-global.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile-off-by-default.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile-stats.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/compile.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/email-regex.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/extend.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/index.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/be.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/el.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/en.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/es.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/fr.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/he.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/hr.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/nl.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/parity.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/ru.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/tg.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/tk.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/tr.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/locales/uz.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/polyfill-collision.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/record-constructor.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/recursive-tuples.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/treeshake.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/core/tests/url-no-canparse.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/apply.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/assignability.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/brand.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/checks.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/codec.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/computed.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/cyclic-data.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/deep-partial.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/error.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/functions.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/index.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/number.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/object.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/prototypes.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/recursive-types.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/standard-schema.test.ts",
+        "/app/node_modules/.pnpm/zod@4.6.5/node_modules/zod/src/v4/mini/tests/string.test.ts"
+      ],
+      "tsxResolved": false,
+      "dependencyErrors": [],
+      "bundles": [
+        {
+          "name": "rules-worker.js",
+          "hashMatches": true
+        },
+        {
+          "name": "mqtt-worker.js",
+          "hashMatches": true
+        },
+        {
+          "name": "rollout-worker.js",
+          "hashMatches": true
+        }
+      ],
+      "manifest": {
+        "schemaVersion": 1,
+        "packageVersion": "0.1.0",
+        "commit": "ddbedc83c962248837bbdd81094504d6cb3209b8",
+        "workingTree": "not-present-in-build-context",
+        "builtAt": "2026-10-01T07:21:56Z",
+        "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+        "target": "node22-linux-alpine",
+        "hostPlatform": "linux-x64",
+        "workers": {
+          "rules-worker.js": {
+            "sha256": "4fba35ab80294306a928fb2c8e517a07fce71228203fd96ee8820d3696636432",
+            "externalImports": [
+              "@prisma/adapter-pg",
+              "@prisma/client/runtime/client",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+              "dotenv/config",
+              "server-only",
+              "zod"
+            ]
+          },
+          "mqtt-worker.js": {
+            "sha256": "4571ff68e72c923128562c65be5937d2d908e6e9b4d67c7a86ebc5d750f550dc",
+            "externalImports": [
+              "@prisma/adapter-pg",
+              "@prisma/client/runtime/client",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+              "decimal.js",
+              "dotenv/config",
+              "mqtt",
+              "server-only",
+              "zod"
+            ]
+          },
+          "rollout-worker.js": {
+            "sha256": "f1e6cb8f9c173659e2ec58d6f3744c90463223af8f849d3eb2dddd528be895db",
+            "externalImports": [
+              "@node-rs/argon2",
+              "@prisma/adapter-pg",
+              "@prisma/client/runtime/client",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.mjs",
+              "@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+              "next/headers.js",
+              "server-only",
+              "zod"
+            ]
+          }
+        }
+      },
+      "imageConfigSecretMatches": 0,
+      "imageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556"
+    }
+  },
+  "secretScan": {
+    "recordedAt": "2026-10-01T12:20:11.083Z",
+    "scope": "Merged /app filesystem; known synthetic secret values plus selected credential/private-key patterns; not proof against every possible credential format",
+    "web": {
+      "files": 2854,
+      "knownSecretMatches": 0,
+      "credentialPatternPaths": [
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs"
+      ],
+      "patternReview": [
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        }
+      ],
+      "unresolvedPatterns": 0
+    },
+    "worker": {
+      "files": 28166,
+      "knownSecretMatches": 0,
+      "credentialPatternPaths": [
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.cockroachdb.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.cockroachdb.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.mysql.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.mysql.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlserver.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlserver.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.cockroachdb.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.cockroachdb.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.mysql.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.mysql.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.postgresql.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.postgresql.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.sqlite.wasm-base64.js",
+        "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.sqlite.wasm-base64.mjs",
+        "/app/node_modules/.pnpm/dotenv@17.4.2/node_modules/dotenv/README-es.md",
+        "/app/node_modules/.pnpm/dotenv@17.4.2/node_modules/dotenv/README.md",
+        "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/docs/01-app/02-guides/environment-variables.md"
+      ],
+      "patternReview": [
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.cockroachdb.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.cockroachdb.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.mysql.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.mysql.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.postgresql.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlserver.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_fast_bg.sqlserver.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.cockroachdb.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.cockroachdb.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.mysql.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.mysql.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.postgresql.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.postgresql.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.sqlite.wasm-base64.js",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/runtime/query_compiler_small_bg.sqlite.wasm-base64.mjs",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [],
+          "classification": "base64 substring"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/dotenv@17.4.2/node_modules/dotenv/README-es.md",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [
+            {
+              "placeholder": true,
+              "length": 78
+            },
+            {
+              "placeholder": true,
+              "length": 72
+            }
+          ],
+          "classification": "documentation placeholder"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/dotenv@17.4.2/node_modules/dotenv/README.md",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [
+            {
+              "placeholder": true,
+              "length": 78
+            },
+            {
+              "placeholder": true,
+              "length": 72
+            }
+          ],
+          "classification": "documentation placeholder"
+        },
+        {
+          "path": "/app/node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/docs/01-app/02-guides/environment-variables.md",
+          "boundedCredentials": 0,
+          "privateKeyBlocks": [
+            {
+              "placeholder": true,
+              "length": 86
+            },
+            {
+              "placeholder": true,
+              "length": 72
+            }
+          ],
+          "classification": "documentation placeholder"
+        }
+      ],
+      "unresolvedPatterns": 0
+    }
+  },
+  "performance": {
+    "measuredAt": "2026-10-01T12:15:53.988Z",
+    "environment": "Linux container / Node 22 / isolated PostgreSQL 17 / actual meterwerk-web:ddbedc8; synthetic seed; sequential warm requests; not production capacity",
+    "fixture": {
+      "meterId": "demo-tenant-0-property-0-building-unit-0-meter-0",
+      "from": "2026-09-29T11:00:00.000Z",
+      "to": "2026-10-01T11:00:00.000Z",
+      "timezone": "UTC",
+      "kind": "existing synthetic demo readings"
+    },
+    "dashboard": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 11169.429647,
+      "throughputPerSecond": 2.6859025884153094,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 366.33649999999943,
+      "p95Ms": 516.7635289999998,
+      "pathType": "authenticated HTTP"
+    },
+    "readings": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 797.7247279999992,
+      "throughputPerSecond": 37.606957571960876,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 23.945271000000503,
+      "p95Ms": 39.87638599999991,
+      "pathType": "authenticated HTTP"
+    },
+    "analytics": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 1502.7876810000016,
+      "throughputPerSecond": 19.962899868887046,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 42.82245200000034,
+      "p95Ms": 93.96030999999857,
+      "pathType": "authenticated HTTP"
+    },
+    "publicApi": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 991.5858480000024,
+      "throughputPerSecond": 30.254566521405142,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 32.04491400000188,
+      "p95Ms": 43.524068999999145,
+      "pathType": "authenticated HTTP"
+    },
+    "fleet": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 1551.5635390000025,
+      "throughputPerSecond": 19.335334484165106,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 45.8583550000003,
+      "p95Ms": 80.6987079999999,
+      "pathType": "authenticated HTTP"
+    },
+    "queueClaim": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 57.13241100000232,
+      "throughputPerSecond": 525.0959914854421,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 1.7181149999996705,
+      "p95Ms": 2.9932730000000447,
+      "pathType": "real DB worker cycle (idle queue)"
+    },
+    "worker": {
+      "requests": 30,
+      "samples": 30,
+      "elapsedMs": 141.11857800000143,
+      "throughputPerSecond": 212.58717615479156,
+      "errors": 0,
+      "errorRate": 0,
+      "p50Ms": 4.493862999999692,
+      "p95Ms": 6.784747999998217,
+      "pathType": "real DB worker cycle (idle queue)"
+    },
+    "status": "PASSED",
+    "totalSamples": 210,
+    "httpRequests": 150,
+    "dbCycles": 60,
+    "warmupsExcluded": 7,
+    "errors": 0,
+    "runner": "separate Linux build-tools container; HTTP against actual web image, queue/worker functions against actual isolated PostgreSQL; idle queues"
+  },
+  "softwareReleaseBlockers": [
+    "Worker image includes 309 dependency test/spec files and physical @playwright/test, TypeScript and Prisma CLI packages; requested image exclusion gate FAILED"
+  ],
+  "localReleaseGates": [
+    "Worker image cleanup and targeted image reacceptance/SBOM refresh after a fix",
+    "Final immutable release revision and full release-gate consolidation; no RC commit requested"
+  ],
+  "externalValidation": "EXTERNAL_VALIDATION_PENDING: CI on final SHA, staging/promotion, signature verification, provider-backed services, HA/PITR/full restore, representative load",
+  "hardwareValidation": "HARDWARE_VALIDATION_PENDING",
+  "releasePrepared": false,
+  "finalRcCommitCreated": false,
+  "limitations": [
+    "Secret scan covers merged /app filesystem and image config, not historical deleted files in every image layer",
+    "Base image name node:22-alpine from OCI labels/Dockerfiles; immutable base digest not independently verified",
+    "One committed job completion observed; not an exactly-once guarantee for external side effects",
+    "Worker process survived brief DB outage; no failed worker cycle observed during that interval",
+    "Original first lease attempt completed DB statement after worker death; not counted as recovery success",
+    "First performance attempts failed due missing report directory and missing scenario fixture; final run uses existing synthetic readings",
+    "First 4-second outage probe timed out; 22-second follow-up measured HTTP 503 at 5.23 seconds",
+    "Preliminary drain harness did not hold authenticated request open; only corrected pendingAtSignal=true run counted"
+  ],
+  "localEvidence": [
+    {
+      "file": ".local/acceptance/current-container-evidence.json",
+      "sha256": "f6dc7f5aca628b4210a6bbd9dd883202f4930fd47baf8aae5f9331d945d201eb"
+    },
+    {
+      "file": ".local/acceptance/current-image-inspection.json",
+      "sha256": "373f3e21df360a286a74710112446e2aa5aa8a334c2eea471762a78b00da17f4"
+    },
+    {
+      "file": ".local/acceptance/current-image-secret-scan.json",
+      "sha256": "537e45786d03e545e04a777e1b1cd738448abd19205c9b5def0007442c8fbda3"
+    },
+    {
+      "file": ".local/acceptance/current-linux-performance.json",
+      "sha256": "78067f76e5b8e44567b7834f6d508943b36be05c86ec7d154ca80aa8ba8cad81"
+    },
+    {
+      "file": ".local/acceptance/current-lease-results.json",
+      "sha256": "020a529b628541750613cbe66adada4c826ea762738d467bf6b9a3d7169790d4"
+    },
+    {
+      "file": ".local/acceptance/current-lease-first-attempt.json",
+      "sha256": "099af6eb0955bd55ab35c2ee4a28ba704cae4a5864f53a9ecdd7e508ddf8e298"
+    },
+    {
+      "file": ".local/acceptance/current-db-recovery.json",
+      "sha256": "2a931701ecf6ddab5fd9079226e6b70314e2c472d6afe598efeb79fd0d633d9b"
+    },
+    {
+      "file": ".local/acceptance/current-web-drain.json",
+      "sha256": "4c0dd05b7e59b22433093e8e1351f42f57cfdf502759f9e23627e66ae6b7512a"
+    },
+    {
+      "file": ".local/acceptance/current-container-gates.mjs",
+      "sha256": "4589363e53a1860f140d222b512c3170a601b8764460c8d27f7a4ab60f0fc871"
+    },
+    {
+      "file": ".local/acceptance/current-image-inspect.mjs",
+      "sha256": "b2714a7748fb9195498171e1445d94f67285b3624f8685828d3fa3f361b0bfd9"
+    },
+    {
+      "file": ".local/acceptance/current-secret-scan.mjs",
+      "sha256": "2a73396e73d6b8e4b3c29115ceb748bf29bf456cd852ec8331b3b7072e2b9a82"
+    },
+    {
+      "file": ".local/acceptance/review-image-patterns.mjs",
+      "sha256": "923384bd39efd6e5c4cc52ca1a4f3472e24b929829472e68802ce8c30b8d0c85"
+    },
+    {
+      "file": ".local/acceptance/current-performance.mjs",
+      "sha256": "43b39ba9926dddf702f5a3a26a212dd6d07622257df4a953c40c370975c9b6d5"
+    },
+    {
+      "file": ".local/acceptance/current-linux-performance.ts",
+      "sha256": "414a7afaedcc4725622c83b1986bfe8ad396b6c1630027ff36a7650cbb4eb85e"
+    },
+    {
+      "file": ".local/acceptance/current-lease.mjs",
+      "sha256": "61228620e20d336f67f3e160ca7082d76ca9bed9d22a720d905e145b7705ee05"
+    },
+    {
+      "file": ".local/acceptance/lease-fixture.ts",
+      "sha256": "57a7f4894cf85c151d79259e9283794acf3234344cb8180edd06c823d7dfcde9"
+    },
+    {
+      "file": ".local/acceptance/current-db-recovery.mjs",
+      "sha256": "554564e5ef3014c9516e1762866bd96a1e4de4924b8ef3efc08656b985aa92df"
+    },
+    {
+      "file": ".local/acceptance/current-web-drain.mjs",
+      "sha256": "8828c5994ba7d480d1848a448d9a5af13a3651bd25e2c77df0736ae8c378012f"
+    }
+  ]
+}

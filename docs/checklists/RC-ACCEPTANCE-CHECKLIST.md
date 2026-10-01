@@ -1,6 +1,32 @@
 # Release Candidate Acceptance Checklist
 
-## Aktuell: Container-Gate ab `5d8fc58`, 01.10.2026
+## Aktuell: Linux-Container-Gates ab ddbedc8, 01.10.2026
+
+Web Runtime 8/8 (7 HTTP-/Browser-Checks plus Container läuft), Worker Runtime und
+SIGTERM 3/3 bestanden. Web-SIGTERM: Exit 143 ohne SIGKILL; echter laufender Request
+endet mit 200, Drain-Shutdown 11,90 s. Web-/Worker-Restart, synthetische Lease-
+Übernahme (2 Claims, 1 Completion), DB-Recovery und MQTT-Reconnect lokal belegt.
+Linux-Performance: 210 Samples (150 HTTP + 60 DB-Zyklen), 0 Fehler, 7/7 Budgets;
+sequentielle synthetische Messung mit leeren Worker-Queues, keine Produktionslast.
+Zwei vorhandene Images weiterverwendet, Image-SBOMs exakt zugeordnet (298/623).
+
+**NICHT RC-FREIGABEFÄHIG:** Worker-Image enthält 309 Testdateien aus Abhängigkeiten
+und Pakete für Playwright, TypeScript und Prisma CLI. Image-Ausschluss-Gate FAILED;
+Bereinigung und gezielte Neuabnahme offen. tsx fehlt, keine echten Credentials
+im beschriebenen Dateisystem-/Konfigurationsscan gefunden. Historische Image-Layer
+und unveränderlicher Base-Digest sind nicht unabhängig vollständig geprüft.
+Web-Shutdown unter laufender Anfrage benötigt ausreichend Zeit (>10 s im Test).
+EXTERNAL_VALIDATION_PENDING: finaler CI-SHA, Staging, Signing, Provider, HA/Restore,
+repräsentative Last; HARDWARE_VALIDATION_PENDING unverändert.
+Keine Produktcode-/Dockerfile-Änderung, kein finaler RC-Commit. Die Linux-
+allowBuilds-Ergänzung in pnpm-workspace.yaml bleibt uncommittet.
+
+Details: [Acceptance-Ergebnis](../acceptance/SOFTWARE-ACCEPTANCE-RESULT.md) und
+[Container-Evidence](../acceptance/CONTAINER-RUNTIME-DDBEDC8.json).
+
+## Historische Prüfstände — durch obigen aktuellen Stand ergänzt
+
+## Historisch: Container-Gate ab `5d8fc58`, 01.10.2026
 
 **NICHT FREIGABEFÄHIG; kein finaler RC-Commit.** Softwarefix übernommen PASSED,
 Linux-Daemon im bereits aktiven `desktop-linux` nicht erreichbar. Web-/Worker-
@@ -15,7 +41,7 @@ Staging, Signing-Verifikation, Provider, HA/Restore und Hardware bleiben offen.
 Details: [aktuelles Acceptance-Ergebnis](../acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
 und [maschinenlesbare Evidence](../acceptance/CONTAINER-READINESS-5D8FC58.json).
 
-## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
+## Historisch: Fortsetzung von `943d23f`, 01.10.2026
 
 **NICHT FREIGABEFÄHIG.** Image-Gate-Korrekturen bestehen 5/5 gezielte Tests.
 Keine verbleibenden bekannten Softwarefehler aus diesen Korrekturen; reale

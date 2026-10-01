@@ -1,6 +1,129 @@
 # Software Acceptance Result
 
-## Aktuell: Container-Abnahme ab `5d8fc58`, 01.10.2026
+## Aktuell: echte Linux-Container-Abnahme ab ddbedc8, 01.10.2026
+
+**NICHT RC-FREIGABEFÄHIG.** Die Runtime-, Shutdown-, Recovery- und Performance-Gates
+sind lokal belegt; das geforderte Ausschluss-Gate für das Worker-Image ist FAILED.
+Keine Images neu gebaut, kein finaler RC-Commit, kein Push/Tag/Deployment.
+Die folgenden älteren Stände bleiben Historie; ihre Angaben „Daemon fehlt“ und
+„Container NOT_EXECUTED“ gelten für diesen neuen Lauf nicht mehr.
+
+### Identität und Provenance
+
+Docker Client/Engine 29.8.0, Desktop 4.91.0, Context desktop-linux, linux/amd64.
+Web: meterwerk-web:ddbedc8, Image-ID/RepoDigest
+`sha256:34e78eaf3a4dadce73cea59dc25d93167ded3d6aaac75262d3f5cc39411d5733`, erstellt 2026-10-01T07:26:59.560412059Z.
+Worker: meterwerk-worker:ddbedc8, Image-ID/RepoDigest
+`sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556`, erstellt 2026-10-01T11:33:13.063953051Z.
+Beide tragen Git SHA ddbedc83c962248837bbdd81094504d6cb3209b8 und
+Build-Timestamp 2026-10-01T07:21:56Z, Version 0.1.0, Base-Label node:22-alpine.
+Der Worker-Erstellzeitpunkt ist später als das gemeinsame Build-Label.
+Die pnpm-workspace.yaml im vorhandenen Builder stimmt normalisiert mit dem
+Arbeitsstand überein. Die Build-Logs belegen das freigegebene Linux-Postinstall.
+Das zusätzliche allowBuilds für @embedded-postgres/linux-x64 bleibt uncommittet;
+die Images werden ausdrücklich nicht als sauberer Git-Commit ausgegeben.
+
+### Web und Lifecycle
+
+Tatsächlicher Container `9e61540f194cc8f818258577303dd1dc49a85daa2b2e92d9e5650da6a25353ea`, exakt obige Image-ID,
+keine Mounts als Ersatz für das Image. 7/7 HTTP-/Browser-Checks plus laufender
+Container: 8/8, 0 Fehler. Geprüft: Liveness, Readiness, Login-Seite,
+synthetischer Login mit Dashboard, authentifiziertes /api/meters 200,
+unauthentifiziertes /api/meters 401 sowie Build-SHA. Login und Dashboard werden
+im Browser-Check gemeinsam gezählt. Kein Standalone-Extrakt als Ersatz.
+Nach DB-Recovery erneut 7/7 HTTP-/Browser-Checks.
+
+SIGTERM im Ready-Zustand: 1855,33 ms, Exit 143, kein OOM/SIGKILL.
+Zusätzlicher Drain-Nachweis: authentifizierter Request beim Signal noch offen,
+nach 6436,82 ms HTTP 200; Shutdown 11903,25 ms,
+Exit 143, kein SIGKILL. Danach derselbe Container wieder ready.
+Dieser Drain-Lauf benötigt mehr als zehn Sekunden; Shutdown-Fristen müssen
+ausreichend Zeit gewähren. Eine erzwungene Beendigung wurde nicht als Erfolg gezählt.
+
+### Worker, Lease und Recovery
+
+3/3 Commands gestartet: node --conditions=react-server dist/rules-worker.js,
+dist/rollout-worker.js und dist/mqtt-worker.js. Alle bleiben betriebsbereit,
+MQTT subscribed, keine unmittelbare Runtime Exception. 3/3 Bundle-Hashes stimmen;
+alle Manifest-Imports auflösbar, tsx fehlt. Pro Worker SIGTERM und Stop-Log bestanden,
+Exit jeweils 0: Rules 428,50 ms,
+Rollout 344,14 ms, MQTT 547,72 ms.
+Vollständige Commands, Image-/Container-IDs stehen in der Evidence.
+
+Lease: echter Rules-Worker A claimt einen synthetischen lokalen Mailjob.
+Eine Test-DB-Barriere verzögert ausschließlich dessen Completion. A wird gezielt
+mit SIGKILL beendet (Exit 137, nur Ausfallsimulation), seine noch aktive DB-Sitzung
+terminiert; nach Ablauf der echten 60-s-Lease übernimmt B. 2 Claims, 1 committed
+Completion, nach B-Neustart unverändert 1 Completion. Testregel, Trigger/Funktion
+und Prüftabelle entfernt. Keine externe Nachricht. Dies ist kein Beweis für
+Exactly-once-Nebenwirkungen bei realen Providern. Der erste Versuch ohne
+DB-Sitzungsabbruch schloss noch in PostgreSQL ab und zählt nicht als Recovery-Erfolg.
+
+Web-/Worker-Restart bestanden. MQTT-Broker kurz gestoppt, laufender MQTT-Worker
+subscribed danach erneut. Isolierte DB kurz gestoppt: Liveness 200, Readiness 503
+nach 5230,58 ms; nach DB-Start Readiness 200 und
+Login/API-Smoke bestanden. Rules-Worker bleibt am Leben und stoppt danach mit 0;
+in diesem kurzen Zeitfenster wurde kein fehlgeschlagener Rules-Zyklus beobachtet.
+
+### Image Inspection und SBOM
+
+Web ENTRYPOINT node / CMD server.js; Worker ENTRYPOINT node --conditions=react-server /
+CMD dist/rules-worker.js. Beide User meterwerk, WorkingDir /app, linux/amd64.
+Web EXPOSE 3000/tcp; Worker keine Ports. Kein vollständiger Dev-Workspace,
+keine .env-/Key-Dateien, kein tsx. Scan: Web 2.854 und Worker 28.166 Dateien,
+0 bekannte Test-Secret-Werte. Muster-Treffer sind geprüfte Base64-Teilstrings
+und Dokumentationsplatzhalter; 0 ungeklärte Treffer. Scope: zusammengeführtes
+/app-Dateisystem und Image-Konfiguration, kein vollständiger historischer Layer-Scan.
+
+**Image-Ausschluss-Gate FAILED:** Worker enthält 309 test/spec-Dateien aus
+Abhängigkeiten sowie physische Pakete @playwright/test, TypeScript und Prisma CLI.
+pnpm --prod allein beweist deshalb kein von Test-/Dev-Artefakten bereinigtes Image.
+Der Web-Pfad api/webhooks/[id]/test ist eine produktive Route, keine Testdatei.
+Keine Produktcode-/Dockerfile-Korrektur in diesem Abnahmelauf.
+
+Vorhandene CycloneDX-Image-SBOMs exakt per OCI-purl an die getesteten IDs gebunden:
+Web 298, Worker 623 Komponenten. Datei-SHA-256, RepoDigests, Labels und Bundle-
+Manifest stehen in der [Evidence](CONTAINER-RUNTIME-DDBEDC8.json). Das Base-Image
+node:22-alpine ist über Labels/Dockerfiles belegt; ein unveränderlicher Base-Digest
+wurde nicht unabhängig verifiziert. Keine alte Lockfile-SBOM als Image-Nachweis.
+
+### Linux-Performance
+
+Messung 2026-10-01T12:15:53.988Z, UTC; Auswertung Europe/Berlin (UTC+02:00).
+Separater Linux-Testcontainer, Node 22, tatsächlicher Webcontainer und isoliertes
+PostgreSQL. Vorhandene synthetische Messdaten, Zeitraum 2026-09-29T11:00:00.000Z
+bis 2026-10-01T11:00:00.000Z, UTC. 30 sequenzielle Samples je Reihe, 7 Warmups ausgeschlossen:
+210 Samples = 150 HTTP-Requests + 60 DB-Zyklen, 0 Fehler. Queue/Worker sind reale
+Funktionsaufrufe gegen PostgreSQL mit leeren Queues im Testcontainer, keine
+belasteten Job-Benchmarks des Worker-Prozesses. Keine Produktionskapazitätszusage.
+
+| Messreihe  | Samples | Errors | p50 ms | p95 ms | sequenzielle Ops/s |
+| ---------- | ------: | -----: | -----: | -----: | -----------------: |
+| dashboard  |      30 |      0 | 366,34 | 516,76 |               2,69 |
+| readings   |      30 |      0 |  23,95 |  39,88 |              37,61 |
+| analytics  |      30 |      0 |  42,82 |  93,96 |              19,96 |
+| publicApi  |      30 |      0 |  32,04 |  43,52 |              30,25 |
+| fleet      |      30 |      0 |  45,86 |  80,70 |              19,34 |
+| queueClaim |      30 |      0 |   1,72 |   2,99 |             525,10 |
+| worker     |      30 |      0 |   4,49 |   6,78 |             212,59 |
+
+Vorhandenes Performance-Regressionsgate: PASSED, alle 7 Budgets eingehalten.
+Die ersten Messversuche scheiterten an fehlendem Reportverzeichnis und fehlender
+Szenario-Fixture; der erfolgreiche Lauf verwendet tatsächlich vorhandene Seed-
+Messwerte. Historische Windows-Messungen werden nicht als neue Linux-Werte gezählt.
+
+### Offene Gates
+
+Software-Release-Blocker: Worker-Image von Test-/Dev-Artefakten bereinigen und
+danach gezielt Runtime/Lifecycle/Inspection/SBOM neu verifizieren.
+Lokale Gates: diese Image-Korrektur sowie Abschluss auf unveränderlicher
+Release-Revision. EXTERNAL_VALIDATION_PENDING: CI auf finalem SHA, Staging/Promotion,
+Signatur-Verifikation, Provider, HA/PITR/Full Restore und repräsentative Last.
+HARDWARE_VALIDATION_PENDING bleibt unverändert. Kein finaler RC-Commit.
+
+## Historische Prüfstände — durch obigen aktuellen Stand ergänzt
+
+## Historisch: Container-Abnahme ab `5d8fc58`, 01.10.2026
 
 Ausgangsstand `5d8fc58f8882f44b3c981c33efcf15217b53d74f`, `master`, clean.
 Docker CLI 29.8.0 ist vorhanden; `docker version` und `docker info` enden mit
@@ -78,7 +201,7 @@ Hardware `HARDWARE_VALIDATION_PENDING`. Keine Production oder Kundendaten.
 
 Die folgenden Abschnitte sind historische Nachweise.
 
-## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
+## Historisch: Fortsetzung von `943d23f`, 01.10.2026
 
 Worker-Bundles waren bereits abgeschlossen. Am offenen Image-/Lifecycle-Gate
 wurden vier Fehler gezielt korrigiert; fünf neue Regressionstests bestehen.
