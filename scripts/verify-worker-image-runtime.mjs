@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { assertWorkerStopped } from "./worker-image-lifecycle.mjs";
 
 const image = process.env.METERWERK_WORKER_IMAGE;
 assert(image, "METERWERK_WORKER_IMAGE is required");
@@ -122,17 +123,17 @@ try {
       );
     else assert.match(startupLog, new RegExp(`${worker} started`));
     docker("stop", "--time", "35", containerId);
-    const exitedLog = docker("logs", name);
-    assert.match(
-      exitedLog,
-      /worker\.stopped/,
-      `${worker} shut down gracefully`,
+    const stoppedState = JSON.parse(
+      docker("inspect", "--format", "{{json .State}}", containerId),
     );
+    const exitedLog = docker("logs", name);
+    assertWorkerStopped(worker, stoppedState, exitedLog);
     const imageInfo = {
       name: worker,
       containerId,
       stopped: true,
       gracefulShutdown: true,
+      exitCode: stoppedState.ExitCode,
     };
     reports.push(imageInfo);
     console.log(`${worker}: started, running and gracefully stopped`);

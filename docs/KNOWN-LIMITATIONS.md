@@ -1,5 +1,11 @@
 # Bekannte Einschränkungen
 
+Aktuell, 01.10.2026: Fortsetzung von `943d23f` am offenen Image-Gate. Vier
+Release-Pfadfehler korrigiert, 5/5 gezielte Regressionstests bestanden. Reale
+Linux-Containerabnahme bleibt mangels Daemon offen, ebenso Signing, CI,
+Failover und Staging. Maßgeblicher Stand und Nachweisgrenzen:
+[Checkpoint-Fortsetzung](acceptance/PHASE-5V-CHECKPOINT-943D23F.md).
+
 Diese Liste beschreibt Einschränkungen, die sich aus aktuellem Code und Repository-Konfiguration ergeben. Sie ist keine Zusage, dass jeder Providerbetrieb getestet wurde.
 
 ## Historischer Stand — 29.09.2026, WIP `a873a87`
@@ -103,7 +109,7 @@ Vor Pilot/Produktion offene Punkte anhand [CAPABILITIES.md](CAPABILITIES.md), [P
 - `performance-fixture.mjs` erstellt nur Metadaten und simuliert keine Datenbank- oder HTTP-Last. Ohne echte Messdatei wurde kein Performance Gate ausgeführt.
 - Transitive SBOM mit gelockten Versionen, Web-/Worker-Images und zugehörige Prüfsummen fehlen. Docker war nicht verfügbar. Signierung ist nicht konfiguriert, Staging nicht ausgeführt und GitHub Actions nicht für diesen Arbeitsstand gestartet.
 
-# Phase 5v aktueller Zwischenstand
+# Historischer Phase-5v-Zwischenstand vor den Worker-Prüfergebnissen
 
 - Worker-Image-Runtime wurde auf kompilierte Worker-Bundles und
   Produktionsabhängigkeiten umgestellt. Bis die gezielten Build- und

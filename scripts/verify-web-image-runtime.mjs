@@ -14,7 +14,8 @@ const docker = (...args) =>
   execFileSync("docker", args, { encoding: "utf8" }).trim();
 const inspection = JSON.parse(docker("image", "inspect", image))[0];
 assert.equal(inspection.Config.User, "meterwerk");
-assert.deepEqual(inspection.Config.Entrypoint, null);
+assert.deepEqual(inspection.Config.Entrypoint, ["node"]);
+assert.deepEqual(inspection.Config.Cmd, ["server.js"]);
 assert.equal(
   inspection.Config.Labels["org.opencontainers.image.revision"],
   process.env.GIT_COMMIT_SHA,

@@ -1,5 +1,9 @@
 # Phase 5v — Fortsetzungsbericht, Worker-Runtime-Fix ab WIP `edda867`
 
+Aktuelle Fortsetzung ab gespeichertem `943d23f`, 01.10.2026:
+[Checkpoint-Bericht](PHASE-5V-CHECKPOINT-943D23F.md). Die folgende Darstellung
+bleibt Historie; kein finaler RC-Commit ist erstellt oder freigegeben.
+
 ## Worker-Runtime-Fortsetzung ab `edda867` — 29.09.2026
 
 Der Softwarefehler im Worker-Image lag darin, dass das Image TypeScript über
@@ -64,7 +68,8 @@ Abhängigkeits- und statischen Image-Gates geschlossen. Ein finaler Commit wird
 erst nach Abschluss der übrigen lokalen Release-Gates beurteilt; kein Push,
 Tag oder Deployment wird vorgenommen.
 
-Stand: 29.09.2026. **Keine RC-Freigabe und kein Tag.** Der Software-Abschlussstand wird mit dem vorbereiteten RC-Commit gesichert; externe Validierung bleibt offen.
+Stand: 29.09.2026. **Keine RC-Freigabe und kein Tag.** Der Zwischenstand wurde
+mit WIP-Checkpoint `943d23f` gesichert; weitere Release-Gates bleiben offen.
 
 ## Verifikation des WIP `a873a87`
 

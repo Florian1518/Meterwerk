@@ -1,5 +1,11 @@
 # Produktfähigkeiten und Validierungsstatus
 
+Aktueller Fortsetzungsstand, 01.10.2026: `943d23f` analysiert; offene Image-Gates
+gezielt korrigiert und mit 5/5 lokalen Regressionstests geprüft. Kein realer
+Containerlauf, keine RC-Freigabe. Der
+[Checkpoint-Bericht](acceptance/PHASE-5V-CHECKPOINT-943D23F.md) aktualisiert die
+nachfolgenden historischen Angaben vom 29.09.2026.
+
 Aktueller Abnahmestand: **29.09.2026, Worker-Runtime-Fix ab WIP `edda867`, keine RC-Freigabe**. Die
 Fortsetzung enthält echte Demo-Szenariowirkungen (13/266 DB-/HTTP-Checks; zusätzlich
 2 Browserfälle), geprüfte kanonische 47-Migrations-Pfade, lokale Performancewerte

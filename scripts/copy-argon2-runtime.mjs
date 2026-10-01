@@ -8,6 +8,7 @@ import {
   statSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export function copyArgon2Runtime(destinationPath = ".next/standalone") {
   const destinationRoot = resolve(destinationPath);
@@ -72,3 +73,9 @@ export function copyArgon2Runtime(destinationPath = ".next/standalone") {
   );
   return { platformPackage, version, nativeFiles: nativeFiles.length };
 }
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+)
+  copyArgon2Runtime(process.argv[2]);

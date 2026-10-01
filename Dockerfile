@@ -5,7 +5,7 @@ ARG BUILD_TIMESTAMP=unknown
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder
@@ -43,4 +43,5 @@ USER meterwerk
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -q -O- http://127.0.0.1:3000/api/health/live || exit 1
 ENV HOSTNAME=0.0.0.0 PORT=3000
-CMD ["node", "server.js"]
+ENTRYPOINT ["node"]
+CMD ["server.js"]

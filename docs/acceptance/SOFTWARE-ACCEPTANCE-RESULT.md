@@ -1,5 +1,14 @@
 # Software Acceptance Result
 
+## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
+
+Worker-Bundles waren bereits abgeschlossen. Am offenen Image-/Lifecycle-Gate
+wurden vier Fehler gezielt korrigiert; fünf neue Regressionstests bestehen.
+Docker-Linux-Daemon weiterhin nicht erreichbar. Container, Signing, CI, Staging
+und Failover bleiben offen; keine RC-Freigabe. Maßgeblich ist der
+[Checkpoint-Fortsetzungsbericht](PHASE-5V-CHECKPOINT-943D23F.md).
+Die folgenden Abschnitte dokumentieren frühere Nachweisstände.
+
 ### Phase 5v Worker-Runtime-Fix — lokaler Nachweis auf WIP `edda867`
 
 Der WIP-Stand `edda867` wird mit einer mehrstufigen Worker-Image-Struktur
@@ -141,7 +150,7 @@ und [Audit-Provenance](DEPENDENCY-AUDIT-4932F00.json).
 - **HARDWARE_VALIDATION_PENDING** — Physical meters, gateways and vendor hardware
 - **NOT_EXECUTED** — Production performance / failover measurements
 
-## Release blocker assessment
+## Historisches Release blocker assessment auf `a873a87`
 
 Ein Software-Release-Blocker bleibt offen: Das Worker-Image benötigt aktuell
 `tsx` aus den Dev-Dependencies und installiert zusätzlich ungefilterte

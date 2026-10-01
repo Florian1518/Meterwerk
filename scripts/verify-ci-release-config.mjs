@@ -37,6 +37,12 @@ for (const text of [ciText, releaseText]) {
 assert.equal(release.permissions.contents, "read");
 assert.equal(release.jobs.quality.uses, "./.github/workflows/ci.yml");
 const artifactJob = release.jobs.artifact;
+assert(
+  artifactJob.steps.some(
+    (step) => step.run === "pnpm install --frozen-lockfile --prod=false",
+  ),
+  "Production build job explicitly installs development build tools",
+);
 const runs = artifactJob.steps.map((step) => step.run ?? "").join("\n");
 for (const gate of ["pnpm docs:check", "pnpm docs:validate"])
   assert(ciText.includes(gate), `CI workflow includes ${gate}`);

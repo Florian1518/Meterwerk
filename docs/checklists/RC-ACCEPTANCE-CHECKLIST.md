@@ -1,5 +1,14 @@
 # Release Candidate Acceptance Checklist
 
+## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
+
+**NICHT FREIGABEFÄHIG.** Image-Gate-Korrekturen bestehen 5/5 gezielte Tests.
+Keine verbleibenden bekannten Softwarefehler aus diesen Korrekturen; reale
+Linux-Image-/Lifecycle-Abnahme weiterhin offen, weil der Daemon fehlt.
+Signing, CI auf unveränderlichem SHA, Failover, Staging und finale RC-Acceptance
+bleiben offen. Details: [Checkpoint-Fortsetzungsbericht](../acceptance/PHASE-5V-CHECKPOINT-943D23F.md).
+Die bisherigen Tabellen bleiben historischer Nachweis, keine RC-Freigabe.
+
 ## Worker-Runtime-Fix ab WIP `edda867`
 
 | Gate                                        | Stand                                                                                               | Nachweisgrenze                                                    |

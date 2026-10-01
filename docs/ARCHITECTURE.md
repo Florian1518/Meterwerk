@@ -248,3 +248,12 @@ Supportgrenzen bleiben nach [Migrationsbaseline](MIGRATION-BASELINE.md) offen.
 Release-SBOM und Verpackung verwenden denselben Versionswert. Lokale Pakete tragen
 Git-SHA, Dirty-Status, Plattform, Build-ID und SHA-256-Prüfsummen. Das ist keine
 signierte Provenance; Images, portabler Runtimebetrieb und Staging sind separate Gates.
+
+## Release-Runtime-Fortsetzung ab 943d23f
+
+Worker starten die vorhandenen JavaScript-Bundles mit Node und ausschließlich
+Produktionsabhängigkeiten. Web verwendet einen expliziten Node-Entrypoint und
+den CLI-Kopierhelfer für das native Argon2-Binding. Image-Smokes verlangen für
+Worker passende Shutdown-Meldungen und Exitcode 0. Der Release-Build installiert
+Build-Abhängigkeiten ausdrücklich unabhängig von NODE_ENV. Lokale Regression
+ersetzt keinen Linux-Containerlauf; siehe [Checkpoint-Nachweis](acceptance/PHASE-5V-CHECKPOINT-943D23F.md).
