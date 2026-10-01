@@ -1,0 +1,284 @@
+{
+  "recordedAt": "2026-10-01T07:08:52.616Z",
+  "sourceCommit": "5d8fc58f8882f44b3c981c33efcf15217b53d74f",
+  "branch": "master",
+  "initialWorkingTree": "clean",
+  "docker": {
+    "clientVersion": "29.8.0",
+    "context": "desktop-linux",
+    "versionExitCode": 1,
+    "infoExitCode": 1,
+    "contextShowExitCode": 0,
+    "contextListExitCode": 0,
+    "daemon": "UNREACHABLE",
+    "reason": "dockerDesktopLinuxEngine pipe not found",
+    "contexts": ["default", "desktop-linux"],
+    "contextChanged": false
+  },
+  "softwareFix": "PASSED",
+  "linuxImageRuntime": "NOT_EXECUTED",
+  "imageValidation": "EXTERNAL_VALIDATION_PENDING",
+  "web": {
+    "build": "NOT_EXECUTED",
+    "runtime": "NOT_EXECUTED",
+    "shutdown": "NOT_EXECUTED",
+    "imageId": null,
+    "digest": null,
+    "sizeBytes": null
+  },
+  "worker": {
+    "build": "NOT_EXECUTED",
+    "runtime": "NOT_EXECUTED",
+    "shutdown": "NOT_EXECUTED",
+    "leaseRecovery": "NOT_EXECUTED",
+    "imageId": null,
+    "digest": null,
+    "sizeBytes": null
+  },
+  "imageInspection": "NOT_EXECUTED",
+  "imageSecretCheck": "NOT_EXECUTED",
+  "imageSbom": "IMAGE_SBOM_NOT_EXECUTED",
+  "intendedBaseImage": "node:22-alpine",
+  "ci": {
+    "status": "CONFIG_VERIFIED",
+    "actualRun": "NOT_EXECUTED",
+    "remoteConfigured": false
+  },
+  "performance": {
+    "status": "FAILED",
+    "failureStage": "dashboard warmup",
+    "measuredSamples": 0,
+    "failedWarmups": 2,
+    "httpStatus": 500,
+    "cause": "Windows Application Control blocks the existing Argon2 native binding; ERR_DLOPEN_FAILED",
+    "attempts": [
+      {
+        "label": "container-5d8fc58-performance",
+        "startedAt": "2026-10-01T07:05:29.671Z",
+        "finishedAt": "2026-10-01T07:05:33.929Z",
+        "exitCode": 3221226505,
+        "args": [
+          "node_modules/tsx/dist/cli.mjs",
+          "--conditions=react-server",
+          "tests/performance-acceptance.ts"
+        ],
+        "file": ".local/acceptance/container-5d8fc58-performance.json",
+        "sha256": "887ed37b43e23c28d984f0ba05de43007d39d4875d06cedb3193002c76cfd5ac",
+        "logSha256": "f5bdf98fdfc9b493f0ad70f90c60a323be1643019c8ef86d10fe9e15d9657d6a"
+      },
+      {
+        "label": "container-5d8fc58-performance-standalone",
+        "startedAt": "2026-10-01T07:06:47.501Z",
+        "finishedAt": "2026-10-01T07:06:50.120Z",
+        "exitCode": 3221226505,
+        "args": [
+          "node_modules/tsx/dist/cli.mjs",
+          "--conditions=react-server",
+          "tests/performance-acceptance.ts"
+        ],
+        "file": ".local/acceptance/container-5d8fc58-performance-standalone.json",
+        "sha256": "58d900c469f6c8841b163ddda1ed2ba78663624931ab5d2c1f5cff74cfc9189d",
+        "logSha256": "f5bdf98fdfc9b493f0ad70f90c60a323be1643019c8ef86d10fe9e15d9657d6a"
+      },
+      {
+        "label": "container-5d8fc58-performance-gate",
+        "startedAt": "2026-10-01T07:08:00.163Z",
+        "finishedAt": "2026-10-01T07:08:00.265Z",
+        "exitCode": 1,
+        "args": [
+          "scripts/performance-regression.mjs",
+          ".local/acceptance/performance-results.json"
+        ],
+        "file": ".local/acceptance/container-5d8fc58-performance-gate.json",
+        "sha256": "a3f35116d03b0ca15a8f7f797d276a1efd3cd4c0b1e2ae0ad20283283a1fe741",
+        "logSha256": "a13ba33fb6222921209dd8a91bb22ded2b548c5eb256405e5abc124393d926bd"
+      }
+    ],
+    "currentResult": {
+      "measuredAt": "2026-10-01T07:06:48.588Z",
+      "environment": "Windows 11 / Node 24.19 / PostgreSQL 17.10 loopback / Next production build; synthetic seed; sequential warm requests; not production capacity"
+    },
+    "historicalResult": {
+      "measuredAt": "2026-09-28T12:47:35.918Z",
+      "environment": "Windows 11 / Node 24.19 / PostgreSQL 17.10 loopback / Next production build; synthetic seed; sequential warm requests; not production capacity",
+      "dashboard": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 296.5023000000001,
+        "p95Ms": 318.00800000000004,
+        "pathType": "authenticated HTTP"
+      },
+      "readings": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 16.186600000000908,
+        "p95Ms": 20.6887999999999,
+        "pathType": "authenticated HTTP"
+      },
+      "analytics": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 30.90560000000005,
+        "p95Ms": 35.673000000000684,
+        "pathType": "authenticated HTTP"
+      },
+      "publicApi": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 29.516300000001138,
+        "p95Ms": 34.41820000000007,
+        "pathType": "authenticated HTTP"
+      },
+      "fleet": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 32.559000000001106,
+        "p95Ms": 49.50560000000041,
+        "pathType": "authenticated HTTP"
+      },
+      "queueClaim": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 1.1119999999991705,
+        "p95Ms": 1.6661000000003696,
+        "pathType": "real DB worker cycle (idle queue)"
+      },
+      "worker": {
+        "requests": 30,
+        "errors": 0,
+        "errorRate": 0,
+        "p50Ms": 2.735899999999674,
+        "p95Ms": 4.404899999999543,
+        "pathType": "real DB worker cycle (idle queue)"
+      }
+    },
+    "throughput": null,
+    "interpretation": "Historical results are not results of this run; wrapper shell exit 0 does not override child exit codes and failed assertions"
+  },
+  "provenance": {
+    "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+    "audit": {
+      "status": "PASSED",
+      "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+      "exitCode": 0,
+      "advisories": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "findings": []
+      }
+    },
+    "inheritedArtifact": {
+      "version": "0.1.0",
+      "commit": "edda8674d9c2671bae0844ee8a5b205a5e224da9",
+      "builtAt": "2026-09-29T14:14:24.181Z",
+      "environment": "production",
+      "workingTree": "dirty",
+      "packageVersion": "0.1.0",
+      "targetVersion": "1.0.0",
+      "buildId": "Mbdd5CvIdTqO6ja5wEEXg",
+      "platform": "win32",
+      "architecture": "x64",
+      "provenance": {
+        "gitSha": "edda8674d9c2671bae0844ee8a5b205a5e224da9",
+        "buildTimestamp": "2026-09-29T14:14:24.255Z",
+        "lockfile": {
+          "file": "pnpm-lock.yaml",
+          "sha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a"
+        },
+        "dependencyAudit": {
+          "file": "dependency-audit.json",
+          "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+          "exitCode": 0,
+          "advisories": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "findings": []
+          }
+        },
+        "sbom": {
+          "file": "sbom.cdx.json",
+          "components": 750,
+          "dependencyNodes": 751
+        },
+        "artifactVerifier": {
+          "command": "node scripts/verify-release-artifact.mjs",
+          "status": "PASSED",
+          "exitCode": 0,
+          "checkedFiles": 8,
+          "archiveEntries": 2855
+        },
+        "platform": "win32-x64"
+      },
+      "signing": "NOT_CONFIGURED_NOT_VERIFIED",
+      "images": "NOT_EXECUTED",
+      "staging": "EXTERNAL_VALIDATION_PENDING",
+      "limitations": "Next standalone web runtime for the recorded platform; node start.mjs restores contained directory links and starts server.js. Not a container or release approval. Worker bundles require Node with --conditions=react-server and separately installed dependencies; migrations require Prisma CLI from the lockfile.",
+      "checksums": [
+        {
+          "file": "web-build.tar",
+          "sha256": "0eedf57b12774ed3cb176a1c115af4163d715271d1a1e209f6150ffd95032469"
+        },
+        {
+          "file": "worker/mqtt-worker.js",
+          "sha256": "4571ff68e72c923128562c65be5937d2d908e6e9b4d67c7a86ebc5d750f550dc"
+        },
+        {
+          "file": "worker/rules-worker.js",
+          "sha256": "4fba35ab80294306a928fb2c8e517a07fce71228203fd96ee8820d3696636432"
+        },
+        {
+          "file": "worker/worker-manifest.json",
+          "sha256": "70e45cc5fa1475c598657f05fd76cdf06e48adf53bb0edff71d91e17ffec7c2a"
+        },
+        {
+          "file": "sbom.cdx.json",
+          "sha256": "ade6c0cfd5d65cca38319e56d1196e050bcbf5901a86c6ffa8901a469d44b95e"
+        },
+        {
+          "file": "metadata.json",
+          "sha256": "beaf32f39ea346d69dd0126960694046dfa0a26bc435e939927a2e20339642dd"
+        },
+        {
+          "file": "dependency-audit.json",
+          "sha256": "db4da356284fd5cdc73080725018750b74bce78c86a904c2e77b2e240a32115d"
+        },
+        {
+          "file": "worker/rollout-worker.js",
+          "sha256": "f1e6cb8f9c173659e2ec58d6f3744c90463223af8f849d3eb2dddd528be895db"
+        }
+      ],
+      "checksumsVerified": 8
+    },
+    "imageGitSha": null,
+    "imageBuildTimestamp": null,
+    "imageDigest": null,
+    "imageSbom": null,
+    "reviewPlatform": "win32-x64",
+    "node": "v24.19.0"
+  },
+  "failover": "NOT_EXECUTED",
+  "staging": "EXTERNAL_VALIDATION_PENDING",
+  "signing": "SIGNING_PREPARED_NOT_VERIFIED",
+  "hardware": "HARDWARE_VALIDATION_PENDING",
+  "softwareReleaseBlockers": [],
+  "localReleaseGateBlockers": [
+    "Linux image acceptance unavailable",
+    "Current performance run blocked by Windows Application Control"
+  ],
+  "releasePrepared": false,
+  "finalCommitCreated": false,
+  "productCodeChanged": false,
+  "lockfileChanged": false
+}

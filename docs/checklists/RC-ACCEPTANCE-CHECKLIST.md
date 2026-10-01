@@ -1,5 +1,20 @@
 # Release Candidate Acceptance Checklist
 
+## Aktuell: Container-Gate ab `5d8fc58`, 01.10.2026
+
+**NICHT FREIGABEFÄHIG; kein finaler RC-Commit.** Softwarefix übernommen PASSED,
+Linux-Daemon im bereits aktiven `desktop-linux` nicht erreichbar. Web-/Worker-
+Build, Runtime, Shutdown/Lease-Recovery, Inspection, Image-Secrets und Image-SBOM:
+NOT_EXECUTED / EXTERNAL_VALIDATION_PENDING. Keine Image-Digests vorhanden.
+Neuer Performance-Lauf: FAILED vor den Messreihen (2 Dashboard-Warmups HTTP 500,
+0 Samples); Windows Application Control blockiert Argon2. Alte Performancewerte
+sind keine aktuellen Ergebnisse. Kein neu nachgewiesener Softwarefehler, aber
+verpflichtende lokale Gates offen. CI: CONFIG_VERIFIED, nicht ausgeführt.
+8/8 bestehende Artefakt-Prüfsummen und unveränderter Audit-Lockfile bestätigt.
+Staging, Signing-Verifikation, Provider, HA/Restore und Hardware bleiben offen.
+Details: [aktuelles Acceptance-Ergebnis](../acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
+und [maschinenlesbare Evidence](../acceptance/CONTAINER-READINESS-5D8FC58.json).
+
 ## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
 
 **NICHT FREIGABEFÄHIG.** Image-Gate-Korrekturen bestehen 5/5 gezielte Tests.

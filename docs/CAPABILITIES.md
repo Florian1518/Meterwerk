@@ -1,5 +1,16 @@
 # Produktfähigkeiten und Validierungsstatus
 
+Aktueller Prüfstand ab `5d8fc58`, 01.10.2026: Softwarefix übernommen PASSED;
+Linux-Image-Runtime NOT_EXECUTED / EXTERNAL_VALIDATION_PENDING (Daemon fehlt).
+Neuer lokaler Performance-Lauf FAILED vor der ersten Messreihe, da Windows
+Application Control das Argon2-Binding blockiert. Historische Performance-/
+Standalone-Erfolge sind keine Ergebnisse dieses Laufs. CI CONFIG_VERIFIED,
+Signing SIGNING_PREPARED_NOT_VERIFIED; Staging, Provider und Hardware offen.
+**Softwareseitige v1.0-RC-Vorbereitung: NEIN**, lokale Gates nicht abgeschlossen.
+Details: [Acceptance-Ergebnis](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md) und
+[Evidence](acceptance/CONTAINER-READINESS-5D8FC58.json). Es wurden keine neuen
+Produktfähigkeiten implementiert oder als container-validiert deklariert.
+
 Aktueller Fortsetzungsstand, 01.10.2026: `943d23f` analysiert; offene Image-Gates
 gezielt korrigiert und mit 5/5 lokalen Regressionstests geprüft. Kein realer
 Containerlauf, keine RC-Freigabe. Der

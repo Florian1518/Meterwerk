@@ -1,5 +1,83 @@
 # Software Acceptance Result
 
+## Aktuell: Container-Abnahme ab `5d8fc58`, 01.10.2026
+
+Ausgangsstand `5d8fc58f8882f44b3c981c33efcf15217b53d74f`, `master`, clean.
+Docker CLI 29.8.0 ist vorhanden; `docker version` und `docker info` enden mit
+Exit 1, weil die Pipe `dockerDesktopLinuxEngine` fehlt. `docker context show`
+und `docker context ls` bestehen; der vorgesehene Context `desktop-linux` ist
+bereits aktiv. Kein Contextwechsel, keine Sicherheitsrichtlinie geändert.
+
+Web-/Worker-Image-Build, Runtime, SIGTERM, Lease-Recovery, Image-Inspection,
+Image-Secret-Check und Image-SBOM sind **NOT_EXECUTED**. Keine Image-IDs,
+Digests, Größen oder Buildzeitpunkte wurden erfunden. `node:22-alpine` ist
+nur das konfigurierte Basisimage. **SOFTWARE_FIX=PASSED** wird übernommen;
+**LINUX_IMAGE_RUNTIME=NOT_EXECUTED / EXTERNAL_VALIDATION_PENDING** bleibt offen.
+
+Der ausdrücklich angeforderte neue Performance-Lauf scheiterte zweimal bereits
+beim Dashboard-Warmup mit HTTP 500: zuerst über `next start`, danach über das
+frisch entpackte vorhandene Standalone-Artefakt. Direkter Import diagnostiziert
+`ERR_DLOPEN_FAILED`: Windows Application Control blockiert das vorhandene
+Argon2-Windows-x64-Binding. Kein Paketwechsel, keine Policy-Umgehung.
+**0 gemessene Samples, 2 fehlgeschlagene Warmups, keine aktuellen p50/p95 oder
+Throughput-Werte.** Das Performance-Gate ist **FAILED**, alle sieben Messreihen
+fehlen. Die äußere Shell meldete beim Acceptance-Runner Exit 0; maßgeblich sind
+die gespeicherten Child-Exitcodes (3221226505, 3221226505, Gate 1) und Assertions.
+
+Die bisherigen Performancewerte bleiben ausschließlich historischer Nachweis
+vom 28.09.2026: je 30 Messungen, zusammen 210 (150 HTTP, 60 DB-Worker-Zyklen),
+0 Fehler; Queue/Worker liefen mit leeren Queues, Throughput wurde nicht gemessen.
+
+| Bereich     | Historisch p50 / p95 in ms |
+| ----------- | -------------------------- |
+| Dashboard   | 296,502 / 318,008          |
+| Readings    | 16,187 / 20,689            |
+| Analytics   | 30,906 / 35,673            |
+| Public API  | 29,516 / 34,418            |
+| Fleet       | 32,559 / 49,506            |
+| Queue Claim | 1,112 / 1,666              |
+| Worker      | 2,736 / 4,405              |
+
+Umgebung des neuen Versuchs: Windows x64, Node 24.19.0, bestehender isolierter
+PostgreSQL-17.10-Cluster auf `127.0.0.1:55435`, Web auf `127.0.0.1:3105`,
+synthetische Daten, lokaler Mailprovider. Test-Webprozesse wurden beendet und
+PostgreSQL kontrolliert gestoppt. Das ist kein Linux-Lifecycle-/Failover-Nachweis.
+
+CI bleibt **CONFIG_VERIFIED**, kein Actions-Lauf und kein Remote. Die statische
+Prüfung bestand; Docs, Artifact-Verifier, Worker-Statik, beide Image-Builds,
+Runtime-Smokes, Audit, SBOM, Secrets, Unit, Integration, Security, Browser und
+Production Build sind konfiguriert; Actions gepinnt, minimale Permissions,
+`persist-credentials: false`, frozen Lockfile und pnpm 12.5.1 vorhanden.
+Die Runtime-Skripte ersetzen noch keine vollständige Abnahme: Web-Exitcode,
+authentifiziertes `/api/meters`, unauthentifizierte Ablehnung, Build-SHA sowie
+laufende Worker-Jobs/Lease-Recovery sind beim echten Containerlauf zusätzlich
+zu prüfen. Die fünf bisherigen Image-Gate-Regressionstests werden übernommen.
+
+Provenance: 8/8 vorhandene Artefakt-Checksummen stimmen; Lockfile-Hash stimmt
+mit dem bestandenen Audit (765 Dependencies, 0 Advisories) überein. Das Paket
+bleibt korrekt als `edda867` / damaliger dirty-Baum / Windows x64 / Build-ID
+`Mbdd5CvIdTqO6ja5wEEXg` gekennzeichnet. Es wurde nicht auf `5d8fc58` umetikettiert.
+Keine erneute große Regression, kein neuer Build, keine Code-/Dockerfile-/
+Workflow-/Lockfile-Änderungen in diesem Lauf. Einzelwerte, SHA-256 und Zeitpunkte:
+[Container- und Performance-Evidence](CONTAINER-READINESS-5D8FC58.json).
+
+Abschluss dieses Laufs: Dokumentationslinks 95 Markdown-Dateien, 13
+Pflichtreferenzen, Prettier für 5 geänderte Dateien und `git diff --check`
+bestanden. Secret Scan: 0 Review-Funde, 18 bekannte Demo-/Vorlagenwerte.
+Keine neuen Unit-/Integrations-/Browser-Tests ausgeführt; unveränderte
+bestandene Suiten werden übernommen. Die Testports 3105 und 55435 sind nach
+dem Aufräumen nicht mehr belegt. Git bleibt auf `5d8fc58`; nur die vier
+Acceptance-Dokumente und der neue JSON-Beleg sind uncommittiert.
+
+**Kein neu nachgewiesener SOFTWARE RELEASE_BLOCKER.** Der alte Worker-Softwarefix
+bleibt bestanden; Docker und die aktuelle Windows-Native-Blockade sind offene
+lokale Umgebungs-/Release-Gates. Deshalb **v1.0 RC vorbereitet: NEIN**, kein
+finaler Commit. Staging und Provider-/HA-/Restore-Prüfungen bleiben
+`EXTERNAL_VALIDATION_PENDING`, Signing `SIGNING_PREPARED_NOT_VERIFIED`,
+Hardware `HARDWARE_VALIDATION_PENDING`. Keine Production oder Kundendaten.
+
+Die folgenden Abschnitte sind historische Nachweise.
+
 ## Aktuell: Fortsetzung von `943d23f`, 01.10.2026
 
 Worker-Bundles waren bereits abgeschlossen. Am offenen Image-/Lifecycle-Gate

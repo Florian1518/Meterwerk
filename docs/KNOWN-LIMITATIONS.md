@@ -1,5 +1,16 @@
 # Bekannte Einschränkungen
 
+Aktuell ab `5d8fc58`, 01.10.2026: Docker-Linux-Daemon weiterhin unerreichbar;
+keine Images, Linux-Runtime-/Shutdown-/Lease-/Failover-Ergebnisse oder Image-SBOM.
+Der erneut angeforderte lokale Performance-Lauf scheitert vor den Messreihen:
+Windows Application Control blockiert das Argon2-Native-Binding (HTTP 500 beim
+Dashboard-Warmup, auch im bestehenden Standalone-Artefakt). Keine Policy geändert.
+Der frühere 4/4-Smoke bleibt historischer Nachweis und belegt nicht die aktuelle
+Windows-Umgebung. Softwarefix PASSED; aktuelle lokale Release-Gates offen;
+keine RC-Vorbereitung/Freigabe. CI CONFIG_VERIFIED; Signing
+SIGNING_PREPARED_NOT_VERIFIED. [Aktuelle Evidence](acceptance/CONTAINER-READINESS-5D8FC58.json)
+und [Acceptance-Ergebnis](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md).
+
 Aktuell, 01.10.2026: Fortsetzung von `943d23f` am offenen Image-Gate. Vier
 Release-Pfadfehler korrigiert, 5/5 gezielte Regressionstests bestanden. Reale
 Linux-Containerabnahme bleibt mangels Daemon offen, ebenso Signing, CI,
