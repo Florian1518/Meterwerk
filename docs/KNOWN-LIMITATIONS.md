@@ -1,28 +1,35 @@
 # Bekannte Einschränkungen
 
-## Aktuell: Linux-Container-Gates ab ddbedc8, 01.10.2026
+## Aktuell: finale lokale RC-Bewertung auf 1e6589e, 02.10.2026
 
-Web Runtime 8/8 (7 HTTP-/Browser-Checks plus Container läuft), Worker Runtime und
-SIGTERM 3/3 bestanden. Web-SIGTERM: Exit 143 ohne SIGKILL; echter laufender Request
-endet mit 200, Drain-Shutdown 11,90 s. Web-/Worker-Restart, synthetische Lease-
-Übernahme (2 Claims, 1 Completion), DB-Recovery und MQTT-Reconnect lokal belegt.
-Linux-Performance: 210 Samples (150 HTTP + 60 DB-Zyklen), 0 Fehler, 7/7 Budgets;
-sequentielle synthetische Messung mit leeren Worker-Queues, keine Produktionslast.
-Zwei vorhandene Images weiterverwendet, Image-SBOMs exakt zugeordnet (298/623).
+**LOCAL SOFTWARE ACCEPTANCE: PASSED.**
+**METERWERK V1.0 RC PREPARATION: READY.**
+**LOCAL SOFTWARE RELEASE BLOCKER: NEIN.**
 
-**NICHT RC-FREIGABEFÄHIG:** Worker-Image enthält 309 Testdateien aus Abhängigkeiten
-und Pakete für Playwright, TypeScript und Prisma CLI. Image-Ausschluss-Gate FAILED;
-Bereinigung und gezielte Neuabnahme offen. tsx fehlt, keine echten Credentials
-im beschriebenen Dateisystem-/Konfigurationsscan gefunden. Historische Image-Layer
-und unveränderlicher Base-Digest sind nicht unabhängig vollständig geprüft.
-Web-Shutdown unter laufender Anfrage benötigt ausreichend Zeit (>10 s im Test).
-EXTERNAL_VALIDATION_PENDING: finaler CI-SHA, Staging, Signing, Provider, HA/Restore,
-repräsentative Last; HARDWARE_VALIDATION_PENDING unverändert.
-Keine Produktcode-/Dockerfile-Änderung, kein finaler RC-Commit. Die Linux-
-allowBuilds-Ergänzung in pnpm-workspace.yaml bleibt uncommittet.
+PASSED_LOCAL: Ausgang master/clean auf
+`1e6589e2ee84eae787e444a0ab311fb1020853e6`; Web und Worker als
+`meterwerk-web:rc-1e6589e` / `meterwerk-worker:rc-1e6589e` neu gebaut.
+Worker Content/Secret Gate, Runtime 3/3, SIGTERM 3/3, Web Runtime 8/8,
+Web-SIGTERM/Restart, finale imagegebundene SBOMs und gezielte Static-/Regression-Gates bestanden.
+Lease-Recovery bei bytegleichen Bundles übernommen. Alle bisherigen lokalen
+Softwareblocker ausdrücklich CLOSED. Breite App-/DB-/Browser-/Demo-, Recovery-
+und Performance-Nachweise für unveränderte Pfade übernommen; kein Produktionslastnachweis.
 
-Details: [Acceptance-Ergebnis](acceptance/SOFTWARE-ACCEPTANCE-RESULT.md) und
-[Container-Evidence](acceptance/CONTAINER-RUNTIME-DDBEDC8.json).
+EXTERNAL_VALIDATION_PENDING: echte CI auf finalem SHA, Staging/Promotion, Signing,
+Provider, PITR/Full Restore, Produktions-HA/Failover und repräsentative Last.
+HARDWARE_VALIDATION_PENDING: reale Strom-/Wasser-/Gas-/Wärmezähler, Gateways,
+Modbus RTU/TCP, M-Bus, Wireless M-Bus, Pulse, LoRaWAN und Herstellergeräte.
+
+Keine Production-Freigabe; kein Commit, Push, Tag oder Deployment. Der Commit
+`Prepare Meterwerk v1.0 release candidate` ist nach Review empfohlen.
+Die finalen Images bleiben dem bewerteten SHA zugeordnet. Secret-Scan-Scope:
+gemergtes /app und ausgewählte Config-/History-Prüfungen, keine vollständige
+Layerforensik. Web-Drain historisch 11,90 s; Shutdown-Fristen berücksichtigen.
+Die Windows-Argon2-Hostbeschränkung ist kein Fehlschlag der geprüften Linux-Runtime.
+
+Maßgeblich sind [finaler Bericht](acceptance/FINAL-RC-1E6589E.md) und
+[finale Evidence](acceptance/FINAL-RC-1E6589E.json). Nachfolgende frühere Bewertungen
+sind ausschließlich Historie und keine noch offenen aktuellen Blocker.
 
 ## Historische Prüfstände — durch obigen aktuellen Stand ergänzt
 

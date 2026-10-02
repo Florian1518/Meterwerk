@@ -1,15 +1,35 @@
 # Software Acceptance Result
 
-## Aktuell: Worker-Image-Nachlauf ab 5eae186, 02.10.2026
+## Aktuell: finale lokale RC-Bewertung auf 1e6589e, 02.10.2026
 
-Worker-Image-Blocker geschlossen. Das vorhandene bereinigte Linux-Image bestand
-Inspection, Runtime 3/3, SIGTERM 3/3, digestgebundene SBOM und Secret-Scan.
-Keine verbleibenden bekannten Software-Release-Blocker im bisherigen Scope;
-lokal bereit für die finale RC-Bewertung, noch keine RC-Freigabe. Finale unveränderliche
-Release-Revision und konsolidierte Artefakte bleiben offen. Kein neuer Build,
-Commit, Push, Tag oder Deployment in dieser Fortsetzung.
-Details und Grenzen: [Worker-Image-Nachlauf](WORKER-IMAGE-5EAE186.md),
-[maschinenlesbare Evidence](WORKER-IMAGE-5EAE186.json).
+**LOCAL SOFTWARE ACCEPTANCE: PASSED.**
+**METERWERK V1.0 RC PREPARATION: READY.**
+**LOCAL SOFTWARE RELEASE BLOCKER: NEIN.**
+
+PASSED_LOCAL: Ausgang master/clean auf
+`1e6589e2ee84eae787e444a0ab311fb1020853e6`; Web und Worker als
+`meterwerk-web:rc-1e6589e` / `meterwerk-worker:rc-1e6589e` neu gebaut.
+Worker Content/Secret Gate, Runtime 3/3, SIGTERM 3/3, Web Runtime 8/8,
+Web-SIGTERM/Restart, finale imagegebundene SBOMs und gezielte Static-/Regression-Gates bestanden.
+Lease-Recovery bei bytegleichen Bundles übernommen. Alle bisherigen lokalen
+Softwareblocker ausdrücklich CLOSED. Breite App-/DB-/Browser-/Demo-, Recovery-
+und Performance-Nachweise für unveränderte Pfade übernommen; kein Produktionslastnachweis.
+
+EXTERNAL_VALIDATION_PENDING: echte CI auf finalem SHA, Staging/Promotion, Signing,
+Provider, PITR/Full Restore, Produktions-HA/Failover und repräsentative Last.
+HARDWARE_VALIDATION_PENDING: reale Strom-/Wasser-/Gas-/Wärmezähler, Gateways,
+Modbus RTU/TCP, M-Bus, Wireless M-Bus, Pulse, LoRaWAN und Herstellergeräte.
+
+Keine Production-Freigabe; kein Commit, Push, Tag oder Deployment. Der Commit
+`Prepare Meterwerk v1.0 release candidate` ist nach Review empfohlen.
+Die finalen Images bleiben dem bewerteten SHA zugeordnet. Secret-Scan-Scope:
+gemergtes /app und ausgewählte Config-/History-Prüfungen, keine vollständige
+Layerforensik. Web-Drain historisch 11,90 s; Shutdown-Fristen berücksichtigen.
+Die Windows-Argon2-Hostbeschränkung ist kein Fehlschlag der geprüften Linux-Runtime.
+
+Maßgeblich sind [finaler Bericht](FINAL-RC-1E6589E.md) und
+[finale Evidence](FINAL-RC-1E6589E.json). Nachfolgende frühere Bewertungen
+sind ausschließlich Historie und keine noch offenen aktuellen Blocker.
 
 ## Historisch: echte Linux-Container-Abnahme ab ddbedc8, 01.10.2026
 
