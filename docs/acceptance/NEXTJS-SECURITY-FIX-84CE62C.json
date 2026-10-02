@@ -1,0 +1,66 @@
+{
+  "basisCommit": "84ce62c5c48011bb0354b556ddb77c4abc20c438",
+  "branch": "master",
+  "worktree": "dirty-dependency-patch",
+  "packageManager": "pnpm 12.5.1",
+  "dependencies": {
+    "next": "16.3.8",
+    "eslint-config-next": "16.3.8",
+    "lockfileSha256": "321fe1b02bc6508a33a63d4df0609da5ee6d08ec8f05d1c5dcef6ff9a42da530"
+  },
+  "audit": {
+    "status": "PASSED",
+    "exitCode": 0,
+    "critical": 0,
+    "high": 0,
+    "moderate": 0,
+    "low": 0,
+    "advisories": 0
+  },
+  "gates": {
+    "frozenInstall": "PASSED",
+    "prismaGenerate": "PASSED",
+    "prismaValidate": "PASSED",
+    "typecheck": "PASSED",
+    "eslint": "PASSED",
+    "prettier": "PASSED",
+    "unit": "285/285 PASSED",
+    "securityRegression": "63/63 PASSED",
+    "webProductionBuild": "PASSED",
+    "workerBuild": "PASSED",
+    "workerStaticVerification": "PASSED",
+    "imagePolicyTests": "16/16 PASSED",
+    "docsQuality": "PASSED",
+    "secretScan": "PASSED; 0 review findings; 18 known template/demo values",
+    "gitDiffCheck": "PASSED"
+  },
+  "sourceSearch": {
+    "nextOg": false,
+    "imageResponse": false,
+    "requestDrivenImageResponseSvg": false
+  },
+  "images": {
+    "platform": "linux/amd64",
+    "baseImage": "node:22-alpine",
+    "baseImageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+    "buildTimestamp": "2026-10-02T08:04:22Z",
+    "revisionLabel": "84ce62c5c48011bb0354b556ddb77c4abc20c438-next1638-local",
+    "web": {
+      "tag": "meterwerk-web:next-16.3.8-local",
+      "imageId": "sha256:ae052d1722487b4afe5eff80a03fc3ae51ce3b54f11f90c63aebf44efd77fdb4",
+      "sizeBytes": 327953247,
+      "build": "PASSED",
+      "runtimeSmoke": "INCOMPLETE; readiness not reached with available loopback test database"
+    },
+    "worker": {
+      "tag": "meterwerk-worker:next-16.3.8-local",
+      "imageId": "sha256:8f5bd2c4837e5bfc0a1b1dd1f625bd40ef9c76a69b5cc927ab2e672b17604513",
+      "sizeBytes": 253616411,
+      "contentGate": "PASSED",
+      "runtimeLifecycle": "3/3 started and graceful exit 0",
+      "runtimeWorkload": "INCOMPLETE; Prisma cycle errors for Rules/Rollout against unrelated loopback Compose database; MQTT subscribed"
+    }
+  },
+  "imageSbom": "NOT_GENERATED; Docker CLI has no sbom subcommand",
+  "noPushTagDeploymentOrCommit": true
+}

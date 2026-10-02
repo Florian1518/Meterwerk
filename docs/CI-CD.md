@@ -1,5 +1,12 @@
 # CI/CD
 
+Der aktuelle Stand nach RC-Commit `84ce62c` ist im
+[CI-/Staging-Bereitschaftsbericht](acceptance/CI-STAGING-READINESS-84CE62C.md)
+dokumentiert. Actions sind gepinnt und Berechtigungen lesend; ein Remote-CI-Lauf
+ist mangels Git-Remote nicht möglich. Der aktuelle lokale
+`pnpm audit --audit-level high` schlägt wegen eines kritischen Next.js-Advisory
+fehl. CI ist damit derzeit nicht vollständig grün.
+
 Die GitHub-Actions-Pipeline läuft bei Push und Pull Request. Sie trennt Fast Checks, Unit Tests, Integration/Migrationen, Browser-/Mobile-Tests und den Produktionsbuild. Pflichtstufen schlagen bei Fehlern fehl.
 
 ## Services und Migrationen

@@ -1,5 +1,11 @@
 # Staging
 
+Der aktuelle Vorbereitungsstand zum RC-Commit `84ce62c` steht im
+[CI-/Staging-Bereitschaftsbericht](acceptance/CI-STAGING-READINESS-84CE62C.md).
+Die Compose-Datei besteht nur die statische Prüfung; der Stack wurde nicht
+gestartet. Der aktuelle Registry-Audit findet einen kritischen Next.js-Treffer
+und blockiert den CI-Fast-Job.
+
 Die Repository-Konfiguration enthält `compose.staging.yaml`, Smoke-Script und Environment Guards. Compose verwendet getrennte Web-/Worker-Images, die tatsächliche MQTT-Variable und ein persistentes privates Attachment-Volume. Der Stack ist **nicht zur Laufzeit validiert**; bis Readiness- und Smoke-Tests gegen eine isolierte Umgebung gelaufen sind, gilt er nicht als bestandenes Promotion-Gate. Bekannte Punkte: [Known Limitations](KNOWN-LIMITATIONS.md).
 
 Vor einem Staging-Lauf sind unveränderliche Web- und Worker-Images bereitzustellen; das Worker-Image wird mit `Dockerfile.worker` gebaut. Setze `METERWERK_IMAGE`, `METERWERK_WORKER_IMAGE`, `STAGING_POSTGRES_PASSWORD`, `STAGING_SESSION_SECRET` und den Pfad `STAGING_MQTT_RECEIPT_KEY` zu einem eigens für Staging verwalteten privaten Receipt-Key. `STAGING_APP_URL` ist die externe Origin (lokal standardmäßig `http://localhost:3000`). PostgreSQL/MQTT sind im isolierten Compose-Netz; Attachments liegen im persistenten privaten Volume. Mail ist eine lokale In-Memory-Outbox, kein externer Sandbox-Provider. Externe API-/Webhook- und Backup-Ziele müssen separat von Production sein. Keine produktiven Kunden oder Secrets importieren.

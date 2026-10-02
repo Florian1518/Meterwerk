@@ -1,0 +1,156 @@
+{
+  "recordedAt": "2026-10-02",
+  "commit": "84ce62c5c48011bb0354b556ddb77c4abc20c438",
+  "branch": "master",
+  "initialWorkingTree": "clean",
+  "remote": {
+    "configured": false,
+    "status": "CI_REMOTE_NOT_CONFIGURED",
+    "pushAttempted": false
+  },
+  "ci": {
+    "localHost": "Windows x64, Node.js 24.19.0",
+    "workflowRunner": "ubuntu-latest, Node.js 22",
+    "localEquivalentLimitation": "Commands were reproduced locally; this is not an identical GitHub Actions Ubuntu runner execution.",
+    "config": "CI_CONFIG_VERIFIED",
+    "localEquivalent": "FAILED_DEPENDENCY_AUDIT",
+    "remoteRun": "CI_REMOTE_RUN_PENDING",
+    "checks": [
+      { "name": "pnpm version", "result": "12.5.1", "exitCode": 0 },
+      {
+        "name": "install --frozen-lockfile",
+        "result": "PASSED",
+        "exitCode": 0
+      },
+      { "name": "db:generate", "result": "PASSED", "exitCode": 0 },
+      { "name": "prisma validate", "result": "PASSED", "exitCode": 0 },
+      { "name": "typecheck", "result": "PASSED", "exitCode": 0 },
+      { "name": "lint", "result": "PASSED", "exitCode": 0 },
+      { "name": "format:check", "result": "PASSED", "exitCode": 0 },
+      { "name": "docs:check", "result": "PASSED", "exitCode": 0 },
+      { "name": "docs:validate", "result": "PASSED", "exitCode": 0 },
+      { "name": "verify-ci-release-config", "result": "PASSED", "exitCode": 0 },
+      {
+        "name": "image/worker/SBOM policy tests",
+        "result": "PASSED 16/16",
+        "exitCode": 0
+      },
+      { "name": "unit", "result": "PASSED 285/285", "exitCode": 0 },
+      {
+        "name": "security regression",
+        "result": "PASSED 63/63",
+        "exitCode": 0
+      },
+      { "name": "production build", "result": "PASSED", "exitCode": 0 },
+      {
+        "name": "worker bundle build",
+        "result": "PASSED 3 bundles",
+        "exitCode": 0
+      },
+      {
+        "name": "worker static verification",
+        "result": "PASSED 3 bundles, 4 stages",
+        "exitCode": 0
+      },
+      {
+        "name": "environment guard",
+        "result": "PASSED development",
+        "exitCode": 0
+      },
+      {
+        "name": "repository secret scan",
+        "result": "PASSED 0 review findings",
+        "exitCode": 0
+      },
+      {
+        "name": "dependency audit",
+        "result": "FAILED: one critical Next.js advisory",
+        "exitCode": 1
+      }
+    ],
+    "notRepeated": [
+      "Full database integration suites",
+      "Browser E2E suite",
+      "Demo scenario suite",
+      "Recovery and performance suites"
+    ],
+    "notRepeatedReason": "No functional/source/schema/dependency changes from RC SHA 1e6589e; its committed acceptance evidence remains applicable. Current commit 84ce62c changes documentation only.",
+    "notRun": [
+      "Remote GitHub Actions",
+      "Current-SHA release artifact generation/verification",
+      "Current-SHA Docker image builds and runtime smokes"
+    ],
+    "notRunReason": "No remote is configured; the required quality workflow fails at the current dependency audit before the release artifact job. Existing images are tied to 1e6589e, not relabeled as 84ce62c."
+  },
+  "existingValidatedImages": {
+    "sourceSha": "1e6589e2ee84eae787e444a0ab311fb1020853e6",
+    "worker": {
+      "tag": "meterwerk-worker:rc-1e6589e",
+      "imageId": "sha256:7d78101dcc9aa1ba48eea93c5136c3be5ec41add44221b2df6fad2aaa4f07d7e"
+    },
+    "web": {
+      "tag": "meterwerk-web:rc-1e6589e",
+      "imageId": "sha256:a7073d4964b27ada5cc9dba076a380e825533dce79bcbe88e3cbf8a23c472cbb"
+    },
+    "rebuiltAt84ce62c": false,
+    "reason": "Release workflow builds images only after its quality dependency passes; current pnpm audit fails earlier."
+  },
+  "dependencyAudit": {
+    "status": "FAILED",
+    "package": "next",
+    "installedVersion": "16.3.5",
+    "advisory": "GHSA-vcvr-r3jv-pc5j",
+    "cve": "CVE-2026-94545",
+    "severity": "critical",
+    "affected": ">=16.2.0 <16.3.6",
+    "patchedForAdvisory": "16.3.6",
+    "command": "corepack pnpm audit --audit-level high",
+    "exitCode": 1,
+    "applicationReferencesNextOgImageResponse": false,
+    "applicationCheck": "No next/og or ImageResponse references in src/ or apps/",
+    "ciImpact": "Fast job fails; remote quality workflow cannot pass this gate",
+    "rcChanged": false,
+    "sources": [
+      "https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j",
+      "https://nextjs.org/blog"
+    ]
+  },
+  "staging": {
+    "config": "STAGING_CONFIG_VERIFIED_STATIC_ONLY",
+    "composeConfigExitCode": 0,
+    "runtimeStarted": false,
+    "deployment": "STAGING_DEPLOYMENT_PENDING",
+    "productionSeparation": "Dedicated internal network, separate named volumes, METERWERK_ENV=staging, no automatic seed; actual provider separation not tested",
+    "runtimeIssues": [
+      "No migration service or migration command in Compose",
+      "No explicit restart policies",
+      "No Worker healthchecks",
+      "No TLS reverse proxy or DNS/certificate configuration",
+      "No configured backup target, PITR, monitoring, or alerting",
+      "Local attachment volume only; no provider object storage configured",
+      "MQTT has no TLS/device credentials configured",
+      "No automated staging-to-production promotion or config rollback"
+    ],
+    "smokeScriptScope": ["liveness", "readiness", "build info"],
+    "smokeNotRun": true
+  },
+  "signing": {
+    "status": "SIGNING_PREPARED_NOT_VERIFIED",
+    "localProvenanceAndSbomAvailableFor": "1e6589e2ee84eae787e444a0ab311fb1020853e6",
+    "signerConfigured": false,
+    "signatureVerified": false
+  },
+  "externalGates": {
+    "providerValidation": "PROVIDER_VALIDATION_PENDING",
+    "pitrFullRestore": "PITR_FULL_RESTORE_PENDING",
+    "haFailover": "HA_FAILOVER_PENDING",
+    "representativeProductionLoad": "REPRESENTATIVE_PRODUCTION_LOAD_PENDING"
+  },
+  "hardwareValidation": "HARDWARE_VALIDATION_PENDING",
+  "productionResourcesUsed": false,
+  "customerDataUsed": false,
+  "hardwareUsed": false,
+  "push": false,
+  "tag": false,
+  "deployment": false
+}
