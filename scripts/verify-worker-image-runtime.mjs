@@ -15,6 +15,9 @@ import { assertWorkerStopped } from "./worker-image-lifecycle.mjs";
 
 const image = process.env.METERWERK_WORKER_IMAGE;
 assert(image, "METERWERK_WORKER_IMAGE is required");
+execFileSync(process.execPath, ["scripts/verify-worker-image-content.mjs"], {
+  stdio: "inherit",
+});
 assert.equal(process.env.METERWERK_ENV, "test");
 assert.equal(process.env.SEED_DEMO, "true");
 assert(process.env.DEMO_PASSWORD);
@@ -43,7 +46,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 try { await import('tsx'); throw new Error('tsx present in worker runtime'); }
 catch (error) { assert.equal(error.code, 'ERR_MODULE_NOT_FOUND'); }
-assert.deepEqual(readdirSync('/app').sort(), ['dist', 'node_modules', 'package.json', 'src']);
+assert.deepEqual(readdirSync('/app').sort(), ['dist', 'node_modules', 'package.json', 'runtime-manifest.json']);
 for (const file of ['/app/.env', '/app/.env.production', '/app/.git', '/app/.local/receipt-private.pem', '/app/tests', '/app/scripts']) assert(!existsSync(file), file + ' excluded');
 function files(path) { return readdirSync(path).flatMap(name => { const child=resolve(path,name); return statSync(child).isDirectory() ? files(child) : [child]; }); }
 assert(!files('/app/dist').some(file => file.endsWith('.map')));

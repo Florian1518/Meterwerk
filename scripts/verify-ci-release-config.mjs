@@ -58,6 +58,13 @@ for (const gate of [
 ])
   assert(runs.includes(gate), `Release workflow includes ${gate}`);
 assert(!/docker push|docker login|kubectl apply/i.test(releaseText));
+assert.match(ciText, /scripts\/worker-runtime-policy\.test\.mjs/);
+assert.match(ciText, /scripts\/image-sbom-policy\.test\.mjs/);
+assert.match(
+  readFileSync("scripts/verify-worker-image-runtime.mjs", "utf8"),
+  /execFileSync\(process\.execPath, \["scripts\/verify-worker-image-content\.mjs"\]/,
+  "Worker runtime gate enforces physical image content inspection",
+);
 console.log(
   "CI/release static configuration passed: actions pinned, read-only permissions, docs/artifact/runtime/worker/SBOM gates present, no push/deploy",
 );

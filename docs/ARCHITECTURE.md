@@ -257,3 +257,29 @@ den CLI-Kopierhelfer für das native Argon2-Binding. Image-Smokes verlangen für
 Worker passende Shutdown-Meldungen und Exitcode 0. Der Release-Build installiert
 Build-Abhängigkeiten ausdrücklich unabhängig von NODE_ENV. Lokale Regression
 ersetzt keinen Linux-Containerlauf; siehe [Checkpoint-Nachweis](acceptance/PHASE-5V-CHECKPOINT-943D23F.md).
+
+## Worker-Deployment ab 5eae186
+
+Ein vollständiger eingefrorener pnpm-Install bleibt ausschließlich im Build.
+`deploy-worker-runtime.mjs` verfolgt die externen Imports der drei vorhandenen
+JavaScript-Bundles mit dem bereits im Lockfile gebundenen Next-File-Tracer.
+Nur dessen Laufzeitdateien, Paketmetadaten und Lizenzhinweise gelangen über
+ein frisches Deployment-Verzeichnis in die letzte Docker-Stufe. Eine positive
+Dateiliste mit SHA-256 und Symlinkzielen dokumentiert den Umfang. Kein zusätzlicher
+Package-Install und kein pauschales Löschen von Dependency-Fixtures im Runtimebaum.
+
+`pnpm install --prod` allein genügte hier nicht: aufgelöste optionale Peer-Kanten
+zogen Prisma CLI/TypeScript über Prisma Client und Playwright über Next hinein.
+Diese Pakete sind bereits korrekt als direkte Dev-Dependencies klassifiziert;
+package.json, Lockfile und Workspace-Datei bleiben unverändert. Benötigt bleiben
+Prisma Client/PG-Adapter, PostgreSQL-Treiber, MQTT, Zod, Decimal, Argon2 samt
+Linux-musl-Binding und tatsächlich referenzierte Next-/React-Serverdateien.
+tsx, TypeScript, Prisma CLI, Playwright, Projekt-Tests und Paketmanager sind im
+geprüften Runtime-Dateisystem nicht vorhanden.
+
+Das CI-Image-Gate prüft die physische Dateiliste, Hashes, externen Imports und
+native Argon2-Funktion vor den drei Runtime-/SIGTERM-Smokes. Dependency-Fixtures
+werden inventarisiert, nicht pauschal verboten. Die Image-SBOM-Prüfung löst auch
+geschachtelte Dateireferenzen auf und bindet die SBOM an die Runtime-Image-ID.
+Aktuelle lokale Nachweise und verbleibende Release-Gates stehen im
+[Worker-Image-Nachlauf](acceptance/WORKER-IMAGE-5EAE186.md).

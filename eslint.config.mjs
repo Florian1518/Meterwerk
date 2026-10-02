@@ -4,5 +4,15 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "src/generated/**", "next-env.d.ts", ".local/**"]),
+  {
+    files: ["scripts/windows-standalone.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  globalIgnores([
+    ".next/**",
+    "src/generated/**",
+    "next-env.d.ts",
+    ".local/**",
+    "release-artifacts/**",
+  ]),
 ]);

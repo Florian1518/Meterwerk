@@ -1,0 +1,724 @@
+{
+  "recordedAt": "2026-10-02T06:35:40.115Z",
+  "baseline": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+  "head": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+  "branch": "master",
+  "workingTree": "dirty; existing changes retained; no reset, commit, push, tag or deployment",
+  "interruption": {
+    "lastPersistedStep": 7,
+    "lastPersistedEvent": "Linux worker build PASSED",
+    "finishedAt": "2026-10-01T12:51:57.574Z",
+    "firstIncompleteStep": 8,
+    "limit": "Exact conversational interruption point unavailable; build/evidence chronology establishes last completed point",
+    "preparedButNotRun": "accept-worker-clean.mjs",
+    "alreadyComplete": [1, 2, 3, 4, 5, 6, 7],
+    "partiallyComplete": [16],
+    "newBuildPerformed": false
+  },
+  "packageChanges": {
+    "packageJson": false,
+    "lockfile": false,
+    "workspace": false,
+    "unchangedSinceAuditCommit": "4932f0087cf263988c599e498ac682fac1d93f5c"
+  },
+  "strategy": "Frozen build install; locked Next node-file-trace selects runtime files into a fresh deployment; hashes and symlinks verified; legal notices preserved; no blanket dependency fixture deletion",
+  "inspection": {
+    "status": "PASSED",
+    "productionPackages": 55,
+    "packages": [
+      {
+        "name": "@babel/runtime",
+        "version": "7.29.7",
+        "path": "node_modules/.pnpm/@babel+runtime@7.29.7/node_modules/@babel/runtime/package.json"
+      },
+      {
+        "name": "@node-rs/argon2-linux-x64-musl",
+        "version": "2.2.1",
+        "path": "node_modules/.pnpm/@node-rs+argon2-linux-x64-musl@2.2.1/node_modules/@node-rs/argon2-linux-x64-musl/package.json"
+      },
+      {
+        "name": "@node-rs/argon2",
+        "version": "2.2.1",
+        "path": "node_modules/.pnpm/@node-rs+argon2@2.2.1/node_modules/@node-rs/argon2/package.json"
+      },
+      {
+        "name": "@prisma/adapter-pg",
+        "version": "7.10.0",
+        "path": "node_modules/.pnpm/@prisma+adapter-pg@7.10.0/node_modules/@prisma/adapter-pg/package.json"
+      },
+      {
+        "name": "@prisma/client-runtime-utils",
+        "version": "7.10.0",
+        "path": "node_modules/.pnpm/@prisma+client-runtime-utils@7.10.0/node_modules/@prisma/client-runtime-utils/package.json"
+      },
+      {
+        "name": "@prisma/client",
+        "version": "7.10.0",
+        "path": "node_modules/.pnpm/@prisma+client@7.10.0_prisma@7.10.0_@types+node@24.13.5_@types+react-dom@19.3.0_@types+_3c548c72629c3073b00625c9a0aa98c2/node_modules/@prisma/client/package.json"
+      },
+      {
+        "name": "@prisma/debug",
+        "version": "7.10.0",
+        "path": "node_modules/.pnpm/@prisma+debug@7.10.0/node_modules/@prisma/debug/package.json"
+      },
+      {
+        "name": "@prisma/driver-adapter-utils",
+        "version": "7.10.0",
+        "path": "node_modules/.pnpm/@prisma+driver-adapter-utils@7.10.0/node_modules/@prisma/driver-adapter-utils/package.json"
+      },
+      {
+        "name": "abort-controller",
+        "version": "3.0.0",
+        "path": "node_modules/.pnpm/abort-controller@3.0.0/node_modules/abort-controller/package.json"
+      },
+      {
+        "name": "bl",
+        "version": "6.1.6",
+        "path": "node_modules/.pnpm/bl@6.1.6/node_modules/bl/package.json"
+      },
+      {
+        "name": "broker-factory",
+        "version": "3.1.15",
+        "path": "node_modules/.pnpm/broker-factory@3.1.15/node_modules/broker-factory/package.json"
+      },
+      {
+        "name": "debug",
+        "version": "4.4.3",
+        "path": "node_modules/.pnpm/debug@4.4.3_supports-color@7.2.0/node_modules/debug/package.json"
+      },
+      {
+        "name": "decimal.js",
+        "version": "10.6.0",
+        "path": "node_modules/.pnpm/decimal.js@10.6.0/node_modules/decimal.js/package.json"
+      },
+      {
+        "name": "dotenv",
+        "version": "17.4.2",
+        "path": "node_modules/.pnpm/dotenv@17.4.2/node_modules/dotenv/package.json"
+      },
+      {
+        "name": "event-target-shim",
+        "version": "5.0.1",
+        "path": "node_modules/.pnpm/event-target-shim@5.0.1/node_modules/event-target-shim/package.json"
+      },
+      {
+        "name": "fast-unique-numbers",
+        "version": "9.0.27",
+        "path": "node_modules/.pnpm/fast-unique-numbers@9.0.27/node_modules/fast-unique-numbers/package.json"
+      },
+      {
+        "name": "has-flag",
+        "version": "4.0.0",
+        "path": "node_modules/.pnpm/has-flag@4.0.0/node_modules/has-flag/package.json"
+      },
+      {
+        "name": "inherits",
+        "version": "2.0.4",
+        "path": "node_modules/.pnpm/inherits@2.0.4/node_modules/inherits/package.json"
+      },
+      {
+        "name": "ip-address",
+        "version": "10.7.2",
+        "path": "node_modules/.pnpm/ip-address@10.7.2/node_modules/ip-address/package.json"
+      },
+      {
+        "name": "lru-cache",
+        "version": "10.4.3",
+        "path": "node_modules/.pnpm/lru-cache@10.4.3/node_modules/lru-cache/package.json"
+      },
+      {
+        "name": "mqtt-packet",
+        "version": "9.0.2",
+        "path": "node_modules/.pnpm/mqtt-packet@9.0.2_supports-color@7.2.0/node_modules/mqtt-packet/package.json"
+      },
+      {
+        "name": "mqtt",
+        "version": "5.16.0",
+        "path": "node_modules/.pnpm/mqtt@5.16.0_supports-color@7.2.0/node_modules/mqtt/package.json"
+      },
+      {
+        "name": "ms",
+        "version": "2.1.3",
+        "path": "node_modules/.pnpm/ms@2.1.3/node_modules/ms/package.json"
+      },
+      {
+        "name": "@edge-runtime/cookies",
+        "version": "6.0.0",
+        "path": "node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/dist/compiled/@edge-runtime/cookies/package.json"
+      },
+      {
+        "name": "next",
+        "version": "16.3.5",
+        "path": "node_modules/.pnpm/next@16.3.5_@babel+core@7.29.7_supports-color@7.2.0__@playwright+test@1.63.0_@types+nod_99db08b0d92f3afa03330a384360c8da/node_modules/next/package.json"
+      },
+      {
+        "name": "pg-cloudflare",
+        "version": "1.4.0",
+        "path": "node_modules/.pnpm/pg-cloudflare@1.4.0/node_modules/pg-cloudflare/package.json"
+      },
+      {
+        "name": "pg-connection-string",
+        "version": "2.14.0",
+        "path": "node_modules/.pnpm/pg-connection-string@2.14.0/node_modules/pg-connection-string/package.json"
+      },
+      {
+        "name": "pg-int8",
+        "version": "1.0.1",
+        "path": "node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/package.json"
+      },
+      {
+        "name": "pg-pool",
+        "version": "3.14.0",
+        "path": "node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.0/node_modules/pg-pool/package.json"
+      },
+      {
+        "name": "pg-protocol",
+        "version": "1.16.0",
+        "path": "node_modules/.pnpm/pg-protocol@1.16.0/node_modules/pg-protocol/package.json"
+      },
+      {
+        "name": "pg-types",
+        "version": "2.2.0",
+        "path": "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/package.json"
+      },
+      {
+        "name": "pg",
+        "version": "8.23.0",
+        "path": "node_modules/.pnpm/pg@8.23.0/node_modules/pg/package.json"
+      },
+      {
+        "name": "pgpass",
+        "version": "1.0.5",
+        "path": "node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/package.json"
+      },
+      {
+        "name": "postgres-array",
+        "version": "2.0.0",
+        "path": "node_modules/.pnpm/postgres-array@2.0.0/node_modules/postgres-array/package.json"
+      },
+      {
+        "name": "postgres-array",
+        "version": "3.0.4",
+        "path": "node_modules/.pnpm/postgres-array@3.0.4/node_modules/postgres-array/package.json"
+      },
+      {
+        "name": "postgres-bytea",
+        "version": "1.0.1",
+        "path": "node_modules/.pnpm/postgres-bytea@1.0.1/node_modules/postgres-bytea/package.json"
+      },
+      {
+        "name": "postgres-date",
+        "version": "1.0.7",
+        "path": "node_modules/.pnpm/postgres-date@1.0.7/node_modules/postgres-date/package.json"
+      },
+      {
+        "name": "postgres-interval",
+        "version": "1.2.0",
+        "path": "node_modules/.pnpm/postgres-interval@1.2.0/node_modules/postgres-interval/package.json"
+      },
+      {
+        "name": "process-nextick-args",
+        "version": "2.0.1",
+        "path": "node_modules/.pnpm/process-nextick-args@2.0.1/node_modules/process-nextick-args/package.json"
+      },
+      {
+        "name": "process",
+        "version": "0.11.10",
+        "path": "node_modules/.pnpm/process@0.11.10/node_modules/process/package.json"
+      },
+      {
+        "name": "react",
+        "version": "19.3.0",
+        "path": "node_modules/.pnpm/react@19.3.0/node_modules/react/package.json"
+      },
+      {
+        "name": "readable-stream",
+        "version": "4.7.0",
+        "path": "node_modules/.pnpm/readable-stream@4.7.0/node_modules/readable-stream/package.json"
+      },
+      {
+        "name": "rfdc",
+        "version": "1.4.1",
+        "path": "node_modules/.pnpm/rfdc@1.4.1/node_modules/rfdc/package.json"
+      },
+      {
+        "name": "safe-buffer",
+        "version": "5.2.1",
+        "path": "node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/package.json"
+      },
+      {
+        "name": "server-only",
+        "version": "0.0.1",
+        "path": "node_modules/.pnpm/server-only@0.0.1/node_modules/server-only/package.json"
+      },
+      {
+        "name": "smart-buffer",
+        "version": "4.2.0",
+        "path": "node_modules/.pnpm/smart-buffer@4.2.0/node_modules/smart-buffer/package.json"
+      },
+      {
+        "name": "socks",
+        "version": "2.8.10",
+        "path": "node_modules/.pnpm/socks@2.8.10/node_modules/socks/package.json"
+      },
+      {
+        "name": "split2",
+        "version": "4.2.0",
+        "path": "node_modules/.pnpm/split2@4.2.0/node_modules/split2/package.json"
+      },
+      {
+        "name": "string_decoder",
+        "version": "1.3.0",
+        "path": "node_modules/.pnpm/string_decoder@1.3.0/node_modules/string_decoder/package.json"
+      },
+      {
+        "name": "supports-color",
+        "version": "7.2.0",
+        "path": "node_modules/.pnpm/supports-color@7.2.0/node_modules/supports-color/package.json"
+      },
+      {
+        "name": "worker-timers-broker",
+        "version": "8.0.18",
+        "path": "node_modules/.pnpm/worker-timers-broker@8.0.18/node_modules/worker-timers-broker/package.json"
+      },
+      {
+        "name": "worker-timers",
+        "version": "8.0.34",
+        "path": "node_modules/.pnpm/worker-timers@8.0.34/node_modules/worker-timers/package.json"
+      },
+      {
+        "name": "ws",
+        "version": "8.21.3",
+        "path": "node_modules/.pnpm/ws@8.21.3/node_modules/ws/package.json"
+      },
+      {
+        "name": "xtend",
+        "version": "4.0.2",
+        "path": "node_modules/.pnpm/xtend@4.0.2/node_modules/xtend/package.json"
+      },
+      {
+        "name": "zod",
+        "version": "4.6.5",
+        "path": "node_modules/.pnpm/zod@4.6.5/node_modules/zod/package.json"
+      }
+    ],
+    "devOnlyPackages": [],
+    "projectTests": [],
+    "dependencyFixtures": [],
+    "secretFiles": [],
+    "secretPatterns": [],
+    "files": 445,
+    "symlinks": 59,
+    "commit": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+    "workingTree": "dirty",
+    "builtAt": "2026-10-01T12:50:49.823Z",
+    "lockfileSha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+    "argon2Native": "PASSED",
+    "bundleHashes": "3/3",
+    "externalImports": "all resolved",
+    "image": "meterwerk-worker:acceptance-5eae186-runtime-20261001t125049z",
+    "imageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "repoDigests": [
+      "meterwerk-worker@sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93"
+    ],
+    "sizeBytes": 253616229,
+    "architecture": "amd64",
+    "os": "linux",
+    "labels": {
+      "org.opencontainers.image.base.name": "node:22-alpine",
+      "org.opencontainers.image.created": "2026-10-01T12:50:49.823Z",
+      "org.opencontainers.image.revision": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+      "org.opencontainers.image.version": "0.1.0"
+    }
+  },
+  "runtime": {
+    "recordedAt": "2026-10-02T06:26:24.440Z",
+    "image": "meterwerk-worker:acceptance-5eae186-runtime-20261001t125049z",
+    "imageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "repoDigests": [
+      "meterwerk-worker@sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93"
+    ],
+    "architecture": "amd64",
+    "sizeBytes": 253616229,
+    "labels": {
+      "org.opencontainers.image.base.name": "node:22-alpine",
+      "org.opencontainers.image.created": "2026-10-01T12:50:49.823Z",
+      "org.opencontainers.image.revision": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+      "org.opencontainers.image.version": "0.1.0"
+    },
+    "workers": [
+      {
+        "worker": "rules-worker",
+        "containerId": "3b21ed951cc147c03773c941a4e90a6658b1b18ffce63622752111ea9fcdfe20",
+        "command": [
+          "node",
+          "--conditions=react-server",
+          "dist/rules-worker.js"
+        ],
+        "started": true,
+        "startLog": true,
+        "runtimeErrors": false,
+        "runtime": "PASSED",
+        "shutdownMs": 362.1220999999996,
+        "exitCode": 0,
+        "forcedKill": false,
+        "sigterm": "PASSED"
+      },
+      {
+        "worker": "rollout-worker",
+        "containerId": "696c22555c696f108e018b35547b8d49ece71b4f4dcc45d6adb13f98138a1225",
+        "command": [
+          "node",
+          "--conditions=react-server",
+          "dist/rollout-worker.js"
+        ],
+        "started": true,
+        "startLog": true,
+        "runtimeErrors": false,
+        "runtime": "PASSED",
+        "shutdownMs": 358.2664999999997,
+        "exitCode": 0,
+        "forcedKill": false,
+        "sigterm": "PASSED"
+      },
+      {
+        "worker": "mqtt-worker",
+        "containerId": "c5f174ee1a08d631d631b04fb311b310c601bead0a0f1206f0261b2477f2c85f",
+        "command": ["node", "--conditions=react-server", "dist/mqtt-worker.js"],
+        "started": true,
+        "startLog": true,
+        "runtimeErrors": false,
+        "runtime": "PASSED",
+        "shutdownMs": 551.0508999999984,
+        "exitCode": 0,
+        "forcedKill": false,
+        "sigterm": "PASSED"
+      }
+    ],
+    "runtimePassed": 3,
+    "sigtermPassed": 3,
+    "status": "PASSED"
+  },
+  "lease": {
+    "recordedAt": "2026-10-02T06:29:29.603Z",
+    "rerun": false,
+    "reason": "All three worker bundles byte-identical to previously accepted image; no application/lease, schema, lockfile or build-script change. Runtime deployment only; all external imports and runtime/SIGTERM verified on new image.",
+    "oldImageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+    "newImageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "bundleHashes": {
+      "rules-worker.js": "4fba35ab80294306a928fb2c8e517a07fce71228203fd96ee8820d3696636432",
+      "mqtt-worker.js": "4571ff68e72c923128562c65be5937d2d908e6e9b4d67c7a86ebc5d750f550dc",
+      "rollout-worker.js": "f1e6cb8f9c173659e2ec58d6f3744c90463223af8f849d3eb2dddd528be895db"
+    },
+    "previousLeaseEvidence": "docs/acceptance/CONTAINER-RUNTIME-DDBEDC8.json#lease"
+  },
+  "provenance": {
+    "recordedAt": "2026-10-02T06:29:29.624Z",
+    "image": "meterwerk-worker:acceptance-5eae186-runtime-20261001t125049z",
+    "imageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "repoDigests": [
+      "meterwerk-worker@sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93"
+    ],
+    "platform": "linux/amd64",
+    "labels": {
+      "org.opencontainers.image.base.name": "node:22-alpine",
+      "org.opencontainers.image.created": "2026-10-01T12:50:49.823Z",
+      "org.opencontainers.image.revision": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+      "org.opencontainers.image.version": "0.1.0"
+    },
+    "build": {
+      "tag": "meterwerk-worker:acceptance-5eae186-runtime-20261001t125049z",
+      "gitSha": "5eae186d4024e3b3720121be35d0a4dc88634ef7",
+      "workingTree": "dirty",
+      "buildTimestamp": "2026-10-01T12:50:49.823Z",
+      "inputs": [
+        {
+          "file": "Dockerfile.worker",
+          "sha256": "68a28830f526afb2903ff4b4e86a109b3d71fadbe3feb092adac30ae4b8bbb2b"
+        },
+        {
+          "file": "package.json",
+          "sha256": "cdd12ee14c7c3d5179debca486260ebec65ed0f69d461f145a603a3cd9a81246"
+        },
+        {
+          "file": "pnpm-lock.yaml",
+          "sha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a"
+        },
+        {
+          "file": "pnpm-workspace.yaml",
+          "sha256": "52c5f1481056ce9742a7a21a8ce3c41b81a622da5a2037940799266ee5716f94"
+        },
+        {
+          "file": "scripts/build-worker-bundles.mjs",
+          "sha256": "87f94f22c81b54176a872962ae3ab4fe61f0cc4475dac428df6941d506274fc7"
+        },
+        {
+          "file": "scripts/deploy-worker-runtime.mjs",
+          "sha256": "4b1716c9c45e2c8507c9ed087d1bb58d1a214ad9b34171b6ea9db6f07d38838c"
+        },
+        {
+          "file": "scripts/worker-runtime-policy.mjs",
+          "sha256": "fc3bf2f9ca312d4f8757284ee1d5314a115830fcaebd41bc010a57e6c3b24512"
+        }
+      ],
+      "startedAt": "2026-10-01T12:50:49.933Z",
+      "log": ".local/acceptance/worker-clean-build.log",
+      "finishedAt": "2026-10-01T12:51:57.574Z",
+      "exitCode": 0
+    },
+    "baseDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+    "platformManifestDigest": "sha256:517cfaf14736a8e485a8e2a604713bfd7246798137987e94ccfe7b2904c15b5f",
+    "configDigest": "sha256:7251d064be07ce5449cd7c2b50d1f3080bffe9e019db07fef700b8469aa11c11",
+    "buildkitAttestationManifestDigest": "sha256:ce8f10aef45a210f6129218e388b74eb33437ccd63db20d9e30c782d374b9d68",
+    "sbom": {
+      "file": ".local/acceptance/worker-clean-image-sbom.cdx.json",
+      "sha256": "c698c77c584d8f3531ad129d6b43ff7975e5b089b5081c08f00998fb092232eb",
+      "components": 80,
+      "imageMatched": true
+    },
+    "signed": false,
+    "limitation": "Local dirty-tree build provenance, not a signed final release attestation"
+  },
+  "secretScan": {
+    "status": "PASSED",
+    "recordedAt": "2026-10-02T06:29:30.593Z",
+    "imageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "scope": "Merged /app files (including binary files); selected credential/private-key patterns and known synthetic acceptance secrets; config/history checked for those known secrets. Not an exhaustive forensic scan of every lower-layer file.",
+    "files": 445,
+    "knownSecretMatches": 0,
+    "credentialPatternPaths": [],
+    "configKnownSecretMatches": 0,
+    "configSecretVariableNames": []
+  },
+  "size": {
+    "oldImage": "meterwerk-worker:ddbedc8",
+    "oldImageId": "sha256:c3519d93ebde310dd95ceeddd12f388227284a93972f99e72479f633c6280556",
+    "oldBytes": 1225964519,
+    "newImage": "meterwerk-worker:acceptance-5eae186-runtime-20261001t125049z",
+    "newImageId": "sha256:3308d24fbad17168593094822eba41e15ea31c7725cf2ae96402d50fe1167a93",
+    "newBytes": 253616229,
+    "reductionBytes": 972348290,
+    "reductionPercent": 79.31292259527456,
+    "metric": "Docker image inspect Size, same engine/store"
+  },
+  "dependencyAudit": {
+    "recordedAt": "2026-09-29T12:32:53Z",
+    "gitSha": "4932f0087cf263988c599e498ac682fac1d93f5c",
+    "branch": "master",
+    "packageVersion": "0.1.0",
+    "workingTree": "acceptance test/documentation additions only; package.json and pnpm-lock.yaml unchanged",
+    "tool": {
+      "name": "pnpm",
+      "version": "12.5.1",
+      "runtime": "Node.js 22.22.1 on Ubuntu WSL 26.04 x86_64",
+      "execution": "official pnpm 12.5.1 Linux x64 executable from the pinned pnpm package; Windows Application Control unchanged"
+    },
+    "lockfile": {
+      "file": "pnpm-lock.yaml",
+      "sha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a",
+      "additionalPackageManagerLockfiles": []
+    },
+    "command": "pnpm audit --json",
+    "exitCode": 0,
+    "status": "PASSED",
+    "advisories": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "findings": []
+    },
+    "auditedDependencyCounts": {
+      "dependencies": 281,
+      "devDependencies": 419,
+      "optionalDependencies": 176,
+      "total": 765
+    },
+    "rawPnpmJson": "pnpm audit --json output; advisories object empty",
+    "rawOutputSha256": "a3b70152da4ede2651380c4e3f5fbc96ab70fc8ed58feb05f736a55c1120c99a",
+    "rerun": false,
+    "reason": "package.json and pnpm-lock.yaml unchanged; identical lockfile hash"
+  },
+  "regression": {
+    "tests": {
+      "passed": 16,
+      "failed": 0,
+      "imageLifecycle": 5,
+      "runtimePolicy": 7,
+      "imageSbom": 4
+    },
+    "affectedFixtureRetest": {
+      "passed": 7,
+      "failed": 0
+    },
+    "workerStatic": {
+      "status": "PASSED",
+      "bundles": 3,
+      "stages": 4,
+      "sourceMaps": 0,
+      "scope": "worker-only; prior web release artifacts not revalidated"
+    },
+    "ciConfiguration": "PASSED",
+    "actualNewSbom": "PASSED exact image ID and recursive references",
+    "targetedEslint": "PASSED",
+    "targetedPrettier": "PASSED for changed supported source/docs files; final generated JSON formatted with Prettier",
+    "repositorySecretScan": {
+      "status": "PASSED",
+      "reviewFindings": 0,
+      "recognizedDemoTemplateValues": 18
+    },
+    "fullApplicationSuitesRerun": false,
+    "reason": "Packaging and validation only; unchanged application, schema and lockfile",
+    "finalEslint": {
+      "exitCode": 0,
+      "status": "PASSED",
+      "log": ".local/acceptance/worker-clean-eslint.log"
+    },
+    "docsCheck": {
+      "exitCode": 0,
+      "status": "PASSED",
+      "log": ".local/acceptance/worker-clean-docs-check.log"
+    },
+    "docsValidation": {
+      "exitCode": 0,
+      "status": "PASSED",
+      "log": ".local/acceptance/worker-clean-docs-validation.log"
+    },
+    "diffCheck": {
+      "exitCode": 0,
+      "status": "PASSED"
+    }
+  },
+  "softwareReleaseBlockers": [],
+  "localReleaseGates": [
+    "Final immutable release revision (RC commit intentionally not created)",
+    "Consolidate release artifacts and evidence for that final revision; current image is a dirty-tree acceptance build"
+  ],
+  "externalValidation": "EXTERNAL_VALIDATION_PENDING: CI on final SHA, staging/promotion, signature verification, provider services, HA/PITR/full restore, representative production load",
+  "hardwareValidation": "HARDWARE_VALIDATION_PENDING",
+  "workerImageBlockerClosed": true,
+  "locallyReadyForFinalRcAssessment": true,
+  "finalRcApproved": false,
+  "finalRcCommitCreated": false,
+  "sourceFiles": [
+    {
+      "file": "Dockerfile.worker",
+      "sha256": "68a28830f526afb2903ff4b4e86a109b3d71fadbe3feb092adac30ae4b8bbb2b"
+    },
+    {
+      "file": "package.json",
+      "sha256": "cdd12ee14c7c3d5179debca486260ebec65ed0f69d461f145a603a3cd9a81246"
+    },
+    {
+      "file": "pnpm-lock.yaml",
+      "sha256": "ef5e3e0857572d85e27056bee29c93bb5d5bfbbce31024cd8bb1dda4a91efd7a"
+    },
+    {
+      "file": "pnpm-workspace.yaml",
+      "sha256": "52c5f1481056ce9742a7a21a8ce3c41b81a622da5a2037940799266ee5716f94"
+    },
+    {
+      "file": "scripts/build-worker-bundles.mjs",
+      "sha256": "87f94f22c81b54176a872962ae3ab4fe61f0cc4475dac428df6941d506274fc7"
+    },
+    {
+      "file": "scripts/deploy-worker-runtime.mjs",
+      "sha256": "4b1716c9c45e2c8507c9ed087d1bb58d1a214ad9b34171b6ea9db6f07d38838c"
+    },
+    {
+      "file": "scripts/worker-runtime-policy.mjs",
+      "sha256": "fc3bf2f9ca312d4f8757284ee1d5314a115830fcaebd41bc010a57e6c3b24512"
+    },
+    {
+      "file": "scripts/worker-runtime-policy.test.mjs",
+      "sha256": "2915e6f890200b20d956f3703d418db4e8b37b60dce76f8cd6610b8992ed37ce"
+    },
+    {
+      "file": "scripts/verify-worker-image-content.mjs",
+      "sha256": "423a775006d471cf5ba0581b9b033245ac4b6e5fd0c69b4a41425fb438abc547"
+    },
+    {
+      "file": "scripts/verify-worker-image-runtime.mjs",
+      "sha256": "7dda9b1e040a20290f09b066edeec31f97b3e1cc0923c876af74c16893608d4f"
+    },
+    {
+      "file": "scripts/verify-worker-image-static.mjs",
+      "sha256": "a25880e03083d3d27eeefba7c53f699fc34ee6d471c1ea0387f38447d7b5dea1"
+    },
+    {
+      "file": "scripts/image-sbom-policy.mjs",
+      "sha256": "764065cb785c296e60de3b5b117c4e884663dbdac96f96663620b05db483bea2"
+    },
+    {
+      "file": "scripts/image-sbom-policy.test.mjs",
+      "sha256": "dc1be115f625efcac84be619ab9cff1f6c63a4472046ad475ddc6202955525de"
+    },
+    {
+      "file": "scripts/verify-image-sbom.mjs",
+      "sha256": "2217c08564d478074c20e15bb96f19f6e8ca74e229f29c40fe80cf896814691e"
+    },
+    {
+      "file": "scripts/verify-ci-release-config.mjs",
+      "sha256": "44534e1d221bf5437b70c601c78de104d7433c4aa5085ac2baea0bd3546f4be3"
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "sha256": "1ab37974b219ee98f8ae3e544aade91dce2970a6620aa3415ea0e302ddac5324"
+    },
+    {
+      "file": "eslint.config.mjs",
+      "sha256": "efa604b616ea03d6c6506770b8d8d7be9a38eafbba9cf9e2798a981b51351ed0"
+    }
+  ],
+  "localEvidence": [
+    {
+      "file": ".local/acceptance/worker-clean-build.json",
+      "sha256": "1e6b2681df1f3112980c5d34e645ca1f632b51793a2463f16140804d14f2a70d"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-build.log",
+      "sha256": "ece7095800891e2bafe9115a951f5b212b3433da1b87b27fe3954a24fb7ed83e"
+    },
+    {
+      "file": ".local/acceptance/worker-image-content.json",
+      "sha256": "986cf95040a69d97b484e05c8f4384822409f45f5e23b3b125e7286da98c511f"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-runtime.json",
+      "sha256": "182efa1869b83cb4a600232ccbe3f4c2ed2542d7e02b7c0a9612db215dd978b4"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-lease-decision.json",
+      "sha256": "83688d51cd80ec207a93e565c3a5207a34f11d50cf0da1b823caf84716fca45b"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-image-sbom.cdx.json",
+      "sha256": "c698c77c584d8f3531ad129d6b43ff7975e5b089b5081c08f00998fb092232eb"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-provenance.json",
+      "sha256": "c97481cbf0b109a46ab2481f7158c5ae9ed12b4737e27c312ce16848bb12597b"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-secret-scan.json",
+      "sha256": "c79652b5dc35b83d9263e0d4c25138aa423df0f83a860d168463ef83962821ca"
+    },
+    {
+      "file": ".local/acceptance/worker-clean-size.json",
+      "sha256": "d1fb5fc99aed1fe471040bddf726971f3bfb8718d5b5f8d560672d37f338bb40"
+    },
+    {
+      "file": ".local/acceptance/worker-artifact-origins.json",
+      "sha256": "099e821dba72d83ef80969cb273b9826afbdca57ec172b776ea250cad7504bf3"
+    },
+    {
+      "file": ".local/acceptance/accept-worker-clean.mjs",
+      "sha256": "70058c7940198c96202281e1113c7f23e94b5f633b73ea1d1d36298d682c6587"
+    },
+    {
+      "file": ".local/acceptance/finish-worker-clean.mjs",
+      "sha256": "130da3dbe548aabb18ad54ea25d33c06f936da6c9e1ebc260346b2308e2b14c9"
+    }
+  ]
+}

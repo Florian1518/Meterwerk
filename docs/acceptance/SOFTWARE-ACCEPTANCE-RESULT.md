@@ -1,6 +1,17 @@
 # Software Acceptance Result
 
-## Aktuell: echte Linux-Container-Abnahme ab ddbedc8, 01.10.2026
+## Aktuell: Worker-Image-Nachlauf ab 5eae186, 02.10.2026
+
+Worker-Image-Blocker geschlossen. Das vorhandene bereinigte Linux-Image bestand
+Inspection, Runtime 3/3, SIGTERM 3/3, digestgebundene SBOM und Secret-Scan.
+Keine verbleibenden bekannten Software-Release-Blocker im bisherigen Scope;
+lokal bereit für die finale RC-Bewertung, noch keine RC-Freigabe. Finale unveränderliche
+Release-Revision und konsolidierte Artefakte bleiben offen. Kein neuer Build,
+Commit, Push, Tag oder Deployment in dieser Fortsetzung.
+Details und Grenzen: [Worker-Image-Nachlauf](WORKER-IMAGE-5EAE186.md),
+[maschinenlesbare Evidence](WORKER-IMAGE-5EAE186.json).
+
+## Historisch: echte Linux-Container-Abnahme ab ddbedc8, 01.10.2026
 
 **NICHT RC-FREIGABEFÄHIG.** Die Runtime-, Shutdown-, Recovery- und Performance-Gates
 sind lokal belegt; das geforderte Ausschluss-Gate für das Worker-Image ist FAILED.

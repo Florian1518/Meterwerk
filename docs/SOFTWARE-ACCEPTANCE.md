@@ -1,6 +1,6 @@
 # Software Acceptance
 
-Aktueller Fortsetzungsstand auf `e88b1de`: [Belegbericht vom 29.09.2026](acceptance/PHASE-5V-RESUME.md).
+Aktueller Fortsetzungsstand ab `5eae186`: [Worker-Image-Nachlauf vom 02.10.2026](acceptance/WORKER-IMAGE-5EAE186.md).
 Die folgenden Teil-1-/Teil-2-Angaben sind historisch. Bereits dokumentierte
 erfolgreiche Suites werden bei einer Fortsetzung nicht pauschal neu gestartet.
 

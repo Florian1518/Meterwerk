@@ -1,6 +1,7 @@
 ARG VERSION=unknown
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
+ARG GIT_WORKING_TREE=unknown
 
 FROM node:22-alpine AS build-deps
 WORKDIR /app
@@ -13,18 +14,17 @@ WORKDIR /app
 ARG VERSION
 ARG GIT_SHA
 ARG BUILD_TIMESTAMP
-ENV GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+ARG GIT_WORKING_TREE
+ENV GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP GIT_WORKING_TREE=$GIT_WORKING_TREE
 RUN corepack enable
 COPY --from=build-deps /app/node_modules ./node_modules
 COPY . .
 RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build pnpm db:generate
 RUN node scripts/build-worker-bundles.mjs /app/dist
 
-FROM node:22-alpine AS runtime-deps
+FROM worker-build AS runtime-deps
 WORKDIR /app
-RUN corepack enable
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN node scripts/deploy-worker-runtime.mjs /app/worker-runtime
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -37,11 +37,10 @@ LABEL org.opencontainers.image.version=$VERSION \
   org.opencontainers.image.base.name=node:22-alpine
 ENV NODE_ENV=production \
   BUILD_VERSION=$VERSION GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
-RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
-COPY --from=runtime-deps --chown=meterwerk:meterwerk /app/node_modules ./node_modules
-COPY --from=worker-build --chown=meterwerk:meterwerk /app/src/generated/prisma ./src/generated/prisma
-COPY --from=worker-build --chown=meterwerk:meterwerk /app/dist ./dist
-COPY --chown=meterwerk:meterwerk package.json ./package.json
+RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
+COPY --from=runtime-deps --chown=meterwerk:meterwerk /app/worker-runtime ./
 USER meterwerk
 ENTRYPOINT ["node", "--conditions=react-server"]
 CMD ["dist/rules-worker.js"]
