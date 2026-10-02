@@ -1,35 +1,31 @@
 # Produktfähigkeiten und Validierungsstatus
 
-## Aktuell: finale lokale RC-Bewertung auf 1e6589e, 02.10.2026
+## Aktuell: finale lokale RC-Bewertung auf `0186e076`, 02.10.2026
 
 **LOCAL SOFTWARE ACCEPTANCE: PASSED.**
+
 **METERWERK V1.0 RC PREPARATION: READY.**
-**LOCAL SOFTWARE RELEASE BLOCKER: NEIN.**
 
-PASSED_LOCAL: Ausgang master/clean auf
-`1e6589e2ee84eae787e444a0ab311fb1020853e6`; Web und Worker als
-`meterwerk-web:rc-1e6589e` / `meterwerk-worker:rc-1e6589e` neu gebaut.
-Worker Content/Secret Gate, Runtime 3/3, SIGTERM 3/3, Web Runtime 8/8,
-Web-SIGTERM/Restart, finale imagegebundene SBOMs und gezielte Static-/Regression-Gates bestanden.
-Lease-Recovery bei bytegleichen Bundles übernommen. Alle bisherigen lokalen
-Softwareblocker ausdrücklich CLOSED. Breite App-/DB-/Browser-/Demo-, Recovery-
-und Performance-Nachweise für unveränderte Pfade übernommen; kein Produktionslastnachweis.
+**LOCAL SOFTWARE RELEASE BLOCKER: NONE.**
 
-EXTERNAL_VALIDATION_PENDING: echte CI auf finalem SHA, Staging/Promotion, Signing,
-Provider, PITR/Full Restore, Produktions-HA/Failover und repräsentative Last.
-HARDWARE_VALIDATION_PENDING: reale Strom-/Wasser-/Gas-/Wärmezähler, Gateways,
-Modbus RTU/TCP, M-Bus, Wireless M-Bus, Pulse, LoRaWAN und Herstellergeräte.
+Der lokal validierte Code-SHA ist `0186e076331f34dd10aefd6192c11417f25e2c04`.
+Next.js 16.3.8; Dependency Audit 0 Advisories. Web Readiness, synthetischer
+Login, authentifiziertes Dashboard, drei Worker-Runtimes, Worker SIGTERM 3/3
+und SBOMs für beide Images sind bestanden. Die Acceptance-DB hatte 47 Migrationen.
+Die zuvor gesehenen Prisma-Zyklusfehler waren ein Test-Harness-/Environment-
+Problem durch die falsche lokale Datenbank und traten mit der isolierten
+Acceptance-DB nicht wieder auf. Der Stand `84ce62c` wurde durch den Security-Fix
+abgelöst. [Finale Acceptance](acceptance/FINAL-RC-0186E07.md) und
+[Evidence](acceptance/FINAL-RC-0186E07.json).
 
-Keine Production-Freigabe; kein Commit, Push, Tag oder Deployment. Der Commit
-`Prepare Meterwerk v1.0 release candidate` ist nach Review empfohlen.
-Die finalen Images bleiben dem bewerteten SHA zugeordnet. Secret-Scan-Scope:
-gemergtes /app und ausgewählte Config-/History-Prüfungen, keine vollständige
-Layerforensik. Web-Drain historisch 11,90 s; Shutdown-Fristen berücksichtigen.
-Die Windows-Argon2-Hostbeschränkung ist kein Fehlschlag der geprüften Linux-Runtime.
+Remote CI, echtes Staging, Signing, Provider, PITR/Full Restore, HA/Failover,
+repräsentative Produktionslast und Hardware bleiben pending. Keine Production-
+Freigabe; der nachfolgende Commit ist ausschließlich Release-Dokumentation.
 
-Maßgeblich sind [finaler Bericht](acceptance/FINAL-RC-1E6589E.md) und
-[finale Evidence](acceptance/FINAL-RC-1E6589E.json). Nachfolgende frühere Bewertungen
-sind ausschließlich Historie und keine noch offenen aktuellen Blocker.
+## Historisch: finale lokale RC-Bewertung auf `1e6589e`
+
+Die vorigen RC-Nachweise für `1e6589e` und `84ce62c` bleiben historisch erhalten;
+`0186e076…` ist der neu lokal validierte Code-Stand.
 
 ## Historische Prüfstände — durch obigen aktuellen Stand ergänzt
 

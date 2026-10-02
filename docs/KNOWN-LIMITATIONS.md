@@ -1,35 +1,31 @@
 # Bekannte Einschränkungen
 
-## Aktuell: finale lokale RC-Bewertung auf 1e6589e, 02.10.2026
+## Aktuell: finale lokale RC-Bewertung auf `0186e076`, 02.10.2026
 
 **LOCAL SOFTWARE ACCEPTANCE: PASSED.**
+
 **METERWERK V1.0 RC PREPARATION: READY.**
-**LOCAL SOFTWARE RELEASE BLOCKER: NEIN.**
 
-PASSED_LOCAL: Ausgang master/clean auf
-`1e6589e2ee84eae787e444a0ab311fb1020853e6`; Web und Worker als
-`meterwerk-web:rc-1e6589e` / `meterwerk-worker:rc-1e6589e` neu gebaut.
-Worker Content/Secret Gate, Runtime 3/3, SIGTERM 3/3, Web Runtime 8/8,
-Web-SIGTERM/Restart, finale imagegebundene SBOMs und gezielte Static-/Regression-Gates bestanden.
-Lease-Recovery bei bytegleichen Bundles übernommen. Alle bisherigen lokalen
-Softwareblocker ausdrücklich CLOSED. Breite App-/DB-/Browser-/Demo-, Recovery-
-und Performance-Nachweise für unveränderte Pfade übernommen; kein Produktionslastnachweis.
+**LOCAL SOFTWARE RELEASE BLOCKER: NONE.**
 
-EXTERNAL_VALIDATION_PENDING: echte CI auf finalem SHA, Staging/Promotion, Signing,
-Provider, PITR/Full Restore, Produktions-HA/Failover und repräsentative Last.
-HARDWARE_VALIDATION_PENDING: reale Strom-/Wasser-/Gas-/Wärmezähler, Gateways,
-Modbus RTU/TCP, M-Bus, Wireless M-Bus, Pulse, LoRaWAN und Herstellergeräte.
+Next.js 16.3.8 und Dependency Audit mit 0 Advisories sind auf Code-SHA
+`0186e076331f34dd10aefd6192c11417f25e2c04` dokumentiert. Der frühere Stand
+`84ce62c` wurde nach dem Next.js-Sicherheitsbefund abgelöst. Die früheren
+Prisma-Zyklusmeldungen waren ein Test-Harness-/Environment-Problem: falsche
+Compose-DB statt isolierter Acceptance-DB; erneute Workerprüfung mit 47
+Migrationen bestand. Details stehen im [finalen Nachweis](acceptance/FINAL-RC-0186E07.md).
 
-Keine Production-Freigabe; kein Commit, Push, Tag oder Deployment. Der Commit
-`Prepare Meterwerk v1.0 release candidate` ist nach Review empfohlen.
-Die finalen Images bleiben dem bewerteten SHA zugeordnet. Secret-Scan-Scope:
-gemergtes /app und ausgewählte Config-/History-Prüfungen, keine vollständige
-Layerforensik. Web-Drain historisch 11,90 s; Shutdown-Fristen berücksichtigen.
-Die Windows-Argon2-Hostbeschränkung ist kein Fehlschlag der geprüften Linux-Runtime.
+Offen bleiben nur externe Validierungen: Remote CI, echtes Staging,
+Signing Verification, Provider Validation, PITR/Full Restore, HA/Failover und
+Representative Production Load. Hardwaretests mit realen Zählern/Gateways,
+Modbus, M-Bus, Wireless M-Bus, Pulse, LoRaWAN und herstellerspezifischen Geräten
+bleiben `HARDWARE_VALIDATION_PENDING`. Keine Production-Freigabe.
 
-Maßgeblich sind [finaler Bericht](acceptance/FINAL-RC-1E6589E.md) und
-[finale Evidence](acceptance/FINAL-RC-1E6589E.json). Nachfolgende frühere Bewertungen
-sind ausschließlich Historie und keine noch offenen aktuellen Blocker.
+## Historisch: finale lokale RC-Bewertung auf `1e6589e`
+
+Der Nachweis für `1e6589e` und die Bewertung auf `84ce62c` bleiben als Historie
+erhalten. Der Befund zu Next.js 16.3.5 ist geschlossen; maßgeblicher RC-Code ist
+nun `0186e076…`. Siehe [FINAL-RC-0186E07](acceptance/FINAL-RC-0186E07.md).
 
 ## Historische Prüfstände — durch obigen aktuellen Stand ergänzt
 

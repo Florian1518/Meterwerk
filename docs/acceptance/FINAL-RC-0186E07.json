@@ -1,0 +1,87 @@
+{
+  "validatedCodeSha": "0186e076331f34dd10aefd6192c11417f25e2c04",
+  "baselineBranch": "master",
+  "baselineWorktree": "clean",
+  "finalReleaseMetadataCommit": "documentation-only commit containing this evidence",
+  "nextJsVersion": "16.3.8",
+  "lockfileSha256": "321fe1b02bc6508a33a63d4df0609da5ee6d08ec8f05d1c5dcef6ff9a42da530",
+  "dependencyAudit": {
+    "status": "PASSED",
+    "critical": 0,
+    "high": 0,
+    "moderate": 0,
+    "low": 0
+  },
+  "images": {
+    "platform": "linux/amd64",
+    "baseImage": "node:22-alpine",
+    "baseImageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+    "web": {
+      "tag": "meterwerk-web:rc-0186e07",
+      "imageId": "sha256:f15638cc77205e22b9014092e6d1c9b667f66454508c4642d692e74ca5d87adc",
+      "sizeBytes": 327950618,
+      "sbom": {
+        "format": "CycloneDX",
+        "components": 299,
+        "sha256": "92fd808a0076818f0fb52cdcff13488c40a4d7a91c34863c5efd2c3780ac836f"
+      }
+    },
+    "worker": {
+      "tag": "meterwerk-worker:rc-0186e07",
+      "imageId": "sha256:f78f7c560cff94822bbb8fd42c28145dbbe34bd53bb79ca40b2f61d9ef5406a2",
+      "sizeBytes": 253616284,
+      "sbom": {
+        "format": "CycloneDX",
+        "components": 80,
+        "sha256": "6362f152c81ab40a525fe37aee778576e3efacc909f2b6b63628f374ed05b82c"
+      }
+    }
+  },
+  "runtime": {
+    "webReadiness": "PASSED",
+    "syntheticLogin": "PASSED",
+    "authenticatedDashboard": "PASSED",
+    "rulesWorker": "PASSED",
+    "rolloutWorker": "PASSED",
+    "mqttWorker": "PASSED",
+    "mqttSubscription": "mqtt.subscribed",
+    "workerSigterm": {
+      "status": "3/3 PASSED",
+      "exitCodes": [0, 0, 0],
+      "stopSecondsApprox": [0.34, 0.32, 0.37]
+    },
+    "acceptanceDatabaseMigrations": 47
+  },
+  "previousPrismaCycleErrors": {
+    "classification": "ENVIRONMENT_TEST_HARNESS_ISSUE",
+    "cause": "smoke used the wrong local Compose database instead of the isolated 47-migration Acceptance database",
+    "retestedWithCorrectAcceptanceDatabase": true,
+    "productDefectDemonstrated": false
+  },
+  "decision": {
+    "localSoftwareAcceptance": "PASSED",
+    "meterwerkV1RcPreparation": "READY",
+    "localSoftwareReleaseBlocker": "NONE"
+  },
+  "externalValidationPending": [
+    "Remote CI",
+    "Real staging",
+    "Signing verification",
+    "Provider validation",
+    "PITR / full restore",
+    "HA / failover",
+    "Representative production load"
+  ],
+  "hardwareValidationPending": [
+    "Real electricity, water, gas and heat meters",
+    "Gateways",
+    "Modbus RTU/TCP",
+    "M-Bus",
+    "Wireless M-Bus",
+    "Pulse",
+    "LoRaWAN",
+    "Manufacturer-specific devices"
+  ],
+  "productionRelease": false,
+  "pushTagDeployment": false
+}
