@@ -1,5 +1,15 @@
 # Deployment
 
+## Externes Staging v1.0 RC
+
+Der aktuelle verbindliche Vorbereitungsablauf steht in [STAGING.md](STAGING.md),
+die Befunde in [Staging Deployment Readiness](acceptance/STAGING-DEPLOYMENT-READINESS.md).
+Baseline ist `dce9b24958cee9c0ceb5ef9424767177c7dbc9bf`.
+Registry, Provider, Proxy/TLS und ergänzende Staging-Infrastruktur sind noch offen.
+Das Staging-Compose nicht unverändert vollständig starten. Es benötigt insbesondere
+Brokerkonfiguration/mTLS, vollständige Secret-Injektion, Restart-/Shutdown-Vorgaben
+und einen separaten Migration-Runner. Kein Deployment wurde ausgeführt.
+
 Diese Anleitung beschreibt einen providerunabhängigen, kontrollierten App-Rollout. Compose-Dateien sind Referenzen, keine Behauptung eines erfolgreich validierten Produktionsstacks. Keine Produktions-Credentials in Dateien, Images oder Git speichern.
 
 ## Voraussetzungen
@@ -27,4 +37,4 @@ Deployment stoppen, Fehler sichern und vorheriges kompatibles Image nur nach Sch
 
 ## Reifegrad
 
-CI-Build und Release-Artefakt sind vorhanden. Release Workflow führt kein automatisches Staging-/Production-Deployment aus. Das Staging-Compose enthält aktuell nicht validierte Worker-/Storage-Referenzen; vor Verwendung an reale Image-Entrypoints und Storage-Konfiguration anpassen, isoliert starten und [Staging Readiness](STAGING.md) durchführen. Keine reale Hardware erforderlich oder hier getestet.
+CI-Build und Release-Artefakt sind vorhanden. Release Workflow führt kein automatisches Staging-/Production-Deployment und keinen Registry-Push aus. Separate Worker-Entrypoints und lokales Attachment-Volume sind im Staging-Compose vorhanden; der externe Gesamtstack ist nicht validiert. Die offenen Infrastrukturvoraussetzungen aus [Staging Readiness](STAGING.md) zuerst erfüllen. Keine reale Hardware erforderlich oder hier getestet.

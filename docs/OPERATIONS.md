@@ -1,5 +1,21 @@
 # Betriebs- und Operations-Handbuch
 
+## Externes Staging
+
+Verbindliche Start-, Smoke-, Backup- und Rollback-Schritte sowie Monitoring-Schwellen
+stehen in [STAGING.md](STAGING.md). Noch kein externer Betrieb nachgewiesen.
+Web mindestens 30 Sekunden Shutdown-Frist; Worker und PostgreSQL zunächst 60,
+MQTT/Proxy 30 Sekunden. Startvorgabe: begrenzte on-failure-Restarts mit externem
+Alarm und manuellem Stopp bei wiederholtem Konfigurationsfehler. Im bestehenden
+Staging-Compose sind diese Vorgaben noch nicht umgesetzt.
+
+Der lokale Backup-Helfer verwendet Standard-Compose und Datenbanknutzer/-name
+meterwerk; er darf nicht unverändert für meterwerk_staging verwendet werden.
+Backups separat verschlüsselt speichern und Restore in neuer isolierter DB prüfen.
+Readiness prüft DB, nicht MQTT/Worker/Storage; Prozessstatus durch fachlichen
+Fortschritt und Queue-/Lease-Überwachung ergänzen. Mail ist derzeit lokale
+In-Memory-Outbox; SMTP/API sind keine implementierte externe Zustellung.
+
 ## Dienste und Health
 
 Web liefert `/api/health/live`, `/api/health/ready` und `/api/system/build-info`. PostgreSQL ist die fachliche Datenquelle; MQTT, Web, Rules-/Rollout-/Notification-Worker und Object Storage werden getrennt überwacht. Logs enthalten keine Secrets oder unnötigen Kundendaten.
