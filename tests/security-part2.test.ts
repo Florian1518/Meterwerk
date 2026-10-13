@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { assertWorkflowSecurity } from "../scripts/workflow-security-policy.mjs";
 import { attachmentError } from "@/lib/attachment-validation";
 import { csvCell } from "@/lib/modbus/csv";
 import { pdfText, downloadDisposition } from "@/lib/report-security";
@@ -154,14 +155,66 @@ describe("Phase 5r part 2 security boundaries", () => {
   it("pins workflow actions and limits permissions", () => {
     for (const file of readdirSync(".github/workflows")) {
       const workflow = readFileSync(`.github/workflows/${file}`, "utf8");
-      expect(workflow).not.toMatch(
-        /pull_request_target|write-all|packages: write|contents: write/,
-      );
-      for (const action of workflow.matchAll(/uses:\s+([^\s#]+)/g))
-        if (!action[1].startsWith("./"))
-          expect(action[1]).toMatch(/@[a-f0-9]{40}$/);
-      expect(workflow).toContain("contents: read");
-      expect(workflow).toContain("persist-credentials: false");
+      assertWorkflowSecurity(file, workflow);
     }
+  });
+  it.each(["push", "pull_request", "schedule", "workflow_run"])(
+    "rejects automatic publish trigger %s",
+    (trigger) => {
+      const text = readFileSync(".github/workflows/publish-images.yml", "utf8");
+      expect(() =>
+        assertWorkflowSecurity(
+          "publish-images.yml",
+          text.replace(
+            "  workflow_dispatch:",
+            `  workflow_dispatch:\n  ${trigger}:`,
+          ),
+        ),
+      ).toThrow();
+    },
+  );
+  it.each(["ci.yml", "release.yml", "other.yml"])(
+    "rejects package write outside publish-images.yml: %s",
+    (file) => {
+      const text = readFileSync(".github/workflows/publish-images.yml", "utf8");
+      expect(() => assertWorkflowSecurity(file, text)).toThrow();
+    },
+  );
+  it.each(["contents: write", "contents: write-all"])(
+    "rejects publish permission escalation %s",
+    (permission) => {
+      const text = readFileSync(".github/workflows/publish-images.yml", "utf8");
+      expect(() =>
+        assertWorkflowSecurity(
+          "publish-images.yml",
+          text.replace("contents: read", permission),
+        ),
+      ).toThrow();
+    },
+  );
+  it.each(["docker login ghcr.io", "docker push ghcr.io/example/image"])(
+    "rejects registry mutations in release: %s",
+    (command) => {
+      const text = readFileSync(".github/workflows/release.yml", "utf8");
+      expect(() =>
+        assertWorkflowSecurity(
+          "release.yml",
+          `${text}\n      - run: ${command}\n`,
+        ),
+      ).toThrow();
+    },
+  );
+  it.each([
+    "kubectl apply -f deployment.yml",
+    "helm upgrade app chart",
+    "docker stack deploy app",
+  ])("rejects deployment even in manual publish: %s", (command) => {
+    const text = readFileSync(".github/workflows/publish-images.yml", "utf8");
+    expect(() =>
+      assertWorkflowSecurity(
+        "publish-images.yml",
+        `${text}\n      - run: ${command}\n`,
+      ),
+    ).toThrow();
   });
 });

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
+import { assertWorkflowSecurity } from "./workflow-security-policy.mjs";
+
+for (const file of readdirSync(".github/workflows"))
+  assertWorkflowSecurity(
+    file,
+    readFileSync(`.github/workflows/${file}`, "utf8"),
+  );
 
 const require = createRequire(realpathSync("node_modules/eslint/package.json"));
 const yaml = require("js-yaml");
@@ -66,5 +73,5 @@ assert.match(
   "Worker runtime gate enforces physical image content inspection",
 );
 console.log(
-  "CI/release static configuration passed: actions pinned, read-only permissions, docs/artifact/runtime/worker/SBOM gates present, no push/deploy",
+  "Workflow security passed: package write only in manual publish-images.yml; CI/release read-only, no registry writes/deployments; docs/artifact/runtime/worker/SBOM gates present",
 );

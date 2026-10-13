@@ -1,0 +1,91 @@
+name: Publish Images
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  quality:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: quality
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: meterwerk
+          POSTGRES_PASSWORD: meterwerk
+          POSTGRES_DB: meterwerk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U meterwerk -d meterwerk"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      mqtt:
+        image: eclipse-mosquitto:2
+        ports: ["1883:1883"]
+    env:
+      APP_URL: http://localhost:3000
+      METERWERK_ENV: test
+      NEXT_PUBLIC_METERWERK_ENV: test
+      NODE_ENV: production
+      GIT_COMMIT_SHA: ${{ github.sha }}
+      RELEASE_VERSION: ${{ github.sha }}
+      DATABASE_URL: postgresql://meterwerk:meterwerk@localhost:5432/meterwerk
+      SESSION_SECRET: ci-only-synthetic-session-secret
+      MFA_ENCRYPTION_KEY: ci-only-synthetic-mfa-key-32-bytes
+      WEBHOOK_SECRET_ENCRYPTION_KEY: ci-only-synthetic-mfa-key-32-bytes
+      SEED_DEMO: "true"
+      DEMO_PASSWORD: ci-only-synthetic-demo-password
+      EMAIL_PROVIDER: local
+      ATTACHMENT_STORAGE: local
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with: { version: 12.5.1 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile --prod=false
+      - run: pnpm db:generate
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:seed
+      - run: pnpm migration:check
+      - name: Record immutable build timestamp
+        run: echo "BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - run: node scripts/verify-worker-image-static.mjs
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify Docker daemon
+        run: docker version && docker info
+      - name: Build Web and Worker images
+        run: |
+          docker build -f Dockerfile \
+            --build-arg VERSION="$RELEASE_VERSION" \
+            --build-arg GIT_SHA="$GITHUB_SHA" \
+            --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+            -t "meterwerk-web:$GITHUB_SHA" .
+          docker build -f Dockerfile.worker \
+            --build-arg VERSION="$RELEASE_VERSION" \
+            --build-arg GIT_SHA="$GITHUB_SHA" \
+            --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+            -t "meterwerk-worker:$GITHUB_SHA" .
+      - name: Smoke Web image
+        env:
+          METERWERK_WEB_IMAGE: meterwerk-web:${{ github.sha }}
+        run: node scripts/verify-web-image-runtime.mjs
+      - name: Smoke Worker image
+        env:
+          METERWERK_WORKER_IMAGE: meterwerk-worker:${{ github.sha }}
+        run: node scripts/verify-worker-image-runtime.mjs
+      - name: Log in to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Publish Web and Worker images to GHCR
+        run: |
+          docker tag "meterwerk-web:$GITHUB_SHA" "ghcr.io/florian1518/meterwerk-web:$GITHUB_SHA"
+          docker tag "meterwerk-worker:$GITHUB_SHA" "ghcr.io/florian1518/meterwerk-worker:$GITHUB_SHA"
+          docker push "ghcr.io/florian1518/meterwerk-web:$GITHUB_SHA"
+          docker push "ghcr.io/florian1518/meterwerk-worker:$GITHUB_SHA"

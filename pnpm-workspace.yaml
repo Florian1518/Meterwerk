@@ -11,3 +11,16 @@ allowBuilds:
 overrides:
   mysql2: 3.23.1
   deepmerge-ts: 8.0.2
+
+# Temporary exception, reviewed 2026-10-13 (pnpm 12.5.1).
+# No patched upstream braces version is published. Dev/lint chain only:
+# eslint-config-next -> @next/eslint-plugin-next -> fast-glob -> micromatch -> braces.
+# Absent from the production dependency graph, Web standalone and Worker runtime
+# file trace; Docker runtime stages copy only these deployment artifacts.
+# Local Linux image verification was unavailable (Docker daemon not running).
+# REMOVE this exception as soon as upstream publishes a patched version or a
+# dependency chain without braces; update dependencies and rerun the full audit.
+# Official configuration: https://pnpm.io/cli/audit#auditconfigignoreghsas
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
