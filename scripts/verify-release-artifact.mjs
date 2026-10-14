@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { resolve, relative } from "node:path";
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, resolve, relative } from "node:path";
 
 const version = process.env.RELEASE_VERSION ?? "0.1.0";
 assert.match(version, /^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/);
@@ -191,8 +197,7 @@ writeFileSync(
     .sort()
     .join("\n") + "\n",
 );
-writeFileSync(
-  ".local/acceptance/resume-artifact-results.json",
-  JSON.stringify(report, null, 2),
-);
+const reportPath = ".local/acceptance/resume-artifact-results.json";
+mkdirSync(dirname(reportPath), { recursive: true });
+writeFileSync(reportPath, JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 2));
