@@ -5,6 +5,7 @@ import {
   readFileSync,
   writeFileSync,
   chmodSync,
+  statSync,
   readdirSync,
   unlinkSync,
   rmdirSync,
@@ -80,7 +81,9 @@ for (const key of [
 const envFile = join(root, "fixture.env");
 writeFileSync(
   envFile,
-  "# No actual secrets; all variables supplied by isolated test environment.\n",
+  `${Object.entries(values)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n")}\n`,
 );
 const composeArgs = [
   "compose",
@@ -110,6 +113,27 @@ function compose(overrides = {}) {
 
 test("actual Compose merge keeps loopback-only Web, private DB/MQTT and mandatory staging settings", () => {
   const config = compose();
+  const mqttWorkerMounts = config.services["mqtt-worker"].volumes.filter(
+    (volume) => volume.type === "bind",
+  );
+  assert.equal(
+    mqttWorkerMounts.length,
+    4,
+    "Expected all four MQTT worker file mounts",
+  );
+  for (const volume of mqttWorkerMounts) {
+    const details = `source=${volume.source} target=${volume.target}`;
+    assert.equal(volume.read_only, true, `${details}: mount must be read-only`);
+    assert.equal(
+      volume.bind?.create_host_path,
+      false,
+      `${details}: Compose must not create the host path`,
+    );
+    assert.ok(
+      statSync(volume.source, { throwIfNoEntry: false })?.isFile(),
+      `${details}: source must exist as a file before Compose validation`,
+    );
+  }
   assertStagingConfig(config);
   assert.equal(
     config.services["mqtt-worker"].volumes.filter(
