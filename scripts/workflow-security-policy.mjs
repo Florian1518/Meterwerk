@@ -5,6 +5,116 @@ import { createRequire } from "node:module";
 const require = createRequire(realpathSync("node_modules/eslint/package.json"));
 const yaml = require("js-yaml");
 
+function assertThreeImagePublish(workflow) {
+  const job = workflow.jobs.publish;
+  assert.equal(job.env.GIT_COMMIT_SHA, "${{ github.sha }}");
+  assert(!job["continue-on-error"]);
+  const steps = job.steps;
+  const runs = steps.map((step) =>
+    (step.run ?? "").replace(/\\\r?\n\s*/g, " "),
+  );
+  const allRuns = runs.join("\n");
+  const login = runs.findIndex((run) => /\bdocker login\b/.test(run));
+  assert(
+    login >= 0,
+    "Manual publish requires a registry login after the gates",
+  );
+  assert.equal(runs.filter((run) => /\bdocker login\b/.test(run)).length, 1);
+  assert.match(
+    runs[login],
+    /docker login ghcr\.io --username "\$GITHUB_ACTOR" --password-stdin/,
+  );
+  const checkout = steps.find((step) =>
+    step.uses?.startsWith("actions/checkout@"),
+  );
+  assert.equal(checkout?.with?.ref, "${{ github.sha }}");
+  for (const env of [workflow.env, job.env, ...steps.map((step) => step.env)])
+    assert(
+      !env || !("GITHUB_SHA" in env),
+      "Do not override the immutable GitHub SHA",
+    );
+  assert.doesNotMatch(allRuns, /(?:^|[;\n])\s*(?:export\s+)?GITHUB_SHA=/);
+
+  const images = ["web", "worker", "migrations"];
+  const pushes = [...allRuns.matchAll(/^\s*docker push "([^"]+)"\s*$/gm)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(
+    pushes,
+    images.map((name) => `ghcr.io/florian1518/meterwerk-${name}:$GITHUB_SHA`),
+    "Only the three approved repositories with commit-SHA tags may be pushed",
+  );
+  assert.equal([...allRuns.matchAll(/\bdocker\s+push\b/g)].length, 3);
+  const tags = [
+    ...allRuns.matchAll(/^\s*docker tag "([^"]+)" "([^"]+)"\s*$/gm),
+  ].map((match) => match.slice(1));
+  assert.deepEqual(
+    tags,
+    images.map((name) => [
+      `meterwerk-${name}:$GITHUB_SHA`,
+      `ghcr.io/florian1518/meterwerk-${name}:$GITHUB_SHA`,
+    ]),
+  );
+  const builds = [...allRuns.matchAll(/^\s*docker build (.+)$/gm)].map(
+    (match) => match[1],
+  );
+  assert.equal(builds.length, 3);
+  for (const [index, name] of images.entries()) {
+    const dockerfile = name === "web" ? "Dockerfile" : `Dockerfile.${name}`;
+    assert(
+      builds[index].startsWith(`-f ${dockerfile} `),
+      `${name}: correct Dockerfile required`,
+    );
+    assert(
+      builds[index].includes('--build-arg GIT_SHA="$GITHUB_SHA"'),
+      `${name}: revision build argument required`,
+    );
+    assert(
+      builds[index].includes(`-t "meterwerk-${name}:$GITHUB_SHA" .`),
+      `${name}: exact commit-SHA build tag required`,
+    );
+  }
+  assert(builds[0].includes("--build-arg NEXT_PUBLIC_METERWERK_ENV=staging"));
+  const gates = [
+    "node scripts/verify-release-artifact.mjs",
+    "node scripts/verify-worker-image-static.mjs",
+    "docker build -f Dockerfile ",
+    "docker build -f Dockerfile.worker ",
+    "docker build -f Dockerfile.migrations ",
+    "pnpm db:generate && pnpm exec prisma --version",
+    "pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status",
+    "node scripts/verify-web-image-runtime.mjs",
+    "node scripts/verify-worker-image-runtime.mjs",
+  ];
+  for (const gate of gates) {
+    const index = runs.findIndex((run) => run.includes(gate));
+    assert(
+      index >= 0 && index < login,
+      `Required gate must precede registry login: ${gate}`,
+    );
+    assert(
+      !steps[index].if && !steps[index]["continue-on-error"],
+      "Publish gates must not be skipped or ignored",
+    );
+    assert.doesNotMatch(
+      runs[index],
+      /\|\|\s*(?:true|:)|\bset\s+\+e\b/,
+      "Do not swallow a publish gate failure",
+    );
+  }
+  for (const [index, run] of runs.entries())
+    if (/\bdocker\s+(?:tag|push)\b/.test(run))
+      assert(index > login, "Tag/push must follow checks and login");
+  for (const [name, other] of Object.entries(workflow.jobs))
+    if (name !== "publish")
+      for (const step of other.steps ?? [])
+        assert.doesNotMatch(
+          step.run ?? "",
+          /\bdocker\s+(?:login|push)\b/,
+          "Registry mutations belong only in the gated publish job",
+        );
+}
+
 export function assertWorkflowSecurity(file, text) {
   const workflow = yaml.load(text);
   const publish = file === "publish-images.yml";
@@ -18,6 +128,7 @@ export function assertWorkflowSecurity(file, text) {
     });
     assert.equal(workflow.jobs.quality.uses, "./.github/workflows/ci.yml");
     assert.equal(workflow.jobs.publish.needs, "quality");
+    assertThreeImagePublish(workflow);
   }
   for (const permissions of [
     workflow.permissions,

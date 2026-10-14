@@ -1,6 +1,7 @@
 ARG VERSION=unknown
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
+ARG NEXT_PUBLIC_METERWERK_ENV=production
 
 FROM node:22-alpine AS deps
 WORKDIR /app
@@ -13,11 +14,13 @@ WORKDIR /app
 ARG VERSION
 ARG GIT_SHA
 ARG BUILD_TIMESTAMP
+ARG NEXT_PUBLIC_METERWERK_ENV
 RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1 BUILD_VERSION=$VERSION \
-  GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+  GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP \
+  NEXT_PUBLIC_METERWERK_ENV=$NEXT_PUBLIC_METERWERK_ENV
 RUN DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build pnpm build
 RUN node scripts/copy-argon2-runtime.mjs /app/.next/standalone
 
@@ -26,12 +29,15 @@ WORKDIR /app
 ARG VERSION
 ARG GIT_SHA
 ARG BUILD_TIMESTAMP
+ARG NEXT_PUBLIC_METERWERK_ENV
 LABEL org.opencontainers.image.version=$VERSION \
   org.opencontainers.image.revision=$GIT_SHA \
   org.opencontainers.image.created=$BUILD_TIMESTAMP \
-  org.opencontainers.image.base.name=node:22-alpine
+  org.opencontainers.image.base.name=node:22-alpine \
+  de.meterwerk.environment=$NEXT_PUBLIC_METERWERK_ENV
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 BUILD_VERSION=$VERSION \
-  GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+  GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP \
+  NEXT_PUBLIC_METERWERK_ENV=$NEXT_PUBLIC_METERWERK_ENV
 RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
 RUN mkdir -p /app/.local/attachments && chown -R meterwerk:meterwerk /app/.local
 COPY --from=builder --chown=meterwerk:meterwerk /app/.next/standalone ./

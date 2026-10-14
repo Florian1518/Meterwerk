@@ -1,28 +1,28 @@
 ﻿# Externes Staging – Meterwerk v1.0 RC
 
-Stand 2026-10-02. Baseline: `dce9b24958cee9c0ceb5ef9424767177c7dbc9bf`; validierter Code: `0186e076331f34dd10aefd6192c11417f25e2c04`. Lokale Acceptance und Remote-CI sind laut freigegebenem RC-Stand PASSED; Next.js 16.3.8, Dependency Audit 0 Advisories. Historische Audit-Blockaden gelten nicht als aktueller Befund. Diese Prüfung wiederholt keine Software-Acceptance.
+Konfigurationsstand 2026-10-14 für Ubuntu 24.04 auf IONOS und `staging.fesch-elektrotechnik.de`. Apache belegt auf dem Host bereits 80/443; der Meterwerk-VHost ist nur vorbereitet, nicht eingerichtet. Bestehende notrust.me-VHosts sowie Mail-, DNS-, Web-, MariaDB- und Webmin-Dienste bleiben unverändert. Historische Acceptance-Nachweise beziehen sich auf ihre jeweils dokumentierte Revision, nicht automatisch auf diese Änderungen. Aktuelle Images und Migration-Runner müssen aus demselben freigegebenen Commit neu gebaut, geprüft und per Digest ausgewählt werden. Diese Vorbereitung ist kein Deployment- oder Runtime-Nachweis.
 
 **STAGING_DEPLOYMENT_PENDING: JA.** Vorbereitung, kein Deploymentnachweis. Keine Production-Ressourcen, Kundendaten, Hardware, echten Nachrichten oder Abrechnungen verwenden. Keine Ressourcen, Secrets, GitHub Environments oder Tags wurden angelegt. Siehe [Readiness-Bericht](acceptance/STAGING-DEPLOYMENT-READINESS.md).
 
 ## Bestand und Lücken
 
-| Bereich    | Vorhanden                                                            | Vor externem Start offen                                                      |
-| ---------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Web        | Non-root Standalone-Image, Liveness, OCI-Metadaten                   | Registry-Digest, Proxy/TLS, vollständige Konfiguration                        |
-| Worker     | Eigenes Image; Rules, Rollout, MQTT; Signalbehandlung                | Drei überwachte Prozesse, mTLS-Mounts, Restart/Grace                          |
-| Compose    | Eigenständige compose.staging.yaml, internes Netz, getrennte Volumes | Geprüfte Infrastruktur-Ergänzung, kein unveränderter Vollstart                |
-| PostgreSQL | Version 17, pg_isready, 47 Migrationen                               | Leeres isoliertes Ziel, Migration-Runner, Backup/Restore                      |
-| MQTT       | Mosquitto-Image und lokaler Healthcheck                              | Brokerkonfiguration fehlt im Staging-Compose; Worker-Konnektivität unbewiesen |
-| Storage    | Privates persistentes Attachment-Volume                              | Non-root-Schreibrechte, Backup, Kapazitätsalarm                               |
-| CI         | Tests, Web-/Worker-Build, Runtime-Prüfungen, SBOM                    | Kein Registry-Login/Push oder Deployment                                      |
-| Betrieb    | Smoke-Script, Backup-Helfer, Betriebsdokumentation                   | Providerintegration, Alarme, externe Laufzeitnachweise                        |
+| Bereich    | Vorbereitet                                                                             | Vor externem Start nachzuweisen                                                      |
+| ---------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Web        | Staging-Buildargument, Non-root-Image, Loopback-Port, HTTPS-Proxyvorlage                | Neuer Digest, DNS/Web-TLS, Zugriffsliste, sichtbares STAGING-Label                   |
+| Worker     | Drei getrennte Prozesse, Restart/Grace, mTLS-Dateimounts                                | Zertifikatsrechte, Subskription, fachlicher Fortschritt und Drain                    |
+| Compose    | `compose.staging.yaml` plus `compose.staging.external.yaml`, internes Netz, Logrotation | Externe Pflichtwerte, gepinnte Digests, Preflight auf dem Zielhost                   |
+| PostgreSQL | Version 17, eigener Migration-Runner mit vollständiger Prisma-CLI                       | Leere isolierte DB, Migrationen, Backup/Restore                                      |
+| MQTT       | Eigene TLS/ACL-Konfiguration, mTLS-Healthcheck, keine Host-Ports                        | CA/CRL, Server-/Client-/Health-Zertifikate, echte TLS-/ACL-Prüfung                   |
+| Storage    | Privates persistentes Attachment-Volume, Image mit vorbereitetem Eigentümer             | Non-root-Schreibrechte des frischen Volumes, Backup, Kapazitätsalarm                 |
+| CI         | Manueller GHCR-Publish für Web/Worker/Migrationen mit Commit-SHA-Tags                   | Neuer erfolgreicher Build und dokumentierte Digests; kein Deploymentworkflow         |
+| Betrieb    | Host-Proxy-/Env-Vorlagen, Konfigurations-/Image-Preflight, Runbook                      | IONOS-Bereitstellung, Offsite-Backups, Monitoring/Alarmzustellung, Runtime-Nachweise |
 
-Staging-Compose ausschließlich eigenständig verwenden, nicht mit compose.yaml, compose.production.yaml oder compose.pilot.yaml kombinieren. Basisdateien haben andere Nutzer, Volumes, Ports und Sicherheitsannahmen. Staging veröffentlicht keine DB-/MQTT-Ports; Web bindet an Host-Loopback:3000. MQTT mountet keine Brokerkonfiguration: ein lokaler Broker-Healthcheck belegt keine Worker-Erreichbarkeit. infra/mosquitto/mosquitto.conf erlaubt anonymen Development-Zugriff und ist ungeeignet. pilot.conf/pilot.acl sind mTLS-Referenzen, benötigen eigene Staging-Zertifikate, CRL und Health-ACLs. Kein Web-Reverse-Proxy oder Web-TLS-Artefakt vorhanden.
+Staging ausschließlich mit dem Paar `compose.staging.yaml` und `compose.staging.external.yaml` verwenden, nicht mit compose.yaml, compose.production.yaml oder compose.pilot.yaml kombinieren. Die Basisdatei allein ist keine sichere externe Startkonfiguration. Das Overlay ersetzt insbesondere die alten MQTT-/Health-/URL-Werte. Kein Meterwerk-Container veröffentlicht 80/443, DB- oder MQTT-Ports; Web bindet ausschließlich an `127.0.0.1:3000:3000`. `infra/mosquitto/staging.conf` und `staging.acl` sind die eigenen mTLS-Vorlagen. Die anonyme Development-Konfiguration darf nicht eingebunden werden. [apache-staging.conf.example](../infra/staging/apache-staging.conf.example) beschreibt ausschließlich einen zusätzlichen namensbasierten VHost im vorhandenen Host-Apache. Kein zusätzlicher Proxycontainer oder zweiter Webserver; keine Änderungen an vorhandenen Listenern oder VHosts. Zertifikatspfade sind Platzhalter, Zertifikate werden ausschließlich extern bereitgestellt.
 
 ## Zielarchitektur
 
 ```text
-Internet -> HTTPS:443 / Reverse Proxy -> Meterwerk Web:3000
+Internet -> vorhandener Host-Apache:443 -> 127.0.0.1:3000 / Meterwerk Web
                      |
             privates Staging-Netz
             Web, Rules Worker, Rollout Worker, MQTT Worker
@@ -33,7 +33,7 @@ Internet -> HTTPS:443 / Reverse Proxy -> Meterwerk Web:3000
 Backups -> verschlüsselter separater Speicher außerhalb des DB-Volumes
 ```
 
-Proxy auf dem Host vor Loopback:3000 oder als Container mit Edge-Netz und privatem Backendzugang. Containerproxy verwendet web:3000; DB db:5432; MQTT mqtt:8883. localhost nur für Selbsttests. Öffentlich ausschließlich HTTPS sowie gegebenenfalls HTTP für Redirect/ACME; Administration über eingeschränkten SSH-/VPN-Zugang. Worker, DB, MQTT, Management und MQTT-WebSockets bleiben privat. Nur Web wird öffentlich geroutet.
+Der vorhandene Host-Apache routet später ausschließlich den neuen Staging-VHost auf Loopback:3000. Kein Edge-/Proxycontainer und keine Übernahme der Host-Ports 80/443 durch Compose. DB bleibt db:5432, MQTT mqtt:8883 im internen Containernetz. Für Meterwerk öffentlich nur HTTPS sowie HTTP-Redirect; Administration über eingeschränkten SSH-/VPN-Zugang. Worker, DB, MQTT und MQTT-WebSockets bleiben privat. Bestehende Hostdienste und ihre Freigaben werden hier weder umkonfiguriert noch abgeschaltet.
 
 Das bestehende internal-Netz verhindert regulären externen Egress. Externe Webhooks/Storage/Mail benötigen später kontrollierten Egress; anfangs deaktivieren. Getrennte Staging-Daten, Volumes und Secrets, keine Production-Credentials. Eine einzelne VM ist keine HA-Architektur.
 
@@ -72,29 +72,27 @@ REQUIRED bedeutet verbindlich für sicheren Staging-Betrieb, auch wenn der Code 
 
 MQTT_URL ist kein Worker-Verbindungsalias. Separate MQTT_HOST/MQTT_PORT werden nicht gelesen. STORAGE_ENDPOINT, WEBHOOK_BASE_URL, PUSH_API_URL und BACKUP_STORAGE_ENDPOINT kommen in Isolation-Prüfungen vor, konfigurieren aber keinen Dienst. API-Schlüssel und Webhook-Signatursecrets werden fachlich verwaltet; keine allgemeine API_KEY-/SIGNING_SECRET-Variable. Gateway-Schlüssel werden separat registriert; Benutzer-Cookies sind kein Gerätezugang. Kein Error-Tracking-DSN oder Backup-Scheduler wird durch erfundene Variablen eingerichtet.
 
-Compose reicht MFA-/Webhook-Schlüssel, Hostkonfiguration und mTLS-Mounts derzeit nicht durch: vor Start ergänzen. .env.example nicht ungeprüft kopieren, insbesondere SEED_DEMO=true entfernen. Lokale .env wurde nicht ausgelesen. Isolation-Guards sind heuristisch und kein Nachweis der Provider-/Kontozugehörigkeit.
+Das externe Overlay reicht MFA-/Webhook-Schlüssel, Hostkonfiguration und mTLS-Mounts explizit durch. Als Inventar ausschließlich [staging.env.example](../infra/staging/staging.env.example) verwenden: erforderliche Secrets und Image-Referenzen sind absichtlich leer. Die lokale Development-.env nicht übernehmen. `STAGING_DATABASE_URL` enthält das URL-kodierte Passwort und wird als `DATABASE_URL` injiziert; der Preflight vergleicht es mit `STAGING_POSTGRES_PASSWORD`. `BASE_DOMAIN` und `TRUSTED_HOSTS` sind auf den einzelnen Staging-Host festgelegt. `STAGING_SESSION_SECRET` wird in allen App-Prozessen zu `SESSION_SECRET`. `SMOKE_BASE_URL` ist eine Operatorvariable. Buildargumente gehören zum CI-Build, nicht in eine Runtime-Secretdatei. Isolation-Guards sind heuristisch und kein Nachweis der Provider-/Kontozugehörigkeit.
 
 ## Container und GitHub-Verknüpfung
 
-Commit -> bestehende erfolgreiche CI-Evidenz -> getrennte Linux-amd64-Web-/Worker-Builds -> gewählte Registry -> aufgezeichnete Digests -> manuelle Staging-Promotion. Vorhandene Workflows bauen Images, veröffentlichen sie nicht. Jetzt kein Workflowstart und keine Registryeinrichtung. Tags dienen zur Suche; Deployment per Digest. PostgreSQL, MQTT und Proxy ebenfalls versionieren/pinnen.
+Commit -> erfolgreiche CI -> getrennte Linux-amd64-Web-/Worker-/Migration-Builds -> manueller Publish nach GHCR -> aufgezeichnete Digests -> manuelle Staging-Promotion. `publish-images.yml` veröffentlicht `ghcr.io/florian1518/meterwerk-web`, `meterwerk-worker` und `meterwerk-migrations`, jeweils mit exaktem Commit-SHA als Tag. Alle Builds, Artifact-/Static-/Runtime-Smokes einschließlich Migration-Tooling und isolierter CI-Datenbank laufen vor dem Registry-Login. Die Workflow-Policy sichert die drei erlaubten Repository-/SHA-Tag-Paare und diese Reihenfolge ab. Tags dienen nur zur Suche; Deployment per Digest. `release.yml` bleibt ein prüfender Workflow ohne Registry-Push. PostgreSQL 17 und Mosquitto 2 über `STAGING_POSTGRES_IMAGE`/`STAGING_MQTT_IMAGE` ebenfalls mit geprüften Digests pinnen; die bestehende Apache-Paketversion dokumentieren, keinen globalen Webserverwechsel durchführen. Jetzt keinen Workflow starten.
 
-Frozen Lockfile vorhanden; mutable node:22-alpine verhindert die Behauptung byteidentischer Rebuilds. Beim späteren Build Basisdigests/Toolchain fixieren oder erfassen, Buildargumente, SBOM, OCI-Revision und Digests archivieren. Der Web-Dockerfile hat kein dediziertes NEXT_PUBLIC_METERWERK_ENV-Buildargument: minimalen Buildkonfigurationsschritt vor Promotion ergänzen und sichtbares Label prüfen. Keine Secrets als Buildargs. Migration-Runner aus derselben Revision separat bereitstellen; Runtimeimages enthalten nicht zugesichert die vollständige Prisma-Administration.
+Frozen Lockfile vorhanden; mutable node:22-alpine verhindert die Behauptung byteidentischer Rebuilds. Beim Build Basisdigests/Toolchain erfassen, Buildargumente, SBOM, OCI-Revision und Digests archivieren. Der Web-Dockerfile erhält `NEXT_PUBLIC_METERWERK_ENV` vor `pnpm build`; der Publish-Workflow setzt explizit `staging`. Das Image trägt zusätzlich `de.meterwerk.environment=staging`. Ein neuer Web-Build ist erforderlich; eine Runtimevariable kann alte Browser-Bundles nicht korrigieren. Worker und Migration-Runner werden im selben Publish aus derselben Revision erzeugt. Der Worker-Build prüft unveränderte getrackte Quelldateien vor `GIT_WORKING_TREE=clean`; generierte Audit-Nachweise zählen nicht zum Worker-Quellstand. Keine Secrets als Buildargs. Das separate `Dockerfile.migrations` enthält Prisma-CLI, eingefrorene vollständige Dependencies, Schema/Migrationen und den unveränderten Baseline-Check. Web-/Worker-Runtime bleiben schlank; insbesondere der Worker enthält weder Prisma-CLI noch Paketmanager.
 
 Vorgeschlagene spätere GitHub-Namen, noch nicht implementiert: Environment staging; REGISTRY_HOST, REGISTRY_WEB_REPOSITORY, REGISTRY_WORKER_REPOSITORY, REGISTRY_USERNAME, REGISTRY_PUBLISH_TOKEN, STAGING_SSH_HOST, STAGING_SSH_USER, STAGING_SSH_PRIVATE_KEY, STAGING_SSH_KNOWN_HOSTS. OIDC/kurzlebige Identitäten bevorzugen, sofern unterstützt. Publish-Recht nur für CI, Pull-Recht am Host. App-/DB-Secrets im Staging-Secretstore, keine Production-Rechte. Reviewer, Deployment-Sperre und Artefaktretention später einrichten. Kein grundloser erneuter Remote-CI-Lauf.
 
 ## Migration und synthetische Daten
 
-47 Migrationsverzeichnisse bestätigt. Neuer isolierter DB-Zielbestand muss leer sein. Kurzlebiger Runner im privaten Netz benötigt passenden Checkout, Node/pnpm, vollständige eingefrorene Abhängigkeiten, Prisma-CLI, Schema/Migrationen und Baseline-Script. DATABASE_URL sicher injizieren; keine DB-Portfreigabe als Abkürzung.
+Der neue isolierte DB-Zielbestand muss leer sein. Anzahl und Namen der Migrationen aus dem tatsächlich gewählten Commit prüfen, keine historische feste Anzahl als Sollwert verwenden. Der kurzlebige Service `migrations` liegt ausschließlich im Profil `operations` und im privaten Netz. Er verwendet `METERWERK_MIGRATIONS_IMAGE` per Digest. Corepack/pnpm und Prisma werden beim Image-Build bereitgestellt; Registry-Zugriff ist für die Runtime nicht nötig. `DATABASE_URL` wird sicher injiziert; keine DB-Portfreigabe als Abkürzung. Der Standardbefehl ist nur `prisma migrate status`, niemals eine automatische Schemaänderung.
 
 Sequenziell, jeder Fehler stoppt den Rollout:
 
 ```sh
-pnpm db:generate
-pnpm db:migrate
-pnpm exec prisma migrate status
+dc run --rm --no-deps migrations sh -ec 'pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status'
 ```
 
-Der db:migrate-Befehl prüft read-only Historie/Checksummen und führt prisma migrate deploy aus. Alle 47 Migrationen müssen abgeschlossen sein. Kein migrate dev, db push, reset oder Kaschieren von Checksummen. Web/Worker bleiben bis Erfolg gestoppt.
+Erst nach DB-Health und erfolgreichem Image-Preflight manuell ausführen. Alle drei Befehle laufen sequenziell im selben kurzlebigen Container; jeder Fehler beendet ihn erfolglos. Der db:migrate-Befehl prüft read-only Historie/Checksummen und führt prisma migrate deploy aus. Alle Migrationen des gewählten Commits müssen abgeschlossen sein. Kein migrate dev, db push, reset oder Kaschieren von Checksummen. Web/Worker bleiben bis Erfolg gestoppt. Der Runner wird anschließend entfernt; keine Migration beim normalen App-/Workerstart.
 
 Demo-Seed verweigert staging und verändert bei Wiederholung unter anderem Pläne/Subscriptions. Deshalb kein Seed im Staging-Start. Sicherer Vorbereitungsweg: einmaliger Seed in neuer isolierter lokaler Development-DB derselben Revision mit explizitem SEED_DEMO und geheim verwaltetem DEMO_PASSWORD; ausschließlich nachweisbar synthetische Daten exportieren. Für frisch migriertes Staging einen geprüften Daten-only-Import verwenden, FK-Reihenfolge/Transaktion beachten. Alternativ vollständigen synthetischen Dump in noch leere DB restaurieren und danach Baseline/Migrationsstatus prüfen; nicht beide Schemawege mischen. Kein Production-Dump, keine Umdeklaration bestehender Staging-DB als development. Individuelle Testzugänge vor Öffnung einrichten, gemeinsame Demo-Zugangsdaten nicht veröffentlichen, Seedvariablen entfernen. Ohne geprüfte Konten/Fixtures bleiben Login-/Tenant-Smokes offen.
 
@@ -104,7 +102,7 @@ Web live prüft Prozessantwort; ready prüft SELECT 1 und Secrets nur bei METERW
 
 Mindestvorgabe: Web stop_grace_period **30s** gegenüber ca. 11,90s gemessenem bisherigen Drain; Worker und PostgreSQL **60s**, MQTT/Proxy **30s**. Aktive Jobs können länger dauern: im Staging messen und Frist erhöhen; SIGKILL/Exit 137 ist kein erfolgreicher Drain. Proxy aus Routing nehmen, Web drainen, Worker stoppen, Broker/DB zuletzt.
 
-Für Web, drei Worker, DB und MQTT zunächst restart: on-failure:5; im Staging-Compose bislang nicht gesetzt. Host-Neustart über kontrollierten Service-Start mit Preflight absichern. Docker-Retryzähler ist kein dauerhafter Circuit Breaker: bei mehr als fünf Starts in zehn Minuten extern alarmieren und bis Diagnose stoppen. Keine blinde Autoheal-Schleife. Lebender Prozess kann fachlich stillstehen: Heartbeat/Zyklus/Queuefortschritt separat überwachen. Readiness steuert Traffic, nicht allein Restarts.
+Das Overlay setzt für Web, drei Worker, DB und MQTT `restart: on-failure:5`, Web/MQTT 30s sowie Worker/DB 60s Grace. Docker Compose unterstützt diese Restart-Policy; sie startet nach einem Docker-/Host-Neustart nicht automatisch den ganzen Stack. Host-Neustart über kontrollierten Service-Start mit Preflight absichern. Docker-Retryzähler ist kein dauerhafter Circuit Breaker: bei mehr als fünf Starts in zehn Minuten extern alarmieren und bis Diagnose stoppen. Keine blinde Autoheal-Schleife. Lebender Prozess kann fachlich stillstehen: Heartbeat/Zyklus/Queuefortschritt separat überwachen. Readiness steuert Traffic, nicht allein Restarts. Logrotation: json-file, 10 MiB x 5 pro Service; zentrale 14-Tage-Retention bleibt ein externer Betriebsauftrag.
 
 ## TLS und Security
 
@@ -134,7 +132,7 @@ Minimum: geschützte zentrale Web-/Worker-/MQTT-Logs, Rotation zunächst 10 MiB 
 
 ## Deployment-Runbook
 
-Vorbereiteter Operatorplan, hier nicht ausgeführt. Die nachfolgend genannte compose.staging.external.yaml ist ein **noch zu erstellendes Infrastrukturartefakt** nach Zielentscheidung: Proxy/Netze, mTLS/Health, vollständige Env-/Secret-Mounts, Restart/Grace/Loglimits und gepinnte Images. Kein Start mit fehlender Datei/Voraussetzungen.
+Vorbereiteter Operatorplan, hier nicht ausgeführt. `compose.staging.external.yaml`, MQTT-Konfiguration, Host-Proxyvorlage und Preflight sind vorhanden. Kein Start mit fehlenden externen Dateien, ungeprüften Digests oder fehlenden Infrastrukturvoraussetzungen. Für die Preflight-Scripts wird Node.js 22.12+ auf dem Admin-/Zielhost benötigt; Docker Compose muss die hier statisch geprüfte Syntax unterstützen.
 
 1. Provider/Server explizit beauftragen, separate Ressourcen/Backupziel/Administration bereitstellen.
 2. Gewählten DNS-Record setzen und Auflösung/Eigentum prüfen.
@@ -145,8 +143,10 @@ Vorbereiteter Operatorplan, hier nicht ausgeführt. Die nachfolgend genannte com
    ```sh
    set -eu
    dc() { docker compose --project-name meterwerk-staging --env-file "$STAGING_ENV_FILE" -f compose.staging.yaml -f compose.staging.external.yaml "$@"; }
-   dc config --quiet
-   dc pull
+   dc --profile operations config --quiet
+   node scripts/verify-staging-config.mjs "$STAGING_ENV_FILE"
+   dc --profile operations pull
+   node scripts/verify-staging-config.mjs "$STAGING_ENV_FILE" --images
    ```
 
    STAGING_ENV_FILE ist ein sicher injizierter externer Dateipfad. Syntaxcheck ersetzt keine Ziel-/Secretprüfung.
@@ -154,7 +154,7 @@ Vorbereiteter Operatorplan, hier nicht ausgeführt. Die nachfolgend genannte com
 6. `dc up -d --no-deps db`: neue isolierte DB starten.
 7. `dc up -d --no-deps mqtt`: privaten mTLS-Broker starten.
 8. `dc ps`, selektiven Healthstatus, SQL und mTLS-Pub/Sub prüfen; bei Fehler stoppen.
-9. Migration-Runner wie oben ausführen, Exitcode/47 Migrationen bestätigen. Kein Web-/Workerstart bei Fehler.
+9. Migration-Runner wie oben explizit ausführen, Exitcode und vollständigen Migrationsstand dieses Commits bestätigen. Kein Web-/Workerstart bei Fehler.
 10. Optional geprüfte synthetische Fixtures importieren; Testzugänge kontrollieren, Seedvariablen entfernen.
 11. `dc up -d --no-deps rules-worker rollout-worker mqtt-worker`; Zyklen/Leases/Subskription prüfen.
 12. `dc up -d --no-deps web`; private Live/Ready prüfen, erst dann vorbereiteten Proxy aktivieren.
@@ -198,8 +198,40 @@ DATABASE_ROLLBACK: eigener autorisierter Restore mit Schreibstopp, Datenverlustf
 
 Planungsminimum für kleine synthetische Last: **2 vCPU, 8 GiB RAM, 80 GiB SSD**, separates Backupziel zunächst **40 GiB**, nach Datenmenge anpassen. RAM: Web 1,5 GiB; drei Worker 1,5 GiB; PostgreSQL 2 GiB; MQTT/Proxy 0,5 GiB; OS/Cache/Reserve 2,5 GiB. Disk: OS/Images 20 GiB, DB 20 GiB, Attachments/MQTT 10 GiB, Logs/Arbeitsplatz 10 GiB, Reserve 20 GiB. Images extern bauen. Paralleler Restore braucht zusätzliche Kapazität/separate Instanz; 4 vCPU komfortabler für parallele Tests. Schätzung, keine Production-Dimensionierung und kein Lastnachweis.
 
-Provider muss Linux amd64, Container/Compose oder Äquivalent, Web plus drei Worker, PostgreSQL, MQTT/mTLS, persistente Volumes, private Netze, öffentliche HTTPS-Adresse, DNS/TLS-Erneuerung, Secrets, Restartkontrolle, Backups/Restore, Monitoring, Registryzugriff und SSH/gleichwertige Administration ermöglichen. Noch keiner ausgewählt, Funktionen nicht als vorhanden bestätigt.
+Ziel ist IONOS mit Linux amd64 und `staging.fesch-elektrotechnik.de`. Der Server muss Container/Compose, Web plus drei Worker, PostgreSQL, MQTT/mTLS, persistente Volumes, private Netze, öffentliche HTTPS-Adresse, DNS/TLS-Erneuerung, Secrets, Restartkontrolle, Backups/Restore, Monitoring, Registryzugriff und eingeschränkte Administration ermöglichen. Konkrete Instanz, Kapazität und Providerfunktionen sind vor Bereitstellung zu bestätigen.
 
 Offen: STAGING_DEPLOYMENT_PENDING, PITR_FULL_RESTORE_PENDING, HA_FAILOVER_PENDING, REPRESENTATIVE_LOAD_PENDING, HARDWARE_VALIDATION_PENDING.
 
-Benötigte Angaben: Providerpräferenz oder keine Präferenz; gewünschte Staging-Domain, vorhandene Domain JA/NEIN; Monatsbudget inklusive Backup/Registry; Deutschland/EU erforderlich JA/NEIN; vorhandener Server/Registry JA/NEIN; zuständiger DNS-/Adminzugang und gewünschte Testzugangsbeschränkung. Zugangsdaten später sicher hinterlegen, nicht im Chat/Repository.
+Noch extern festzulegen: konkrete IONOS-Instanz/Region, DNS-/Adminverantwortliche, erlaubte VPN-/Tester-IP-Adressen, Offsite-Backupziel/Verschlüsselung und Monitoring-/Alarmziel. Zugangsdaten später sicher hinterlegen, nicht im Chat/Repository. Diese Angaben und die Runtime-Abnahme können durch Repository-Konfiguration nicht ersetzt werden.
+
+## Externe Dateien und Host-Vorbereitung
+
+Noch keine dieser Secret-/Zertifikatdateien ist erzeugt. Alle Hostpfade werden über die Variablen aus [staging.env.example](../infra/staging/staging.env.example) angegeben, absolut und außerhalb des Checkouts. Bind-Mounts sind read-only mit `create_host_path: false`; fehlende Dateien dürfen nicht als leere Verzeichnisse angelegt werden.
+
+- Externe `STAGING_ENV_FILE`, Modus 0600: vier unabhängige starke Werte (DB, Session, MFA, Webhook; jeweils mindestens 32 Zeichen), URL-kodierte DB-URL, Release/SHA, fünf freigegebene Image-Digests, alle Hostpfade. Für die DB sind eigene zufällige Hexwerte praktisch, da sie keine URL-Sonderzeichen oder Compose-Interpolation enthalten. Keine Beispiel-/CI-Passwörter einsetzen. Keine Secretwerte in Shell-History, Logs, `compose config`-Ausgaben oder Chat kopieren.
+- Eigene Staging-CA: öffentlicher CA-Nachweis und aktuelle CRL; privater CA-Schlüssel offline und verschlüsselt verwalten, **niemals mounten**. Ablauf/CRL-Erneuerung überwachen. Keine Production-CA/Identitäten übernehmen.
+- Server-Zertifikat mit SAN `DNS:mqtt`, EKU serverAuth, dazu privater Schlüssel. Worker-Zertifikat mit CN `meterwerk-ingestion`, EKU clientAuth und eigenem privaten Schlüssel. Health-Zertifikat mit CN `meterwerk-health`, EKU clientAuth und eigenem privaten Schlüssel. Der Healthcheck nutzt ausschließlich `meterwerk/staging/health`; fachliche Topics sind für diese Identität gesperrt.
+- Separater privater Ed25519-Receipt-Signaturschlüssel im PEM-Format unter `STAGING_MQTT_RECEIPT_KEY`; zugehöriger öffentlicher Schlüssel für spätere autorisierte Software-Gatewaytests. Dies ist kein TLS-Schlüssel. Keine Hardware-/Gateway-Identität wird mit diesen Vorlagen freigeschaltet.
+- Externe, unveränderte Kopien von [staging.conf](../infra/mosquitto/staging.conf) und [staging.acl](../infra/mosquitto/staging.acl). Der Preflight vergleicht sie mit der freigegebenen Revision. Neue Software-Gateway-ACLs erfordern eine eigene geprüfte Änderung; keine anonymen Zugänge oder globalen Wildcard-Rechte.
+- HTTPS-Zertifikatskette/Key für `staging.fesch-elektrotechnik.de`, Erneuerung passend zum bestehenden Host-Zertifikatsmanagement und später kontrollierter graceful Apache-Reload. Die Vorlage enthält ausschließlich `__STAGING_WEB_TLS_CERT__` und `__STAGING_WEB_TLS_KEY__`, keine vermuteten Zertifikatspfade. DNS-01 ermöglicht die Ausstellung vor der Öffnung; die mitgelieferte HTTP-Konfiguration stellt keinen HTTP-01-Webroot bereit. AAAA erst bei geprüften bestehenden IPv6-Listenern und Routing aktivieren; keine globalen Listen-Direktiven ergänzen.
+- Externe Apache-Zugriffsliste aus [apache-allowlist.conf.example](../infra/staging/apache-allowlist.conf.example), ausschließlich innerhalb des neuen Staging-VHosts. Nur freigegebene VPN-/Tester-/Monitoring-IP-Adressen ergänzen; alle anderen bleiben abgelehnt. Die Regeln verwenden die physische Peeradresse `CONN_REMOTE_ADDR`, nicht ungeprüfte Forwarded-Header oder eine durch gemeinsame mod_remoteip-Regeln umgeschriebene Adresse. Sie schützen auch Health und Build-Info. Bestehende Firewall-/Mail-/DNS-/Webmin-Regeln nicht pauschal ersetzen; für Meterwerk niemals 3000, 5432, 1883 oder 8883 öffentlich öffnen.
+
+Dateirechte auf Linux anhand der tatsächlichen Container-UIDs prüfen: Worker als `meterwerk`, Migrationen als `node`, Broker als Benutzer des gepinnten Mosquitto-Images. Private Keys nur für root und die jeweilige Dienst-UID/Gruppe lesbar, z. B. 0640 mit passender Gruppe; nicht world-readable. Verzeichnisse müssen für die benötigte UID traversierbar sein. Read-only-Mounts ändern keine Dateirechte. Das neue Attachment-Volume übernimmt den Eigentümer des im Web-Image vorbereiteten `/app/.local/attachments`; bestehende Volumes benötigen eine separate Eigentümerprüfung, keinen pauschalen Root-Betrieb.
+
+Die Apache-Vorlage nur in eine neue, noch nicht aktivierte Staging-Site-Datei übernehmen. Die drei `__STAGING_*__`-Platzhalter durch tatsächlich vorhandene, geprüfte absolute Dateipfade ersetzen. `STAGING_WEB_TLS_CERT`, `STAGING_WEB_TLS_KEY` und `STAGING_ACCESS_ALLOWLIST` im Env-Inventar dienen dabei nur der Pfaddokumentation; sie werden nicht automatisch in Apache eingesetzt. Vor einer späteren Aktivierung auf IONOS:
+
+```sh
+apache2ctl -M
+apache2ctl -S
+apache2ctl configtest
+```
+
+Benötigte Module: ssl, proxy, proxy_http, headers, rewrite, authz_core. Fehlende Module und gemeinsam geerbte Einstellungen erst prüfen; keine globalen Änderungen oder pauschalen Neustarts auf dem gemeinsam genutzten Server ausführen. Beim späteren Einbinden sicherstellen, dass der bisherige erste/default VHost unverändert bleibt, keine ServerName-/ServerAlias-Kollision entsteht und notrust.me weiterhin seine bisherigen Zertifikate, Weiterleitungen und Inhalte liefert. Ein Configtest vor der Einbindung prüft die unaktivierte Datei noch nicht; vor einem Reload muss die Gesamt-Konfiguration **einschließlich** der neuen Datei geprüft werden. Kein Platzhalter darf übrig bleiben.
+
+Die Vorlage setzt HTTP→HTTPS-Redirect und Hostprüfung nur für Staging. `ProxyRequests Off` verhindert einen Forward-Proxy, `ProxyPassInherit Off` übernimmt keine globalen Proxy-Routen. `ProxyAddHeaders Off` und explizites Entfernen/Setzen der üblichen Forwarded-Header verhindern das Anhängen ungeprüfter Clientwerte. Host/Origin werden auf die Staging-Domain/HTTPS und Client-IP auf die physische Verbindung gesetzt; HSTS gilt nur für diesen Host ohne includeSubDomains/preload. Ausschließlich Loopback:3000 ist Backend. Referenzen: [Apache RequestHeader](https://httpd.apache.org/docs/2.4/mod/mod_headers.html#requestheader), [ProxyAddHeaders](https://httpd.apache.org/docs/2.4/mod/mod_proxy.html#proxyaddheaders). Kein Backend-Egress-Netz wird hinzugefügt. Aktivierung und kontrollierter graceful Reload erfolgen erst in einem gesondert freigegebenen Schritt nach privater App-Abnahme und Regression der bestehenden Dienste. Apache ist für Meterwerk noch nicht eingerichtet.
+
+## Vorbereitungsprüfung und verbleibende Betriebsfreigaben
+
+`node --test scripts/staging-config.test.mjs` prüft die tatsächliche Compose-Zusammenführung mit rein synthetischen Werten und ohne Daemon/Containerstart. Negative Fälle decken öffentliche Ports, fehlende oder wiederverwendete Secrets, falsche Datenbank/Origin, Seed-Konfiguration, falsche Mounts und abweichende Image-Provenienz ab. `verify-staging-config.mjs` prüft die externen Dateien und Einstellungen; `--images` vergleicht lokal gepullte Digests, Linux-amd64, Release und OCI-Revision aller drei Image-Arten sowie das Staging-Buildlabel. Es prüft keine Zertifikatskette und ersetzt weder mTLS-Pub/Sub noch Browser- oder Datenbanktests.
+
+Die statischen Repository-Konfigurationslücken sind damit abgedeckt. Echte Image-Builds, Apache-Gesamtkonfiguration und VHost-Zuordnung am Zielhost, Regression der bestehenden Dienste, Zertifikat-/ACL-Handshake, Migrationen auf leerer DB, Attachment-Rechte, Konten/Fixtures, Shutdown, Backup/Restore und externe Monitoring-/Alarmzustellung bleiben vor Öffnung nachzuweisen. Die vorhandenen Backup-/Monitoring-Vorgaben oben gelten unverändert; keine erfundenen Provider-Variablen ersetzen ihre Einrichtung. Insbesondere Offsite-Ziel, Verschlüsselung, Zeitplanung/Retention und getestete Wiederherstellung sowie Alarmempfänger sind Freigabevoraussetzungen. Kein Deployment, Secret-Erzeugen, Nachrichtenversand oder Hardwareanschluss durch diese Vorbereitung.

@@ -69,18 +69,38 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify Docker daemon
         run: docker version && docker info
-      - name: Build Web and Worker images
+      - name: Build staging Web, Worker and migration images
         run: |
+          git diff --exit-code -- src apps scripts prisma package.json pnpm-lock.yaml pnpm-workspace.yaml Dockerfile Dockerfile.worker Dockerfile.migrations
           docker build -f Dockerfile \
+            --build-arg NEXT_PUBLIC_METERWERK_ENV=staging \
             --build-arg VERSION="$RELEASE_VERSION" \
             --build-arg GIT_SHA="$GITHUB_SHA" \
             --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
             -t "meterwerk-web:$GITHUB_SHA" .
           docker build -f Dockerfile.worker \
+            --build-arg GIT_WORKING_TREE=clean \
             --build-arg VERSION="$RELEASE_VERSION" \
             --build-arg GIT_SHA="$GITHUB_SHA" \
             --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
             -t "meterwerk-worker:$GITHUB_SHA" .
+          docker build -f Dockerfile.migrations \
+            --build-arg VERSION="$RELEASE_VERSION" \
+            --build-arg GIT_SHA="$GITHUB_SHA" \
+            --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
+            -t "meterwerk-migrations:$GITHUB_SHA" .
+      - name: Verify migration tooling without a database or network
+        run: |
+          docker run --rm --network none \
+            -e DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build \
+            "meterwerk-migrations:$GITHUB_SHA" \
+            sh -ec 'pnpm db:generate && pnpm exec prisma --version'
+      - name: Verify migration runner against the isolated CI database
+        run: |
+          docker run --rm --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            "meterwerk-migrations:$GITHUB_SHA" \
+            sh -ec 'pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status'
       - name: Smoke Web image
         env:
           METERWERK_WEB_IMAGE: meterwerk-web:${{ github.sha }}
@@ -93,9 +113,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-      - name: Publish Web and Worker images to GHCR
+      - name: Publish Web, Worker and migration images to GHCR
         run: |
           docker tag "meterwerk-web:$GITHUB_SHA" "ghcr.io/florian1518/meterwerk-web:$GITHUB_SHA"
           docker tag "meterwerk-worker:$GITHUB_SHA" "ghcr.io/florian1518/meterwerk-worker:$GITHUB_SHA"
+          docker tag "meterwerk-migrations:$GITHUB_SHA" "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"
           docker push "ghcr.io/florian1518/meterwerk-web:$GITHUB_SHA"
           docker push "ghcr.io/florian1518/meterwerk-worker:$GITHUB_SHA"
+          docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"

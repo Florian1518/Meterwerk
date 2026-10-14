@@ -1,0 +1,12 @@
+# Default deny. No gateway/hardware identities are provisioned by this file.
+user meterwerk-ingestion
+topic read meterwerk/v1/gateways/+/readings
+topic read meterwerk/v1/gateways/+/heartbeat
+topic read meterwerk/v1/gateways/+/telemetry
+topic read meterwerk/v1/gateways/+/control
+topic write meterwerk/v1/gateways/+/ack
+topic write meterwerk/v1/gateways/+/configuration
+
+# Separate mTLS identity; no business-topic access.
+user meterwerk-health
+topic readwrite meterwerk/staging/health

@@ -1,0 +1,54 @@
+# Ubuntu 24.04 host Apache only; NOT installed or enabled by this template.
+# Required modules: ssl, proxy, proxy_http, headers, rewrite, authz_core.
+# Replace __STAGING_*__ with reviewed absolute external file paths.
+# Do not add Listen directives or edit existing/default/notrust.me VirtualHosts.
+<VirtualHost *:80>
+    ServerName staging.fesch-elektrotechnik.de
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} !^staging\.fesch-elektrotechnik\.de(?::80)?$ [NC]
+    RewriteRule ^ - [R=400,L]
+    RewriteRule ^ https://staging.fesch-elektrotechnik.de%{REQUEST_URI} [R=308,L,NE]
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName staging.fesch-elektrotechnik.de
+    SSLEngine On
+    SSLCertificateFile "__STAGING_WEB_TLS_CERT__"
+    SSLCertificateKeyFile "__STAGING_WEB_TLS_KEY__"
+    SSLProtocol -all +TLSv1.2 +TLSv1.3
+
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} !^staging\.fesch-elektrotechnik\.de(?::443)?$ [NC]
+    RewriteRule ^ - [R=400,L]
+
+    ProxyRequests Off
+    ProxyPassInherit Off
+    ProxyPreserveHost On
+    ProxyAddHeaders Off
+    # Replace the headers consumed by the application, never append client input.
+    RequestHeader unset Forwarded
+    RequestHeader unset X-Forwarded-For
+    RequestHeader unset X-Forwarded-Host
+    RequestHeader unset X-Forwarded-Proto
+    RequestHeader unset X-Forwarded-Port
+    RequestHeader unset X-Forwarded-Server
+    RequestHeader unset X-Forwarded-Prefix
+    RequestHeader unset X-Forwarded-Ssl
+    RequestHeader unset X-Forwarded-Scheme
+    RequestHeader unset X-Real-IP
+    RequestHeader set Host "staging.fesch-elektrotechnik.de"
+    RequestHeader set X-Forwarded-Host "staging.fesch-elektrotechnik.de"
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+    # Physical peer, not REMOTE_ADDR rewritten by a shared mod_remoteip config.
+    RequestHeader set X-Forwarded-For "expr=%{CONN_REMOTE_ADDR}"
+    RequestHeader set X-Real-IP "expr=%{CONN_REMOTE_ADDR}"
+
+    Header always set Strict-Transport-Security "max-age=86400"
+    <Location "/">
+        # Required external Apache Require rules; protects health/build-info too.
+        Include "__STAGING_ACCESS_ALLOWLIST__"
+    </Location>
+    ProxyPass "/" "http://127.0.0.1:3000/"
+    ProxyPassReverse "/" "http://127.0.0.1:3000/"
+</VirtualHost>

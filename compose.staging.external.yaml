@@ -1,0 +1,148 @@
+# Only together with compose.staging.yaml. All host files are provisioned externally.
+x-app-environment: &app-environment
+  NODE_ENV: production
+  METERWERK_ENV: staging
+  NEXT_PUBLIC_METERWERK_ENV: staging
+  APP_URL: ${STAGING_APP_URL:?Set the external HTTPS staging origin}
+  STAGING_APP_URL: ${STAGING_APP_URL:?Set the external HTTPS staging origin}
+  BASE_DOMAIN: staging.fesch-elektrotechnik.de
+  TRUSTED_HOSTS: staging.fesch-elektrotechnik.de
+  DATABASE_URL: ${STAGING_DATABASE_URL:?Set the URL-encoded staging database URL}
+  SESSION_SECRET: ${STAGING_SESSION_SECRET:?Set the independent staging session secret}
+  MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?Set the staging MFA encryption key}
+  WEBHOOK_SECRET_ENCRYPTION_KEY: ${WEBHOOK_SECRET_ENCRYPTION_KEY:?Set the staging webhook encryption key}
+  EMAIL_PROVIDER: local
+  LOG_LEVEL: INFO
+  ATTACHMENT_STORAGE: local
+  ATTACHMENT_LOCAL_ROOT: /app/.local/attachments
+  MQTT_BROKER_URL: mqtts://mqtt:8883
+  RELEASE_VERSION: ${RELEASE_VERSION:?Set the published release version}
+  BUILD_VERSION: ${RELEASE_VERSION:?Set the published release version}
+  GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?Set the full published commit SHA}
+
+x-runtime: &runtime
+  platform: linux/amd64
+  restart: "on-failure:5"
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-read-only-file: &read-only-file
+  type: bind
+  read_only: true
+  bind:
+    create_host_path: false
+
+services:
+  db:
+    <<: *runtime
+    image: ${STAGING_POSTGRES_IMAGE:?Set postgres 17 image with sha256 digest}
+    stop_grace_period: 60s
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  mqtt:
+    <<: *runtime
+    image: ${STAGING_MQTT_IMAGE:?Set Mosquitto 2 image with sha256 digest}
+    stop_grace_period: 30s
+    volumes:
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CONFIG:?Set absolute path to staging Mosquitto config}
+        target: /mosquitto/config/mosquitto.conf
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_ACL:?Set absolute path to staging MQTT ACL}
+        target: /mosquitto/config/staging.acl
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CA:?Set absolute path to staging CA certificate}
+        target: /mosquitto/secrets/ca.crt
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CRL:?Set absolute path to staging CA revocation list}
+        target: /mosquitto/secrets/ca.crl
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_SERVER_CERT:?Set absolute path to MQTT server certificate}
+        target: /mosquitto/secrets/server.crt
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_SERVER_KEY:?Set absolute path to MQTT server key}
+        target: /mosquitto/secrets/server.key
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_HEALTH_CERT:?Set absolute path to MQTT health certificate}
+        target: /mosquitto/secrets/health.crt
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_HEALTH_KEY:?Set absolute path to MQTT health key}
+        target: /mosquitto/secrets/health.key
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mosquitto_pub -h mqtt -p 8883 --cafile /mosquitto/secrets/ca.crt
+          --cert /mosquitto/secrets/health.crt --key /mosquitto/secrets/health.key
+          -V mqttv5 -q 1 -t meterwerk/staging/health -m ready -r
+          && mosquitto_sub -h mqtt -p 8883 --cafile /mosquitto/secrets/ca.crt
+          --cert /mosquitto/secrets/health.crt --key /mosquitto/secrets/health.key
+          -V mqttv5 -q 1 -t meterwerk/staging/health -C 1 -W 5 >/dev/null
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  web:
+    <<: *runtime
+    environment: *app-environment
+    stop_grace_period: 30s
+
+  rules-worker:
+    <<: *runtime
+    environment: *app-environment
+    stop_grace_period: 60s
+
+  rollout-worker:
+    <<: *runtime
+    environment: *app-environment
+    stop_grace_period: 60s
+
+  mqtt-worker:
+    <<: *runtime
+    environment:
+      <<: *app-environment
+      MQTT_CA_PATH: /run/secrets/mqtt-ca.crt
+      MQTT_CERT_PATH: /run/secrets/mqtt-client.crt
+      MQTT_KEY_PATH: /run/secrets/mqtt-client.key
+      MQTT_RECEIPT_KEY_PATH: /run/secrets/mqtt-receipt-key
+    stop_grace_period: 60s
+    volumes:
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CA:?Set absolute path to staging CA certificate}
+        target: /run/secrets/mqtt-ca.crt
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CLIENT_CERT:?Set absolute path to meterwerk-ingestion certificate}
+        target: /run/secrets/mqtt-client.crt
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_CLIENT_KEY:?Set absolute path to meterwerk-ingestion key}
+        target: /run/secrets/mqtt-client.key
+      - <<: *read-only-file
+        source: ${STAGING_MQTT_RECEIPT_KEY:?Set absolute path to receipt signing key}
+        target: /run/secrets/mqtt-receipt-key
+
+  migrations:
+    platform: linux/amd64
+    image: ${METERWERK_MIGRATIONS_IMAGE:?Set migration image with sha256 digest from the same revision}
+    profiles: [operations]
+    restart: "no"
+    stop_grace_period: 60s
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      METERWERK_ENV: staging
+      DATABASE_URL: ${STAGING_DATABASE_URL:?Set the URL-encoded staging database URL}
+      RELEASE_VERSION: ${RELEASE_VERSION:?Set the published release version}
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?Set the full published commit SHA}
+    # Default is read-only. Applying migrations requires an explicit operator command.
+    command: [pnpm, exec, prisma, migrate, status]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [staging]

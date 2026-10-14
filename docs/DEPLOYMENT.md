@@ -4,11 +4,23 @@
 
 Der aktuelle verbindliche Vorbereitungsablauf steht in [STAGING.md](STAGING.md),
 die Befunde in [Staging Deployment Readiness](acceptance/STAGING-DEPLOYMENT-READINESS.md).
-Baseline ist `dce9b24958cee9c0ceb5ef9424767177c7dbc9bf`.
-Registry, Provider, Proxy/TLS und ergänzende Staging-Infrastruktur sind noch offen.
-Das Staging-Compose nicht unverändert vollständig starten. Es benötigt insbesondere
-Brokerkonfiguration/mTLS, vollständige Secret-Injektion, Restart-/Shutdown-Vorgaben
-und einen separaten Migration-Runner. Kein Deployment wurde ausgeführt.
+Ziel ist Ubuntu 24.04 auf IONOS mit `staging.fesch-elektrotechnik.de`. Der vorhandene
+Host-Apache auf 80/443 soll später ausschließlich für diese Domain auf
+`http://127.0.0.1:3000` weiterleiten. Die Vorlage
+`infra/staging/apache-staging.conf.example` ist noch nicht installiert/aktiviert;
+Zertifikatspfade sind Platzhalter. Kein zusätzlicher Webserver/Proxycontainer,
+keine Änderung bestehender notrust.me-VHosts oder Mail-/DNS-/MariaDB-/Webmin-Dienste.
+Das Paar
+`compose.staging.yaml` und `compose.staging.external.yaml` enthält vollständige
+Runtime-Injektion, private mTLS-Mounts, Restart-/Shutdown-Vorgaben und einen
+separaten Service `migrations` im Profil `operations`, mit eigener Digest-Variable
+`METERWERK_MIGRATIONS_IMAGE`. Er startet nicht mit Web/Worker und führt Schemaänderungen
+nur über den expliziten `dc run --rm --no-deps migrations ...`-Aufruf im Runbook aus.
+Host-Apache-/Env-Vorlagen liegen
+unter `infra/staging/`. GHCR-Publish ist manuell vorhanden; neue Staging-Web-,
+Worker- und Migration-Images derselben Revision sind erforderlich. Externe
+Secrets/Zertifikate, DNS/Proxy-Aktivierung, Backup/Monitoring und Runtime-Abnahme
+bleiben vor dem ersten Start bereitzustellen. Kein Deployment wurde ausgeführt.
 
 Diese Anleitung beschreibt einen providerunabhängigen, kontrollierten App-Rollout. Compose-Dateien sind Referenzen, keine Behauptung eines erfolgreich validierten Produktionsstacks. Keine Produktions-Credentials in Dateien, Images oder Git speichern.
 
@@ -37,4 +49,4 @@ Deployment stoppen, Fehler sichern und vorheriges kompatibles Image nur nach Sch
 
 ## Reifegrad
 
-CI-Build und Release-Artefakt sind vorhanden. Release Workflow führt kein automatisches Staging-/Production-Deployment und keinen Registry-Push aus. Separate Worker-Entrypoints und lokales Attachment-Volume sind im Staging-Compose vorhanden; der externe Gesamtstack ist nicht validiert. Die offenen Infrastrukturvoraussetzungen aus [Staging Readiness](STAGING.md) zuerst erfüllen. Keine reale Hardware erforderlich oder hier getestet.
+CI-Build und Release-Artefakt sind vorhanden. `release.yml` führt weder Deployment noch Registry-Push aus; der getrennte manuelle `publish-images.yml` veröffentlicht Web/Worker/Migrationen unter Commit-SHA-Tags nach GHCR. Staging verwendet ausschließlich freigegebene Digests. Der externe Gesamtstack ist noch nicht runtime-validiert. Vor dem Start `verify-staging-config.mjs` einschließlich `--images` und das Runbook aus [Staging Readiness](STAGING.md) verwenden. Keine reale Hardware erforderlich oder hier getestet.

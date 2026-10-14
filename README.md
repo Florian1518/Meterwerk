@@ -50,7 +50,7 @@ Die Voraussetzungen einzelner Integration-, Browser-, Security-, DR- und Hardwar
 
 ## Staging, Demo und Hardwarestatus
 
-Staging und Demo müssen Datenbank, MQTT, Storage, Mail, API-Schlüssel, Webhooks und Backup-Ziele strikt von Production trennen. Die vorhandene Staging-Compose-Konfiguration ist noch nicht vollständig end-to-end validiert; vor Nutzung siehe [STAGING.md](docs/STAGING.md) und [Known Limitations](docs/KNOWN-LIMITATIONS.md). Kein Produktionsrelease wird automatisch ausgelöst.
+Staging und Demo müssen Datenbank, MQTT, Storage, Mail, API-Schlüssel, Webhooks und Backup-Ziele strikt von Production trennen. Externes IONOS-Staging für `staging.fesch-elektrotechnik.de` verwendet gemeinsam `compose.staging.yaml` und `compose.staging.external.yaml`: Loopback-Web, privates MQTT/mTLS, externe Secrets und einen separaten Migration-Runner. Vorlagen liegen unter `infra/staging/`; `node scripts/verify-staging-config.mjs /absoluter/externer/pfad/staging.env --images` prüft die Konfiguration und die zuvor gepullten Image-Digests. Migrationen werden ausschließlich manuell im Profil `operations` ausgeführt. Neue Images müssen aus derselben freigegebenen Revision gebaut werden; Staging ist noch nicht end-to-end validiert. Startfolge, Zertifikate, Backups und verbleibende Betriebsfreigaben stehen in [STAGING.md](docs/STAGING.md) und [Known Limitations](docs/KNOWN-LIMITATIONS.md). Kein Deployment wird automatisch ausgelöst.
 
 Softwareseitige Treiber, Simulatoren und Protokollverträge sind nicht gleich realer Hardwarevalidierung. Physische Modbus/RS485-, M-Bus-, W-MBus-, Pulse-, LoRaWAN- und Hersteller-API-Prüfungen stehen noch aus. Keine reale Hardware wird durch diesen lokalen Start verbunden.
 

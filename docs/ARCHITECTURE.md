@@ -283,3 +283,26 @@ werden inventarisiert, nicht pauschal verboten. Die Image-SBOM-Prüfung löst au
 geschachtelte Dateireferenzen auf und bindet die SBOM an die Runtime-Image-ID.
 Aktuelle lokale Nachweise und verbleibende Release-Gates stehen im
 [Worker-Image-Nachlauf](acceptance/WORKER-IMAGE-5EAE186.md).
+
+## Externes Staging: getrennte Runtime und Migrationen
+
+Das externe Staging-Overlay ergänzt ausschließlich Infrastrukturkonfiguration:
+ein internes Netz für Web, drei Worker, PostgreSQL und MQTT; einziger Host-Port
+ist Loopback:3000 hinter dem bereits vorhandenen Host-Apache auf Ubuntu 24.04.
+Ein eigener namensbasierter Staging-VHost ist nur als Vorlage vorbereitet;
+vorhandene VHosts und Hostdienste bleiben unverändert. MQTT verwendet eigene CA/CRL,
+Zertifikat-CNs und ACLs, externe read-only-Dateimounts und eine getrennte
+Health-Identität ohne fachliche Topic-Rechte. Es gibt keinen Egress für echte
+Nachrichten oder Providerzugriffe. Runtime-Guards werden nicht verändert.
+
+`Dockerfile.migrations` enthält bewusst vollständige eingefrorene Dependencies
+einschließlich Prisma-CLI und dem vorhandenen Baseline-Check. Es wird aus derselben
+Revision wie Web/Worker gebaut, per Digest ausgewählt und nur manuell über das
+Compose-Profil `operations` verwendet. Normaler Containerstart verändert kein
+Schema; Paketmanager/Prisma-CLI bleiben aus dem Worker-Runtime-Image ausgeschlossen.
+Der Preflight bindet alle drei Image-Arten an denselben SHA und dieselbe Version.
+
+Das öffentliche Staging-Label wird im Web-Docker-Build gesetzt und als OCI-Label
+nachweisbar gemacht. Ein für Staging gebautes Web-Image wird nicht als generisches
+Production-Image behandelt: NEXT_PUBLIC-Werte bleiben im Browser-Bundle fixiert.
+Runbook und offene externe Abnahmen: [STAGING.md](STAGING.md).

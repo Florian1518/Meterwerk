@@ -1,0 +1,8 @@
+# Included ONLY inside the staging VirtualHost's <Location "/">.
+# Add reviewed VPN/tester/monitoring CIDRs as further Require expr lines.
+# The physical peer cannot be spoofed by incoming X-Forwarded-For headers.
+# All addresses not explicitly allowed here are denied.
+<RequireAny>
+    Require expr "%{CONN_REMOTE_ADDR} -ipmatch '127.0.0.1/32'"
+    Require expr "%{CONN_REMOTE_ADDR} -ipmatch '::1/128'"
+</RequireAny>
