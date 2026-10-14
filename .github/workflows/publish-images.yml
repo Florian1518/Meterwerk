@@ -1,6 +1,11 @@
 name: Publish Images
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "SemVer or RC version"
+        required: true
+        type: string
 permissions:
   contents: read
   packages: write
@@ -32,7 +37,7 @@ jobs:
       NEXT_PUBLIC_METERWERK_ENV: test
       NODE_ENV: production
       GIT_COMMIT_SHA: ${{ github.sha }}
-      RELEASE_VERSION: ${{ github.sha }}
+      RELEASE_VERSION: ${{ inputs.version }}
       DATABASE_URL: postgresql://meterwerk:meterwerk@localhost:5432/meterwerk
       SESSION_SECRET: ci-only-synthetic-session-secret
       MFA_ENCRYPTION_KEY: ci-only-synthetic-mfa-key-32-bytes
