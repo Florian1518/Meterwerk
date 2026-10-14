@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   writeFileSync,
+  chmodSync,
   readdirSync,
   unlinkSync,
   rmdirSync,
@@ -67,6 +68,12 @@ for (const key of [
       : key === "ACL"
         ? readFileSync("infra/mosquitto/staging.acl")
         : "Not a certificate or secret: static configuration test fixture.\n",
+  );
+  chmodSync(
+    file,
+    ["SERVER_KEY", "CLIENT_KEY", "HEALTH_KEY", "RECEIPT_KEY"].includes(key)
+      ? 0o600
+      : 0o640,
   );
   values[`STAGING_MQTT_${key}`] = file;
 }
