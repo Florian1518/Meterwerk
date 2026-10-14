@@ -124,9 +124,9 @@ test("actual Compose merge keeps loopback-only Web, private DB/MQTT and mandator
   for (const volume of mqttWorkerMounts) {
     const details = `source=${volume.source} target=${volume.target}`;
     assert.equal(volume.read_only, true, `${details}: mount must be read-only`);
-    assert.equal(
-      volume.bind?.create_host_path,
-      false,
+    assert.ok(
+      volume.bind?.create_host_path === false ||
+        volume.bind?.create_host_path === undefined,
       `${details}: Compose must not create the host path`,
     );
     assert.ok(
@@ -148,6 +148,61 @@ test("actual Compose merge keeps loopback-only Web, private DB/MQTT and mandator
   assert.doesNotMatch(
     config.services.mqtt.healthcheck.test.join(" "),
     /1883|--insecure/,
+  );
+});
+
+test("read-only host mount policy is source-verified across Compose serializers", () => {
+  const config = compose();
+  const normalizedWithoutFalse = structuredClone(config);
+  for (const service of ["mqtt", "mqtt-worker"])
+    for (const volume of normalizedWithoutFalse.services[service].volumes)
+      if (volume.type === "bind") {
+        volume.bind ??= {};
+        volume.bind.create_host_path = undefined;
+      }
+  assertStagingConfig(normalizedWithoutFalse);
+
+  const composeSource = readFileSync("compose.staging.external.yaml", "utf8");
+  assert.throws(
+    () =>
+      assertStagingConfig(config, {
+        composeSource: composeSource.replace(
+          "create_host_path: false",
+          "create_host_path: true",
+        ),
+      }),
+    /create_host_path: false/,
+  );
+  assert.throws(
+    () =>
+      assertStagingConfig(config, {
+        composeSource: composeSource.replace(
+          "    create_host_path: false\n",
+          "",
+        ),
+      }),
+    /create_host_path: false/,
+  );
+
+  const writable = structuredClone(config);
+  writable.services["mqtt-worker"].volumes[0].read_only = false;
+  assert.throws(() => assertStagingConfig(writable), /mounted read-only/);
+
+  const missingSource = structuredClone(config);
+  missingSource.services["mqtt-worker"].volumes[0].source = join(
+    root,
+    "missing-fixture",
+  );
+  assert.throws(
+    () => assertStagingConfig(missingSource),
+    /external host file missing/,
+  );
+
+  const directorySource = structuredClone(config);
+  directorySource.services["mqtt-worker"].volumes[0].source = tmpdir();
+  assert.throws(
+    () => assertStagingConfig(directorySource),
+    /external host file missing/,
   );
 });
 

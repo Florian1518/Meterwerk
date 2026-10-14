@@ -7,12 +7,77 @@ import { pathToFileURL } from "node:url";
 const origin = "https://staging.fesch-elektrotechnik.de";
 const apps = ["web", "rules-worker", "rollout-worker", "mqtt-worker"];
 const digest = /@sha256:[a-f0-9]{64}$/;
+const requiredFileMounts = {
+  mqtt: [
+    ["STAGING_MQTT_CONFIG", "/mosquitto/config/mosquitto.conf"],
+    ["STAGING_MQTT_ACL", "/mosquitto/config/staging.acl"],
+    ["STAGING_MQTT_CA", "/mosquitto/secrets/ca.crt"],
+    ["STAGING_MQTT_CRL", "/mosquitto/secrets/ca.crl"],
+    ["STAGING_MQTT_SERVER_CERT", "/mosquitto/secrets/server.crt"],
+    ["STAGING_MQTT_SERVER_KEY", "/mosquitto/secrets/server.key"],
+    ["STAGING_MQTT_HEALTH_CERT", "/mosquitto/secrets/health.crt"],
+    ["STAGING_MQTT_HEALTH_KEY", "/mosquitto/secrets/health.key"],
+  ],
+  "mqtt-worker": [
+    ["STAGING_MQTT_CA", "/run/secrets/mqtt-ca.crt"],
+    ["STAGING_MQTT_CLIENT_CERT", "/run/secrets/mqtt-client.crt"],
+    ["STAGING_MQTT_CLIENT_KEY", "/run/secrets/mqtt-client.key"],
+    ["STAGING_MQTT_RECEIPT_KEY", "/run/secrets/mqtt-receipt-key"],
+  ],
+};
+
+function assertReadOnlyMountSource(composeSource, require) {
+  const anchor = composeSource.match(
+    /^x-read-only-file: &read-only-file\r?\n((?:[ \t]+.*(?:\r?\n|$))+)/m,
+  )?.[1];
+  require(Boolean(anchor) &&
+    /^  type: bind\r?$/m.test(anchor) &&
+    /^  read_only: true\r?$/m.test(anchor) &&
+    /^  bind:\r?\n    create_host_path: false\r?$/m.test(
+      anchor,
+    ), "Compose source must define the shared read-only file bind with create_host_path: false");
+
+  for (const [serviceName, mounts] of Object.entries(requiredFileMounts)) {
+    const serviceStart = composeSource.search(
+      new RegExp(`^  ${serviceName}:\\r?$`, "m"),
+    );
+    require(serviceStart >=
+      0, `${serviceName}: missing Compose service source`);
+    const rest = composeSource.slice(serviceStart);
+    const nextService = rest.slice(1).search(/^  [\w-]+:\r?$/m);
+    const serviceSource =
+      nextService < 0 ? rest : rest.slice(0, nextService + 1);
+    const entries = [
+      ...serviceSource.matchAll(
+        /^      - <<: \*read-only-file\r?\n        source: \$\{([^:}]+):[^\r\n]+\}\r?\n        target: ([^\r\n]+)$/gm,
+      ),
+    ];
+    require(entries.length ===
+      mounts.length, `${serviceName}: expected ${mounts.length} explicit read-only file mounts in Compose source`);
+    for (const [variable, target] of mounts) {
+      require(entries.filter(
+        (entry) => entry[1] === variable && entry[2] === target,
+      ).length ===
+        1, `${serviceName}: Compose source must bind ${variable} to ${target} through the guarded anchor`);
+    }
+  }
+}
 
 // Only errors naming a setting are emitted: never print resolved Compose secrets.
-export function assertStagingConfig(config, { checkFiles = true } = {}) {
+export function assertStagingConfig(
+  config,
+  {
+    checkFiles = true,
+    composeSource = readFileSync(
+      new URL("../compose.staging.external.yaml", import.meta.url),
+      "utf8",
+    ),
+  } = {},
+) {
   const require = (condition, message) => {
     if (!condition) throw new Error(message);
   };
+  assertReadOnlyMountSource(composeSource, require);
   require(Object.keys(config.services ?? {})
     .sort()
     .join() ===
@@ -57,9 +122,11 @@ export function assertStagingConfig(config, { checkFiles = true } = {}) {
       ), `${name}: demo seed configuration forbidden`);
     for (const volume of service.volumes ?? []) {
       if (volume.type !== "bind") continue;
-      require(volume.read_only === true &&
+      require(volume.read_only ===
+        true, `${name}: host files must be mounted read-only`);
+      require(volume.bind?.create_host_path === false ||
         volume.bind?.create_host_path ===
-          false, `${name}: host files must be read-only and pre-existing`);
+          undefined, `${name}: Compose must not create host paths`);
       require(isAbsolute(
         volume.source,
       ), `${name}: absolute host file path required`);
@@ -158,6 +225,12 @@ export function assertStagingConfig(config, { checkFiles = true } = {}) {
     require(migration.environment[key] ===
       web[key], `Migration runner: inconsistent ${key}`);
   const worker = config.services["mqtt-worker"];
+  for (const [variable, target] of requiredFileMounts["mqtt-worker"]) {
+    const volume = worker.volumes.find((mount) => mount.target === target);
+    require(volume?.type === "bind" &&
+      volume.read_only ===
+        true, `mqtt-worker: ${variable} must be a read-only bind mount at ${target}`);
+  }
   for (const key of [
     "MQTT_CA_PATH",
     "MQTT_CERT_PATH",
