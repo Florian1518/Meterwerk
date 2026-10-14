@@ -61,7 +61,7 @@ jobs:
       - name: Record immutable build timestamp
         run: echo "BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - run: pnpm build
-      - run: pnpm sbom --sbom-format cyclonedx
+      - run: pnpm run sbom
       - run: node scripts/release-artifact.mjs
       - run: node scripts/verify-release-artifact.mjs
       - run: node scripts/verify-worker-image-static.mjs
