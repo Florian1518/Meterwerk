@@ -31,12 +31,24 @@ after(() => {
   for (const file of readdirSync(root)) unlinkSync(join(root, file));
   rmdirSync(root);
 });
+function makeDatabaseUrl({ username, password, host, database }) {
+  const url = new URL(`postgresql://${host}:5432/${database}`);
+  url.username = username;
+  url.password = password;
+  return url.toString();
+}
+
 const digest = "a".repeat(64);
+const databasePassword = "synthetic-only-database-configuration-fixture";
 const values = {
   STAGING_APP_URL: "https://staging.fesch-elektrotechnik.de",
-  STAGING_POSTGRES_PASSWORD: "synthetic-only-database-configuration-fixture",
-  STAGING_DATABASE_URL:
-    "postgresql://meterwerk_staging:synthetic-only-database-configuration-fixture@db:5432/meterwerk_staging",
+  STAGING_POSTGRES_PASSWORD: databasePassword,
+  STAGING_DATABASE_URL: makeDatabaseUrl({
+    username: "meterwerk_staging",
+    password: databasePassword,
+    host: "db",
+    database: "meterwerk_staging",
+  }),
   STAGING_SESSION_SECRET: "synthetic-only-session-configuration-fixture",
   MFA_ENCRYPTION_KEY: "synthetic-only-mfa-configuration-fixture",
   WEBHOOK_SECRET_ENCRYPTION_KEY: "synthetic-only-webhook-configuration-fixture",
@@ -135,6 +147,10 @@ test("actual Compose merge keeps loopback-only Web, private DB/MQTT and mandator
     );
   }
   assertStagingConfig(config);
+  assert.equal(
+    config.services.web.environment.DATABASE_URL,
+    values.STAGING_DATABASE_URL,
+  );
   assert.equal(
     config.services["mqtt-worker"].volumes.filter(
       (v) => v.target === "/run/secrets/mqtt-receipt-key",
@@ -351,8 +367,12 @@ test("preflight rejects public ports, insecure MQTT, seed config, bad origins, r
         c.services.web.environment.SESSION_SECRET;
     },
     (c) => {
-      c.services.web.environment.DATABASE_URL =
-        "postgresql://user:secret@production:5432/customer";
+      c.services.web.environment.DATABASE_URL = makeDatabaseUrl({
+        username: "user",
+        password: "secret",
+        host: "production",
+        database: "customer",
+      });
     },
     (c) => {
       c.services.web.image = "meterwerk:latest";
