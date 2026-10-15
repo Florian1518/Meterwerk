@@ -306,3 +306,9 @@ Das öffentliche Staging-Label wird im Web-Docker-Build gesetzt und als OCI-Labe
 nachweisbar gemacht. Ein für Staging gebautes Web-Image wird nicht als generisches
 Production-Image behandelt: NEXT_PUBLIC-Werte bleiben im Browser-Bundle fixiert.
 Runbook und offene externe Abnahmen: [STAGING.md](STAGING.md).
+
+### Einmaliger Staging-Administrator
+
+`pnpm staging:create-admin` ist ein expliziter Operations-Einstieg ohne Benutzersitzung, ausschließlich für den ersten Benutzer im geprüften internen Staging-Ziel. CLI-Umgebungs- und Eingabeprüfung erfolgen vor dem Verbindungsaufbau; fachliche Mutation und bestehendes Argon2id-Hashing liegen in `src/server/`. Der Bootstrap berechtigt weder HTTP-Aufrufe noch bestehende Benutzer zur Rolleneskalation. `src/server/staging-database.mjs` teilt die exakte Datenbankzielprüfung mit dem Compose-Preflight.
+
+Eine PostgreSQL-Tabellensperre (`LOCK TABLE "User" IN EXCLUSIVE MODE`) schützt unter explizitem READ COMMITTED die globale Leerprüfung und den Insert auch vor konkurrierenden normalen Schreibzugriffen. Nach wartender Sperrübernahme sieht die nächste Abfrage den aktuellen Commitstand. User und AuditEvent werden atomar geschrieben; die Sperre wird bei Commit/Rollback freigegeben. Es gibt keine Schemaänderung, keinen Seed und keine Änderung am Login-/MFA-Verhalten. Operationsimage und manueller Ablauf: [STAGING.md](STAGING.md#einmaliger-erster-plattformadministrator).

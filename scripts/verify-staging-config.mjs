@@ -1,3 +1,4 @@
+import { assertStagingDatabase } from "../src/server/staging-database.mjs";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
@@ -188,18 +189,7 @@ export function assertStagingConfig(
       env.RATE_LIMIT_BACKEND ===
         "postgres", `${name}: local rate limiting forbidden`);
   }
-  let database;
-  try {
-    database = new URL(web.DATABASE_URL);
-  } catch {
-    throw new Error("Invalid staging DATABASE_URL");
-  }
-  require(database.protocol === "postgresql:" &&
-    database.hostname === "db" &&
-    database.port === "5432" &&
-    database.pathname === "/meterwerk_staging" &&
-    database.username === "meterwerk_staging" &&
-    !database.search, "Database must be the isolated internal staging target");
+  const database = assertStagingDatabase(web.DATABASE_URL);
   const postgres = config.services.db.environment;
   require(postgres.POSTGRES_DB === "meterwerk_staging" &&
     postgres.POSTGRES_USER ===

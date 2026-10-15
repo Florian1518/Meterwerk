@@ -15,6 +15,10 @@ RUN pnpm install --frozen-lockfile --prod=false
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 COPY scripts/verify-migration-baseline.mjs ./scripts/verify-migration-baseline.mjs
+COPY scripts/staging-create-admin.ts ./scripts/staging-create-admin.ts
+COPY src/server/password.ts src/server/staging-admin.ts src/server/staging-database.mjs ./src/server/
+# Generation requires a URL syntactically, but never connects to a database.
+RUN DATABASE_URL=postgresql://build@127.0.0.1:5432/build pnpm exec prisma generate
 RUN mkdir -p /app/src/generated \
   && chown -R node:node /app \
   && chmod -R a+rX /opt/corepack

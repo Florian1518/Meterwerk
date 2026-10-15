@@ -18,6 +18,7 @@
     "migration:check": "node scripts/check-migrations.mjs",
     "sbom": "node scripts/generate-sbom.mjs",
     "release:gate": "node scripts/release-gate.mjs",
+    "staging:create-admin": "tsx scripts/staging-create-admin.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:backup": "tsx scripts/backup.ts",

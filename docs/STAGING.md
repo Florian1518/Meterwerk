@@ -155,7 +155,7 @@ Vorbereiteter Operatorplan, hier nicht ausgeführt. `compose.staging.external.ya
 7. `dc up -d --no-deps mqtt`: privaten mTLS-Broker starten.
 8. `dc ps`, selektiven Healthstatus, SQL und mTLS-Pub/Sub prüfen; bei Fehler stoppen.
 9. Migration-Runner wie oben explizit ausführen, Exitcode und vollständigen Migrationsstand dieses Commits bestätigen. Kein Web-/Workerstart bei Fehler.
-10. Optional geprüfte synthetische Fixtures importieren; Testzugänge kontrollieren, Seedvariablen entfernen.
+10. Bei leerer User-Tabelle den ersten SUPER_ADMIN wie unten manuell anlegen. Kein Demo-Seed im Staging.
 11. `dc up -d --no-deps rules-worker rollout-worker mqtt-worker`; Zyklen/Leases/Subskription prüfen.
 12. `dc up -d --no-deps web`; private Live/Ready prüfen, erst dann vorbereiteten Proxy aktivieren.
 13. HTTPS/TLS/Redirect/Host/Security-Header prüfen.
@@ -235,3 +235,40 @@ Die Vorlage setzt HTTP→HTTPS-Redirect und Hostprüfung nur für Staging. `Prox
 `node --test scripts/staging-config.test.mjs` prüft die tatsächliche Compose-Zusammenführung mit rein synthetischen Werten und ohne Daemon/Containerstart. Negative Fälle decken öffentliche Ports, fehlende oder wiederverwendete Secrets, falsche Datenbank/Origin, Seed-Konfiguration, falsche Mounts und abweichende Image-Provenienz ab. `verify-staging-config.mjs` prüft die externen Dateien und Einstellungen; `--images` vergleicht lokal gepullte Digests, Linux-amd64, Release und OCI-Revision aller drei Image-Arten sowie das Staging-Buildlabel. Es prüft keine Zertifikatskette und ersetzt weder mTLS-Pub/Sub noch Browser- oder Datenbanktests.
 
 Die statischen Repository-Konfigurationslücken sind damit abgedeckt. Echte Image-Builds, Apache-Gesamtkonfiguration und VHost-Zuordnung am Zielhost, Regression der bestehenden Dienste, Zertifikat-/ACL-Handshake, Migrationen auf leerer DB, Attachment-Rechte, Konten/Fixtures, Shutdown, Backup/Restore und externe Monitoring-/Alarmzustellung bleiben vor Öffnung nachzuweisen. Die vorhandenen Backup-/Monitoring-Vorgaben oben gelten unverändert; keine erfundenen Provider-Variablen ersetzen ihre Einrichtung. Insbesondere Offsite-Ziel, Verschlüsselung, Zeitplanung/Retention und getestete Wiederherstellung sowie Alarmempfänger sind Freigabevoraussetzungen. Kein Deployment, Secret-Erzeugen, Nachrichtenversand oder Hardwareanschluss durch diese Vorbereitung.
+
+## Einmaliger erster Plattformadministrator
+
+Nach vollständig abgeschlossenen Migrationen und geprüftem Staging-Preflight führt der Operator im Migrationsimage explizit `pnpm staging:create-admin --name NAME --email EMAIL --password-stdin` aus. Der Default des Images bleibt `prisma --version`, der externe Compose-Default bleibt `prisma migrate status`; keiner startet den Bootstrap automatisch. Ein neues geprüftes Migrationsimage aus dieser Revision ist erforderlich.
+
+Der Befehl verlangt exakt `METERWERK_ENV=staging` und `DATABASE_URL` mit `postgresql:`, Host `db`, Port `5432`, Datenbank und Benutzer `meterwerk_staging`, ohne Queryparameter oder Fragment. Das ist dieselbe Zielprüfung wie im Compose-Preflight, keine Erkennung anhand eines Namensbestandteils. Die Netzwerk-/DNS-Isolation und Bereitstellung der richtigen Zugangsdaten bleiben Voraussetzung des geprüften Staging-Stacks. Es gibt keinen Override für andere Ziele.
+
+Später auf dem Linux-Operatorhost in **Bash**, nach Definition von `dc` aus dem Runbook und mit bereits laufender Datenbank (hier nur dokumentiert, nicht ausgeführt):
+
+```bash
+(
+  set +x
+  set +a
+  set -o pipefail
+  export -n admin_password admin_password_confirm
+  trap 'unset admin_password admin_password_confirm' EXIT
+  read -r -p 'Name: ' admin_name
+  read -r -p 'E-Mail: ' admin_email
+  IFS= read -r -s -p 'Passwort (14–128 Zeichen): ' admin_password || exit 1
+  printf '\n' >&2
+  IFS= read -r -s -p 'Passwort wiederholen: ' admin_password_confirm || exit 1
+  printf '\n' >&2
+  if [[ "$admin_password" != "$admin_password_confirm" ]]; then
+    printf '%s\n' 'Passwörter stimmen nicht überein. Bootstrap abgebrochen.' >&2
+    exit 1
+  fi
+  printf '%s' "$admin_password" |
+    dc --profile operations run --rm --no-deps -T migrations \
+      pnpm staging:create-admin --name "$admin_name" --email "$admin_email" --password-stdin
+)
+```
+
+Das Passwort wird verdeckt eingegeben und nur über die Pipe übertragen: nicht als Argument, exportierte Umgebungsvariable oder Datei. Keine Shell-Traces aktivieren. stdin muss nach einer einzelnen Passwortzeile geschlossen werden; ein abschließendes LF/CRLF wird entfernt, sonstiger Whitespace bleibt erhalten. Keine Standardzugangsdaten. E-Mail wird getrimmt und kleingeschrieben, Name getrimmt. Erfolg und Fehler enthalten weder Passwort noch Hash oder technische Datenbankdetails; Exitcode ungleich null bedeutet Fehler/Verweigerung.
+
+Die Transaktion sperrt die User-Tabelle gegen gleichzeitige Schreibzugriffe, prüft den gesamten Benutzerbestand und erstellt genau einen aktiven SUPER_ADMIN ohne Mandant sowie einen atomaren `STAGING_ADMIN_BOOTSTRAP`-AuditEvent. Argon2id kommt unverändert aus `src/server/password.ts`. Es entstehen keine Mandanten, Pläne, Subscriptions oder Messdaten. Login und MFA bleiben unverändert; die bestehende MFA-Einrichtung ist anschließend regulär durchzuführen.
+
+**Sobald irgendein Benutzer existiert, funktioniert der Bootstrap absichtlich nicht mehr**, auch bei deaktivierten Benutzern oder einem parallelen/zweiten Aufruf. Keine Passwortänderung und kein Ersatzadministrator über diesen Befehl; weitere Verwaltung erfolgt authentifiziert. Fehlgeschlagener Audit oder Benutzer-Insert rollt die gesamte Transaktion zurück. Für Tests ausschließlich `pnpm exec vitest run tests/staging-admin.test.ts tests/staging-admin-cli.test.ts tests/staging-admin-db.test.ts`: Der DB-Test verwendet einen neuen lokalen Loopback-Cluster auf Port 55449, vollständige versionierte Migrationen und keine externe DATABASE_URL. Der gestoppte Cluster bleibt unter `.local/bootstrap-test-*` zur lokalen Diagnose erhalten.
