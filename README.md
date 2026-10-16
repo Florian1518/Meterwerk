@@ -4,6 +4,28 @@ Meterwerk ist eine mandantenfähige Webanwendung zur Verwaltung und Auswertung v
 
 Die Anwendung basiert auf Next.js App Router, TypeScript, PostgreSQL und Prisma. Ein MQTT-Ingestion-Prozess und ein optionales Edge Gateway ergänzen den Webprozess. Die fachliche Wahrheit liegt in PostgreSQL; produktive Integrationen benötigen getrennte, sicher konfigurierte Infrastruktur.
 
+## Kundenbenutzer verwalten
+
+In **Kunden** (`/tenants`) und **Plattformverwaltung** führt die Aktion
+**Benutzer verwalten** zum ausgewählten Kunden (`/users?tenantId=…`).
+SUPER_ADMIN muss einen Kunden explizit auswählen; TENANT_ADMIN verwaltet über
+**Benutzer** ausschließlich den eigenen Mandanten. MANAGER und USER haben keinen Zugriff.
+**Benutzer anlegen** öffnet das Formular für Name, E-Mail, Kundenrolle, Passwort
+(14–128 Zeichen) und Zugang (standardmäßig aktiv). Beim Bearbeiten bedeutet ein
+leeres Passwort „beibehalten“. Der letzte aktive Kundenadministrator bleibt geschützt.
+USER benötigen anschließend eine Liegenschaftsfreigabe auf derselben Seite.
+Die Benutzerliste enthält alle Benutzer des Kunden und zeigt 20 pro Tabellenseite;
+Suche und Sortierung erfolgen im Browser. Für sehr große Benutzerbestände ist
+serverseitige Paginierung noch offen. Es sind keine neuen Migrationen erforderlich.
+
+Isolierter Release-Gate nach `pnpm build`: `node tests/user-management-release.mjs`.
+Er erstellt eine neue lokale PostgreSQL-Instanz auf Port 55451, wendet die 47
+bestehenden Migrationen an und verwendet ausschließlich synthetische Seed-Daten
+mit zufällig erzeugten Testzugängen. Anschließend laufen die vier Integrationstestsuiten
+und der Playwright-Benutzerverwaltungsablauf auf Port 3107. Beide Prozesse werden
+danach beendet; vorhandene Demo-Datenbanken bleiben unverändert. PostgreSQL-Testdateien
+verbleiben zur Diagnose unter `.local/user-release-*` (nicht versioniert).
+
 ## Voraussetzungen
 
 - Node.js 22.12 oder neuer

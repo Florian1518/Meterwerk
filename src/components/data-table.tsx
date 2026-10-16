@@ -88,7 +88,8 @@ export function DataTable({
           </label>
         )}
         <span role="status">
-          {filtered.length} Einträge{rows.length === 200 ? " · max. 200" : ""}
+          {filtered.length} Einträge
+          {rows.length === 200 && editor?.kind !== "users" ? " · max. 200" : ""}
         </span>
       </div>
       <div

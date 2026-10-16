@@ -103,7 +103,6 @@ export async function listResource(
           },
         },
         orderBy: { name: "asc" },
-        take: 200,
       });
     }
     case "devices":

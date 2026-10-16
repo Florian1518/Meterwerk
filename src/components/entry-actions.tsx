@@ -34,7 +34,7 @@ export function EntryActions({
         ? "Neues Passwort (optional, mind. 14 Zeichen)"
         : f.label,
   }));
-  if (kind === "users")
+  if (kind === "users" && !editFields.some((field) => field.name === "active"))
     editFields.push({
       name: "active",
       label: "Zugang",
@@ -47,6 +47,14 @@ export function EntryActions({
     });
   return (
     <div className="entry-actions">
+      {kind === "tenants" && (
+        <a
+          className="text-link"
+          href={`/users?tenantId=${encodeURIComponent(id)}`}
+        >
+          Benutzer verwalten
+        </a>
+      )}
       <Button
         variant="ghost"
         size="sm"
@@ -86,11 +94,6 @@ export function EntryActions({
             fixed={{ id, operation: "update" }}
             title="Daten bearbeiten"
             expanded
-            confirmMessage={
-              kind === "users" && values.active === "true"
-                ? `Soll der Benutzer ${name} wirklich deaktiviert werden?`
-                : undefined
-            }
           />
         ) : (
           <form action={action}>

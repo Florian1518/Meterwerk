@@ -61,6 +61,11 @@ export function CreateForm({
                 )}
               </span>
               {field.optional && <small className="form-help">Optional</small>}
+              {field.type === "password" && field.optional && (
+                <small className="form-help">
+                  Leer lassen, um das bestehende Passwort beizubehalten.
+                </small>
+              )}
               {field.options ? (
                 <select
                   name={field.name}

@@ -104,10 +104,20 @@ const config: Record<
       {
         name: "role",
         label: "Rolle",
-        options: ["TENANT_ADMIN", "MANAGER", "USER"].map((id) => ({
-          id,
-          name: id,
-        })),
+        options: [
+          { id: "TENANT_ADMIN", name: "Kundenadministrator" },
+          { id: "MANAGER", name: "Manager" },
+          { id: "USER", name: "Benutzer" },
+        ],
+      },
+      {
+        name: "active",
+        label: "Zugang",
+        value: "true",
+        options: [
+          { id: "true", name: "Aktiv" },
+          { id: "false", name: "Inaktiv" },
+        ],
       },
     ],
   },
@@ -446,7 +456,13 @@ export default async function SectionPage({
           kind={section}
           tenantId={tenantId}
           fields={fields}
-          title={section === "tenants" ? "Kunden anlegen" : "Eintrag anlegen"}
+          title={
+            section === "tenants"
+              ? "Kunden anlegen"
+              : section === "users"
+                ? "Benutzer anlegen"
+                : "Eintrag anlegen"
+          }
         />
       )}
       <DataTable
@@ -530,7 +546,7 @@ export default async function SectionPage({
         {section === "tenants"
           ? "Kundennamen öffnen das jeweilige Portfolio."
           : "Alle angezeigten Daten sind auf Ihren Mandanten und Ihre Freigaben beschränkt."}{" "}
-        Listen zeigen maximal 200 Einträge.
+        {section !== "users" && "Listen zeigen maximal 200 Einträge."}
       </p>
     </>
   );

@@ -36,6 +36,7 @@ export default async function PlatformAdminPage() {
               <th>Gateways</th>
               <th>Devices</th>
               <th>Alarme</th>
+              <th scope="col">Aktionen</th>
             </tr>
           </thead>
           <tbody>
@@ -47,6 +48,14 @@ export default async function PlatformAdminPage() {
                 <td>{tenant._count.gateways}</td>
                 <td>{tenant._count.devices}</td>
                 <td>{tenant._count.technicalAlerts}</td>
+                <td>
+                  <a
+                    className="text-link"
+                    href={`/users?tenantId=${encodeURIComponent(tenant.id)}`}
+                  >
+                    Benutzer verwalten
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>
