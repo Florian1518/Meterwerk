@@ -23,6 +23,7 @@ import {
   Upload,
   ClipboardCheck,
   Workflow,
+  Radio,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import type { Actor } from "@/server/policy";
@@ -120,6 +121,12 @@ const navigation: { group: string; items: NavItem[] }[] = [
       { href: "/rules", label: "Regeln", icon: Workflow, manage: true },
       { href: "/tenants", label: "Kunden", icon: Warehouse, platform: true },
       {
+        href: "/platform-admin/gateways",
+        label: "Gateways & Geräte",
+        icon: Radio,
+        platform: true,
+      },
+      {
         href: "/platform-admin",
         label: "Plattformverwaltung",
         icon: ShieldCheck,
@@ -152,9 +159,14 @@ export function Shell({
   const mobileItems = navigation
     .flatMap((section) => section.items)
     .filter((item) =>
-      ["/dashboard", "/analytics", "/meters", "/alarms", "/settings"].includes(
-        item.href,
-      ),
+      [
+        "/dashboard",
+        "/analytics",
+        "/meters",
+        "/alarms",
+        "/settings",
+        "/platform-admin/gateways",
+      ].includes(item.href),
     )
     .filter(
       (item) =>

@@ -2,22 +2,37 @@ import Link from "next/link";
 import { requirePageActor } from "@/server/auth";
 import { getDeviceDetail } from "@/server/device-management";
 import { tenantScope } from "@/server/policy";
+import { requireGatewayAdminPage } from "@/server/gateway-admin";
+import { DecommissionDevice } from "@/components/gateway-admin-controls";
 export default async function DeviceDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tenantId?: string }>;
+  searchParams: Promise<{ tenantId?: string; platformAdmin?: string }>;
 }) {
-  const actor = await requirePageActor();
   const q = await searchParams;
+  const actor =
+    q.platformAdmin === "1"
+      ? await requireGatewayAdminPage()
+      : await requirePageActor();
   const tenantId = tenantScope(actor, q.tenantId);
   const d = await getDeviceDetail((await params).id, tenantId);
   return (
     <>
       <p>
-        <Link className="text-link" href={`/devices?tenantId=${tenantId}`}>
-          ← Geräteverwaltung
+        <Link
+          className="text-link"
+          href={
+            q.platformAdmin === "1"
+              ? "/platform-admin/gateways/devices"
+              : `/devices?tenantId=${encodeURIComponent(tenantId)}`
+          }
+        >
+          ←{" "}
+          {q.platformAdmin === "1"
+            ? "Zentrale Geräteverwaltung"
+            : "Geräteverwaltung"}
         </Link>
       </p>
       <h1>{d.name ?? d.externalDeviceId}</h1>
@@ -97,6 +112,17 @@ export default async function DeviceDetailPage({
           {d.maintenanceEvents.length === 0 && <p>Keine Wartungseinträge.</p>}
         </article>
       </section>
+      {q.platformAdmin === "1" && d.lifecycleStatus !== "DECOMMISSIONED" && (
+        <div className="mt-4">
+          <DecommissionDevice deviceId={d.id} tenantId={tenantId} />
+        </div>
+      )}
+      {q.platformAdmin === "1" && d.lifecycleStatus === "DECOMMISSIONED" && (
+        <p className="panel mt-4">
+          Dieses Gerät ist stillgelegt. Diese Lifecycle-Transition kann nicht
+          rückgängig gemacht werden.
+        </p>
+      )}
     </>
   );
 }

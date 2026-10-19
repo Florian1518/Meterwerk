@@ -40,8 +40,10 @@ let actor: Actor;
 let management: typeof import("../src/server/device-management");
 let fleet: typeof import("../src/server/device-fleet-part3");
 let credentials: typeof import("../src/server/device-auth");
+let gatewayCredentials: typeof import("../src/server/gateway-credentials");
 let modbus: typeof import("../src/server/modbus");
 let rotate: typeof import("../src/server/device-fleet");
+let adminUi: typeof import("../src/server/gateway-admin");
 let started = false;
 let serial = 0;
 let own: Awaited<ReturnType<typeof fixture>>;
@@ -173,8 +175,10 @@ beforeAll(async () => {
   management = await import("../src/server/device-management");
   fleet = await import("../src/server/device-fleet-part3");
   credentials = await import("../src/server/device-auth");
+  gatewayCredentials = await import("../src/server/gateway-credentials");
   modbus = await import("../src/server/modbus");
   rotate = await import("../src/server/device-fleet");
+  adminUi = await import("../src/server/gateway-admin");
   for (const id of [admin.tenantId!, "phase-foreign"])
     await db.tenant.create({ data: { id, name: id, slug: id } });
   await db.user.create({
@@ -720,4 +724,238 @@ it("does not reactivate a decommissioned device through reconfiguration or stale
     ),
   ).rejects.toThrow("Decommissioned");
   expect(await db.reading.count({ where: { deviceId: f.device.id } })).toBe(0);
+});
+
+it("lists system-wide gateways and paginates with tenant and status filters", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  const all = await adminUi.listAdminGateways({ page: 1 });
+  expect(all.total).toBeGreaterThanOrEqual(3);
+  expect(all.items.map((g) => g.tenantId)).toContain("phase-foreign");
+  const ownOnly = await adminUi.listAdminGateways({
+    tenantId: admin.tenantId,
+    status: "ONLINE",
+    page: 1,
+  });
+  expect(
+    ownOnly.items.every(
+      (g) => g.tenantId === admin.tenantId && g.status === "ONLINE",
+    ),
+  ).toBe(true);
+  const byExternalId = await adminUi.listAdminGateways({
+    q: own.gateway.externalGatewayId,
+  });
+  expect(byExternalId.items.map((g) => g.id)).toContain(own.gateway.id);
+  await expect(
+    adminUi.listAdminGateways({ tenantId: "missing-tenant" }),
+  ).rejects.toMatchObject({ status: 404 });
+});
+
+it("provides a safe gateway detail DTO with devices, property, health, credential metadata, alerts and audit", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  const issued = await gatewayCredentials.manageGatewayCredential(
+    own.gateway.id,
+    { operation: "CREATE" },
+    admin.tenantId,
+  );
+  const result = await adminUi.getAdminGateway(own.gateway.id, admin.tenantId!);
+  expect(result.gateway.tenant).toMatchObject({ id: admin.tenantId });
+  expect(result.gateway.devices.map((d) => d.id)).toContain(own.device.id);
+  expect(result.health).toHaveProperty("status");
+  expect(result.credentials[0]).toHaveProperty("keyFingerprint");
+  expect(result.audit.some((e) => e.entityId === issued.id)).toBe(true);
+  if (!issued.privateKey)
+    throw new Error(
+      "Credential-Erstellung hat keinen Einmalschlüssel zurückgegeben.",
+    );
+  const renderedData = JSON.stringify(result);
+  expect(renderedData.includes(issued.privateKey)).toBe(false);
+  expect(renderedData.includes("publicKey")).toBe(false);
+  expect(renderedData.includes("tokenHash")).toBe(false);
+  await expect(
+    adminUi.getAdminGateway(own.gateway.id, "phase-foreign"),
+  ).rejects.toMatchObject({ status: 404 });
+});
+
+it("lists cross-tenant devices with safe fields and rejects a fabricated tenant", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  const result = await adminUi.listAdminDevices({ page: 1 });
+  expect(result.total).toBeGreaterThanOrEqual(3);
+  expect(result.items.map((d) => d.tenantId)).toContain("phase-foreign");
+  expect(JSON.stringify(result.items[0])).not.toContain("tokenHash");
+  const scoped = await adminUi.listAdminDevices({ tenantId: "phase-foreign" });
+  expect(scoped.items.every((d) => d.tenantId === "phase-foreign")).toBe(true);
+  await expect(
+    adminUi.listAdminDevices({ tenantId: "missing-tenant" }),
+  ).rejects.toMatchObject({ status: 404 });
+});
+
+it.each(["TENANT_ADMIN", "MANAGER", "USER"] as const)(
+  "blocks %s from every central server entry point",
+  async (role) => {
+    actor = { ...admin, role };
+    await expect(adminUi.listAdminGateways()).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(adminUi.listAdminDevices()).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(
+      adminUi.getAdminGateway(own.gateway.id, admin.tenantId!),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      adminUi.prepareAdminGateway(admin.tenantId!, {
+        name: "Blocked",
+        externalGatewayId: `blocked-${role}`,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      adminUi.adminGatewayCredential(own.gateway.id, {
+        tenantId: admin.tenantId,
+        operation: "CREATE",
+        confirmed: true,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      adminUi.decommissionAdminDevice(own.device.id, {
+        tenantId: admin.tenantId,
+        status: "DECOMMISSIONED",
+        confirmed: true,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  },
+);
+
+it("prepares a gateway through existing quota and audit service and rejects tenant manipulation", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  const created = await adminUi.prepareAdminGateway(admin.tenantId!, {
+    name: "Synthetic admin gateway",
+    externalGatewayId: `admin-${serial}`,
+  });
+  expect(created.name).toBe("Synthetic admin gateway");
+  expect(
+    await db.auditEvent.count({
+      where: {
+        entityId: created.id,
+        action: "gateway.created",
+        tenantId: admin.tenantId,
+      },
+    }),
+  ).toBe(1);
+  await expect(
+    adminUi.prepareAdminGateway("missing-tenant", {
+      name: "Invalid",
+      externalGatewayId: `missing-${serial}`,
+    }),
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(
+    adminUi.prepareAdminGateway(admin.tenantId!, {
+      name: "Invalid field",
+      externalGatewayId: "bad/id",
+      propertyId: own.property.id,
+    }),
+  ).rejects.toBeDefined();
+});
+
+it("creates, rotates and revokes gateway credentials without recording the private key in audit", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  const first = await adminUi.adminGatewayCredential(own.gateway.id, {
+    tenantId: admin.tenantId,
+    operation: "CREATE",
+    confirmed: true,
+  });
+  if (!first.privateKey)
+    throw new Error(
+      "Credential-Erstellung hat keinen Einmalschlüssel zurückgegeben.",
+    );
+  expect(first.privateKey).toContain("PRIVATE KEY");
+  const second = await adminUi.adminGatewayCredential(own.gateway.id, {
+    tenantId: admin.tenantId,
+    operation: "ROTATE",
+    credentialId: first.id,
+    confirmed: true,
+  });
+  if (!second.privateKey)
+    throw new Error(
+      "Credential-Rotation hat keinen Einmalschlüssel zurückgegeben.",
+    );
+  expect(second.privateKey).toContain("PRIVATE KEY");
+  await adminUi.adminGatewayCredential(own.gateway.id, {
+    tenantId: admin.tenantId,
+    operation: "REVOKE",
+    credentialId: second.id,
+    confirmed: true,
+  });
+  const events = await db.auditEvent.findMany({
+    where: {
+      tenantId: admin.tenantId,
+      entityId: { in: [first.id, second.id] },
+    },
+  });
+  const auditData = JSON.stringify(events);
+  expect(events.map((e) => e.action)).toEqual(
+    expect.arrayContaining([
+      "gateway.credential.create",
+      "gateway.credential.rotate",
+      "gateway.credential.revoke",
+    ]),
+  );
+  expect(auditData.includes(first.privateKey)).toBe(false);
+  expect(auditData.includes(second.privateKey)).toBe(false);
+  const metadata = await adminUi.getAdminGateway(
+    own.gateway.id,
+    admin.tenantId!,
+  );
+  expect(JSON.stringify(metadata.credentials).includes("privateKey")).toBe(
+    false,
+  );
+  await expect(
+    adminUi.adminGatewayCredential(own.gateway.id, {
+      tenantId: "phase-foreign",
+      operation: "CREATE",
+      confirmed: true,
+    }),
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(
+    adminUi.adminGatewayCredential(own.gateway.id, {
+      tenantId: admin.tenantId,
+      operation: "ROTATE",
+      credentialId: first.id,
+      confirmed: true,
+    }),
+  ).rejects.toMatchObject({ status: 409 });
+});
+
+it("routes central decommissioning through the Phase 1A transition and tenant checks", async () => {
+  actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
+  await expect(
+    adminUi.decommissionAdminDevice(foreign.device.id, {
+      tenantId: admin.tenantId,
+      status: "DECOMMISSIONED",
+      confirmed: true,
+    }),
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(
+    adminUi.decommissionAdminDevice(own.device.id, {
+      tenantId: admin.tenantId,
+      status: "DECOMMISSIONED",
+      confirmed: false,
+    }),
+  ).rejects.toBeDefined();
+  await adminUi.decommissionAdminDevice(own.device.id, {
+    tenantId: admin.tenantId,
+    status: "DECOMMISSIONED",
+    confirmed: true,
+  });
+  await expect(
+    adminUi.decommissionAdminDevice(own.device.id, {
+      tenantId: admin.tenantId,
+      status: "DECOMMISSIONED",
+      confirmed: true,
+    }),
+  ).rejects.toMatchObject({ status: 409 });
+  expect(
+    await db.deviceCredential.count({
+      where: { deviceId: own.device.id, status: "ACTIVE" },
+    }),
+  ).toBe(0);
 });

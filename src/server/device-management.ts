@@ -6,6 +6,7 @@ import {
   AccessError,
   propertyScope,
   requireManage,
+  requirePlatform,
   tenantScope,
 } from "./policy";
 import type { Prisma } from "@/generated/prisma/client";
@@ -179,6 +180,79 @@ export async function listDevices(
     pageSize: value.pageSize,
     total,
     pages: Math.ceil(total / value.pageSize),
+  };
+}
+
+/** Platform-only inventory query. Cross-tenant scope is derived from the session role. */
+export async function listPlatformDevices(
+  raw: unknown = {},
+  requestedTenant?: string,
+) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  const value = z
+    .object({
+      q: z.string().trim().max(120).optional(),
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+    })
+    .strict()
+    .parse(raw);
+  if (
+    requestedTenant &&
+    !(await db.tenant.findUnique({
+      where: { id: requestedTenant },
+      select: { id: true },
+    }))
+  )
+    throw new AccessError(404, "Kunde nicht gefunden.");
+  const where: Prisma.DeviceWhereInput = {
+    ...(requestedTenant ? { tenantId: requestedTenant } : {}),
+    ...(value.q
+      ? {
+          OR: [
+            { name: { contains: value.q, mode: "insensitive" } },
+            { externalDeviceId: { contains: value.q, mode: "insensitive" } },
+            { serialNumber: { contains: value.q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+  const pageSize = 25;
+  const [items, total] = await db.$transaction([
+    db.device.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      skip: (value.page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        tenantId: true,
+        name: true,
+        externalDeviceId: true,
+        lifecycleStatus: true,
+        status: true,
+        lastSeenAt: true,
+        tenant: { select: { id: true, name: true } },
+        meter: {
+          select: {
+            serialNumber: true,
+            type: true,
+          },
+        },
+        gateway: { select: { id: true, name: true } },
+        profile: {
+          select: { manufacturer: true, model: true, version: true },
+        },
+      },
+    }),
+    db.device.count({ where }),
+  ]);
+  return {
+    items,
+    page: value.page,
+    pageSize,
+    total,
+    pages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
 

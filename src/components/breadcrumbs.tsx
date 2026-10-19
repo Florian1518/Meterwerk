@@ -19,6 +19,8 @@ const labels: Record<string, string> = {
   "api-keys": "Public API-Keys",
   webhooks: "Webhooks",
   "platform-admin": "Plattformverwaltung",
+  gateways: "Gateways & Geräte",
+  devices: "Geräte",
 };
 export function Breadcrumbs() {
   const pathname = usePathname();
