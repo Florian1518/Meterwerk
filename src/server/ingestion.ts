@@ -57,6 +57,16 @@ export async function ingestReading(
       "Zählerstand darf nicht kleiner als der vorherige Stand sein.",
     );
   const row = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${device.id} AND "tenantId"=${device.tenantId} FOR UPDATE`;
+    const current = await tx.device.findFirst({
+      where: { id: device.id, tenantId: device.tenantId },
+    });
+    if (
+      !current ||
+      current.lifecycleStatus === "DECOMMISSIONED" ||
+      current.status === "DISABLED"
+    )
+      throw new AccessError(403, "Device ist deaktiviert.");
     const created = await tx.reading.create({
       data: {
         tenantId: device.tenantId,

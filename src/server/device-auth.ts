@@ -20,7 +20,11 @@ export async function authenticateDevice(authorization: string | null) {
   });
   if (!credential) throw new AccessError(401, "Ungültiges Device-Credential.");
   await requireTenantFeature(credential.device.tenantId, "API");
-  if (credential.status !== "ACTIVE" || credential.device.status === "DISABLED")
+  if (
+    credential.status !== "ACTIVE" ||
+    credential.device.status === "DISABLED" ||
+    credential.device.lifecycleStatus === "DECOMMISSIONED"
+  )
     throw new AccessError(403, "Device ist deaktiviert.");
   if (!["ONLINE", "WARNING", "OFFLINE"].includes(credential.device.status))
     throw new AccessError(
@@ -62,32 +66,43 @@ export async function issueDeviceToken(
     },
     requested,
   );
-  const device = await db.device.findFirst({
-    where: { id: input.deviceId, tenantId },
-  });
-  if (!device) throw new AccessError(404, "Device nicht gefunden.");
-  const token = newDeviceToken();
-  await db.$transaction([
-    db.deviceCredential.updateMany({
-      where: {
-        tenantId: device.tenantId,
-        deviceId: device.id,
-        status: "ACTIVE",
-      },
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${input.deviceId} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const device = await tx.device.findFirst({
+      where: { id: input.deviceId, tenantId },
+    });
+    if (!device) throw new AccessError(404, "Device nicht gefunden.");
+    if (device.lifecycleStatus === "DECOMMISSIONED")
+      throw new AccessError(409, "Device ist außer Betrieb.");
+    const token = newDeviceToken();
+    const revoked = await tx.deviceCredential.updateMany({
+      where: { tenantId, deviceId: device.id, status: "ACTIVE" },
       data: { status: "REVOKED", revokedAt: new Date() },
-    }),
-    db.deviceCredential.create({
+    });
+    const credential = await tx.deviceCredential.create({
       data: {
-        tenantId: device.tenantId,
+        tenantId,
         deviceId: device.id,
         tokenHash: hashDeviceToken(token),
       },
-    }),
-  ]);
-  return { token, deviceId: device.id };
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: credential.id,
+        action: revoked.count
+          ? "device.credential.rotate"
+          : "device.credential.issue",
+        details: { deviceId: device.id, revokedCount: revoked.count },
+      },
+    });
+    return { token, deviceId: device.id };
+  });
 }
+
 export async function revokeDeviceToken(
-  actor: { id?: string; tenantId: string | null; role: string },
+  actor: { id: string; tenantId: string | null; role: string },
   credentialId: string,
   requested?: string | null,
 ) {
@@ -96,7 +111,7 @@ export async function revokeDeviceToken(
   const tenantId = tenantScope(
     {
       ...actor,
-      id: actor.id ?? "device-admin",
+      id: actor.id,
       name: "",
       email: "",
       role: actor.role as "SUPER_ADMIN" | "TENANT_ADMIN" | "MANAGER" | "USER",
@@ -107,8 +122,23 @@ export async function revokeDeviceToken(
     where: { id: credentialId, tenantId },
   });
   if (!credential) throw new AccessError(404, "Credential nicht gefunden.");
-  return db.deviceCredential.update({
-    where: { id: credentialId },
-    data: { status: "REVOKED", revokedAt: new Date() },
+  return db.$transaction(async (tx) => {
+    await tx.deviceCredential.updateMany({
+      where: { id: credentialId, tenantId, status: "ACTIVE" },
+      data: { status: "REVOKED", revokedAt: new Date() },
+    });
+    const row = await tx.deviceCredential.findFirstOrThrow({
+      where: { id: credentialId, tenantId },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: credentialId,
+        action: "device.credential.revoke",
+        details: { deviceId: row.deviceId },
+      },
+    });
+    return row;
   });
 }

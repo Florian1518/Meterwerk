@@ -120,6 +120,7 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
     });
     if (
       !device ||
+      device.lifecycleStatus === "DECOMMISSIONED" ||
       ["DISABLED", "MAINTENANCE"].includes(device.status) ||
       device.meter.measurementUnit !== value.unit
     )

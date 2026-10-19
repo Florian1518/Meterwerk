@@ -92,3 +92,28 @@ Phase 5v verwendet isolierte lokale Acceptance-Datenbanken und Testbroker. Einst
 Vor `pnpm db:migrate` den [unterstützten Baseline-Umfang](docs/MIGRATION-BASELINE.md) prüfen. Das Kommando führt einen lesenden Checksum-Preflight aus und bricht bei unbekannter Historie ab. Für isolierte DEMO/TEST-Umgebungen wählt SUPER_ADMIN unter `/platform-admin/demo` ausdrücklich einen synthetischen Demo-Mandanten; Apply, Refresh und NORMAL-Reset betreffen die Szenariofixtures. Kein Reset einer Bestandsdatenbank.
 
 Der erste Administrator einer leeren externen Staging-Installation wird ausschließlich manuell mit `pnpm staging:create-admin` im Migrationsimage angelegt. Voraussetzungen, verdeckte stdin-Eingabe und absichtliche Sperre nach dem ersten Benutzer: [Staging-Operatoranleitung](docs/STAGING.md#einmaliger-erster-plattformadministrator). Kein Demo-Seed für Staging.
+
+## Gateway-/Device-Sicherheitskorrekturen (Phase 1A)
+
+Compliance und Gateway-Health verwenden dieselben PropertyGrants wie die
+Geräteliste. Bei gemeinsam genutzten Gateways beziehen sich Geräteanzahl und
+Command-Fehler und gerätebezogene Wartungsfenster nur auf freigegebene Geräte; Gateway-Betriebsdaten bleiben
+gatewaybezogen. Administratoren und MANAGER behalten ihre bestehenden Leserechte.
+
+DECOMMISSIONED ist terminal: Die Transaktion deaktiviert das Device, widerruft
+aktive Device-Tokens, deaktiviert Modbus-Polling und storniert offene
+PENDING-Modbus-Aufträge mit Audit. Die Ingestion lehnt stillgelegte Geräte ab.
+Ein offline laufender Edge-Agent kann bereits autorisiertes Polling bis zum
+nächsten Konfigurationskontakt fortsetzen; diese Daten werden nicht angenommen.
+Gateway-Credentials und Broker-Identitäten werden dadurch nicht verändert.
+
+Modbus START erfordert den abgeschlossenen ACTIVE-Inbetriebnahmestand,
+completedAt, die Bestätigung der aktuellen Revision und der aktuellen Einheit
+sowie ein verifiziertes Profil. Allgemeine Fleet-Commands, Rollout-Abschluss,
+OTA und automatische Hardwareidentitäten bleiben Folgephasen.
+
+Gezielte Prüfung: pnpm exec vitest run tests/gateway-device-security-db.test.ts.
+Sie erstellt eine frische PostgreSQL-Testinstanz auf Loopback-Port 55453 mit
+synthetischen Daten und 47 Migrationen, ohne bestehende Datenbanken oder .env zu
+verwenden. Lizenzprüfungen und der Session-Actor werden im Service-Test injiziert;
+es ist kein HTTP-/Hardwaretest. Testdateien bleiben unter .local zur Diagnose.

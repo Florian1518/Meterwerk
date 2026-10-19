@@ -188,6 +188,8 @@ export async function writeModbus(
       where: { tenantId, meterId, protocol: "MODBUS" },
       include: { modbusConfig: true, diagnostic: true },
     });
+    if (device?.lifecycleStatus === "DECOMMISSIONED")
+      throw new AccessError(409, "Gerät ist außer Betrieb.");
     if (value.operation === "CONFIGURE") {
       if (meter.type !== "ELECTRICITY" || meter.measurementUnit !== "kWh")
         throw new AccessError(
@@ -302,6 +304,18 @@ export async function writeModbus(
         );
       const config = device.modbusConfig;
       if (value.operation === "COMMAND") {
+        if (
+          value.action === "START" &&
+          (device.status === "DISABLED" ||
+            config.state !== "ACTIVE" ||
+            !config.completedAt ||
+            config.reviewedRevision !== config.revision ||
+            config.confirmedUnitId !== meter.unitId)
+        )
+          throw new AccessError(
+            409,
+            "Zuerst Inbetriebnahme mit bestätigter Messung und Nutzungseinheit abschließen.",
+          );
         if (value.action !== "STOP") {
           if (config.state === "DISABLED")
             throw new AccessError(

@@ -326,18 +326,12 @@ export async function changeDeviceLifecycle(
 ) {
   const actor = await requireActor();
   requireManage(actor);
-  const { row, tenantId } = await visibleDevice(id, actor, requested);
+  const { tenantId } = await visibleDevice(id, actor, requested);
   const target = z.enum(lifecycleStatuses).parse(next);
-  if (!isAllowedLifecycleTransition(row.lifecycleStatus, target))
-    throw new AccessError(
-      409,
-      `Statuswechsel ${row.lifecycleStatus} → ${target} nicht erlaubt.`,
-    );
   return db.$transaction(async (tx) => {
-    const updated = await tx.device.update({
-      where: { id },
-      data: { lifecycleStatus: target },
-    });
+    await lockLifecycleDevices(tx, tenantId, [id]);
+    const row = await tx.device.findFirstOrThrow({ where: { id, tenantId } });
+    const updated = await applyLifecycle(tx, tenantId, row, target);
     await tx.auditEvent.create({
       data: {
         tenantId,
@@ -348,6 +342,50 @@ export async function changeDeviceLifecycle(
       },
     });
     return updated;
+  });
+}
+
+async function lockLifecycleDevices(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  ids: string[],
+) {
+  // Match the Gateway -> Device lock order used by Modbus and ingestion.
+  await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "tenantId"=${tenantId} AND "id" IN (SELECT "gatewayId" FROM "Device" WHERE "tenantId"=${tenantId} AND "id" = ANY(${ids})) ORDER BY "id" FOR UPDATE`;
+  await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "tenantId"=${tenantId} AND "id" = ANY(${ids}) ORDER BY "id" FOR UPDATE`;
+}
+
+async function applyLifecycle(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  row: { id: string; lifecycleStatus: string },
+  target: (typeof lifecycleStatuses)[number],
+) {
+  if (!isAllowedLifecycleTransition(row.lifecycleStatus, target))
+    throw new AccessError(
+      409,
+      `Statuswechsel ${row.lifecycleStatus} → ${target} nicht erlaubt.`,
+    );
+  if (target === "DECOMMISSIONED") {
+    await tx.deviceCredential.updateMany({
+      where: { tenantId, deviceId: row.id, status: "ACTIVE" },
+      data: { status: "REVOKED", revokedAt: new Date() },
+    });
+    await tx.modbusConfiguration.updateMany({
+      where: { tenantId, deviceId: row.id },
+      data: { state: "DISABLED", pollingEnabled: false },
+    });
+    await tx.gatewayCommand.updateMany({
+      where: { tenantId, deviceId: row.id, status: "PENDING" },
+      data: { status: "CANCELLED", completedAt: new Date() },
+    });
+  }
+  return tx.device.update({
+    where: { id: row.id },
+    data: {
+      lifecycleStatus: target,
+      ...(target === "DECOMMISSIONED" ? { status: "DISABLED" as const } : {}),
+    },
   });
 }
 
@@ -429,8 +467,13 @@ export async function bulkDeviceAction(
       })))
   )
     throw new AccessError(404, "Device Profile nicht gefunden.");
-  const target = value.action === "MAINTENANCE" ? "MAINTENANCE" : value.status;
-  if (value.action !== "SET_TAGS" && !target)
+  const target =
+    value.action === "MAINTENANCE"
+      ? "MAINTENANCE"
+      : value.action === "SET_STATUS"
+        ? value.status
+        : undefined;
+  if (value.action === "SET_STATUS" && !target)
     throw new AccessError(400, "Status fehlt.");
   if (
     target &&
@@ -443,7 +486,14 @@ export async function bulkDeviceAction(
       "Mindestens ein Statuswechsel ist nicht erlaubt.",
     );
   return db.$transaction(async (tx) => {
-    for (const row of rows) {
+    if (target) await lockLifecycleDevices(tx, tenantId, value.ids);
+    const currentRows = await tx.device.findMany({
+      where: { tenantId, id: { in: value.ids } },
+      select: { id: true, lifecycleStatus: true },
+    });
+    if (currentRows.length !== value.ids.length)
+      throw new AccessError(404, "Device nicht gefunden.");
+    for (const row of currentRows) {
       const data: Prisma.DeviceUpdateInput =
         value.action === "SET_TAGS"
           ? { tags: (value.tags ?? []) as Prisma.InputJsonValue }
@@ -456,7 +506,8 @@ export async function bulkDeviceAction(
             : value.action === "MAINTENANCE"
               ? { lifecycleStatus: "MAINTENANCE" }
               : { lifecycleStatus: target };
-      await tx.device.update({ where: { id: row.id }, data });
+      if (target) await applyLifecycle(tx, tenantId, row, target);
+      else await tx.device.update({ where: { id: row.id }, data });
       await tx.auditEvent.create({
         data: {
           tenantId,

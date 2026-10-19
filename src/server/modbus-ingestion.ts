@@ -29,6 +29,8 @@ export async function acceptTelemetry(
     include: { modbusConfig: true, diagnostic: true },
   });
   if (!device?.modbusConfig) throw new Error("Unassigned device");
+  if (device.lifecycleStatus === "DECOMMISSIONED")
+    throw new Error("Decommissioned device");
   const prior = await tx.telemetrySample.findUnique({
     where: {
       tenantId_deviceId_messageId: {

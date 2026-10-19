@@ -2,7 +2,12 @@ import "server-only";
 import { z } from "zod";
 import { db } from "./db";
 import { requireActor } from "./auth";
-import { AccessError, requireManage, tenantScope } from "./policy";
+import {
+  AccessError,
+  propertyScope,
+  requireManage,
+  tenantScope,
+} from "./policy";
 import type { Prisma } from "@/generated/prisma/client";
 
 export function evaluateCompliance(input: {
@@ -42,7 +47,13 @@ export async function deviceCompliance(id: string, requested?: string | null) {
   const actor = await requireActor();
   const tenantId = tenantScope(actor, requested);
   const d = await db.device.findFirst({
-    where: { id, tenantId },
+    where: {
+      id,
+      tenantId,
+      meter: {
+        unit: { building: { property: propertyScope(actor, tenantId) } },
+      },
+    },
     include: {
       profile: true,
       credentials: { where: { status: "ACTIVE" }, take: 1 },
@@ -231,17 +242,34 @@ export async function updateRollout(
 export async function gatewayHealth(id: string, requested?: string | null) {
   const actor = await requireActor();
   const tenantId = tenantScope(actor, requested);
+  const visibleDevices = {
+    tenantId,
+    meter: { unit: { building: { property: propertyScope(actor, tenantId) } } },
+  };
   const g = await db.gateway.findFirst({
-    where: { id, tenantId },
+    where: {
+      id,
+      tenantId,
+      ...(actor.role === "USER" ? { devices: { some: visibleDevices } } : {}),
+    },
     include: {
-      devices: { select: { id: true, status: true } },
+      devices: { where: visibleDevices, select: { id: true, status: true } },
       credentials: { where: { status: "ACTIVE" }, select: { id: true } },
       commands: {
-        where: { status: { in: ["FAILED", "QUEUED"] } },
+        where: {
+          tenantId,
+          device: visibleDevices,
+          status: { in: ["FAILED", "QUEUED"] },
+        },
         select: { id: true, status: true },
       },
       maintenanceWindows: {
-        where: { startsAt: { lte: new Date() }, endsAt: { gte: new Date() } },
+        where: {
+          tenantId,
+          startsAt: { lte: new Date() },
+          endsAt: { gte: new Date() },
+          OR: [{ deviceId: null }, { device: visibleDevices }],
+        },
       },
     },
   });

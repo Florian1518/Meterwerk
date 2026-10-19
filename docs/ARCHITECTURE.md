@@ -316,3 +316,32 @@ Eine PostgreSQL-Tabellensperre (`LOCK TABLE "User" IN EXCLUSIVE MODE`) schützt 
 ## Kundenbenutzerverwaltung
 
 Die bestehenden Kundenübersichten verlinken auf /users?tenantId=… in der vorhandenen dynamischen Verwaltungsseite. CreateForm und EntryActions verwenden unverändert createAction → mutate → writeResource einschließlich hashPassword, Zod, tenantScope, Rollenprüfung, Tenant-Lock und atomarem AuditEvent. Es gibt keine zusätzliche Benutzeranlage und keine Schemaänderung. Sichere Selects schließen Passwort- und MFA-Geheimnisse aus; SUPER_ADMIN gehört nicht zu den erlaubten Kundenrollen. Erfolgreiche Mutationen revalidieren über die bestehende Server Action die Listen.
+
+## Gateway-/Device-Sicherheit, Phase 1A
+
+deviceCompliance und gatewayHealth verwenden propertyScope wie die bestehenden
+Listen-/Detailpfade. USER benötigen eine Freigabe über Meter → Unit → Building →
+Property; Gateway-Zugriff benötigt mindestens ein sichtbares Gerät. Geräte- und
+Command-Aggregate sowie gerätebezogene Wartungsfenster sind auf diese Sichtbarkeit
+begrenzt, ohne RBAC-Erweiterung.
+
+Einzel- und Bulk-Lifecycle-Mutationen nutzen dieselbe Transition-Prüfung innerhalb
+der Transaktion. Sperren folgen Gateway → Device; nach der Sperre wird der aktuelle
+Lifecycle erneut gelesen. DECOMMISSIONED setzt zusätzlich den technischen Status
+DISABLED, widerruft aktive DeviceCredentials, deaktiviert ModbusConfiguration und
+storniert PENDING-Modbus-Commands atomar mit dem AuditEvent. Bereits widerrufene
+Credentials behalten ihren Widerrufszeitpunkt. Device-Authentifizierung sowie
+REST-, Utility-, Gateway- und Modbus-Ingestion berücksichtigen den terminalen
+Zustand; Konfiguration kann ihn nicht wieder aktivieren. Offline-Edge-Caches
+können erst beim nächsten Steuerkontakt deaktiviert werden.
+
+Device-Token-Ausgabe/Rotation sperrt das Device gegen konkurrierende Ausgabe und
+Decommissioning. Ausgabe, Rotation und Widerruf verwenden atomare AuditEvents mit
+IDs und Zählern, niemals Token oder Hash. Die bestehende Fleet-Rotation bleibt
+auditiert und lehnt ebenfalls DECOMMISSIONED ab.
+
+START prüft die vorhandene ModbusConfiguration statt eines zusätzlichen
+Statusmodells: ACTIVE, completedAt, reviewedRevision gleich revision,
+confirmedUnitId gleich aktueller Meter.unitId und verifiziertes Profil.
+ASSIGN_PROFILE ändert nur die mandantengeprüfte Profilzuordnung und benötigt
+keinen Lifecycle-Status. Keine Schemaänderung oder Migration erforderlich.

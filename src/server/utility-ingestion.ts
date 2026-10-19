@@ -41,11 +41,15 @@ export async function ingestUtility(
   if (!primary) throw new AccessError(400, "Primärer Zählerstand fehlt.");
   const result = await db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id"=${device.tenantId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${device.id} AND "tenantId"=${device.tenantId} FOR UPDATE`;
     const active = await tx.deviceCredential.findFirst({
       where: {
         id: credential.id,
         status: "ACTIVE",
-        device: { status: { in: ["ONLINE", "WARNING", "OFFLINE"] } },
+        device: {
+          lifecycleStatus: { not: "DECOMMISSIONED" },
+          status: { in: ["ONLINE", "WARNING", "OFFLINE"] },
+        },
       },
     });
     if (!active) throw new AccessError(403, "Credential nicht mehr aktiv.");

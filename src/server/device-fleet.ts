@@ -417,6 +417,12 @@ export async function rotateDeviceCredential(
   const { tenantId } = await access(id, requested);
   const token = newDeviceToken();
   const row = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${id} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const current = await tx.device.findFirstOrThrow({
+      where: { id, tenantId },
+    });
+    if (current.lifecycleStatus === "DECOMMISSIONED")
+      throw new AccessError(409, "Device ist außer Betrieb.");
     await tx.deviceCredential.updateMany({
       where: { tenantId, deviceId: id, status: "ACTIVE" },
       data: { status: "REVOKED", revokedAt: new Date() },
