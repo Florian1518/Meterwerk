@@ -1,5 +1,6 @@
 import "server-only";
 import { requireTenantQuota } from "./licensing";
+import { tenantManagedUserRoleSchema } from "./tenant-user-role";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { db } from "./db";
@@ -94,7 +95,7 @@ export async function createInvitation(
   const value = z
     .object({
       email: z.email().toLowerCase(),
-      role: z.enum(["TENANT_ADMIN", "MANAGER", "USER"]),
+      role: tenantManagedUserRoleSchema,
       propertyIds: z.array(z.string()).default([]),
       expiresInHours: z.number().int().min(1).max(168).default(72),
     })

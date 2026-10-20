@@ -12,6 +12,7 @@ import {
 import { hashPassword } from "./password";
 import { requireTenantQuota } from "./licensing";
 import { enqueueWebhookEvent } from "./webhooks";
+import { tenantManagedUserRoleSchema } from "./tenant-user-role";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const editableResources = [
@@ -35,7 +36,7 @@ const bool = z
 const userSchema = z.object({
   name: text,
   email: z.email("Ungültige E-Mail-Adresse.").toLowerCase(),
-  role: z.enum(["TENANT_ADMIN", "MANAGER", "USER"]),
+  role: tenantManagedUserRoleSchema,
   active: bool.default(true),
   password: z
     .union([

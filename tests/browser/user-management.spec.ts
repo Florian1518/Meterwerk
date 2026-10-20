@@ -1,10 +1,10 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client";
 
 test("selected customer user CRUD, password retention and server-side request tampering", async ({
   page,
-}) => {
+}, testInfo: TestInfo) => {
   test.skip(
     process.env.USER_MANAGEMENT_RELEASE_GATE !== "true",
     "Requires the isolated release-gate runner.",
@@ -17,7 +17,9 @@ test("selected customer user CRUD, password retention and server-side request ta
     log: [],
   });
   const password = process.env.DEMO_PASSWORD!;
-  const email = "browser-admin@example.invalid";
+  const projectSuffix = testInfo.project.name.replace(/[^a-z0-9-]/gi, "-");
+  const tenantId = "gateway-browser-tenant";
+  const email = `browser-admin-${projectSuffix}@example.invalid`;
   async function login(target: Page, address: string) {
     await target.goto("/login");
     await target.getByLabel("E-Mail-Adresse").fill(address);
@@ -31,15 +33,31 @@ test("selected customer user CRUD, password retention and server-side request ta
     role: "SUPER_ADMIN",
     password,
   };
-  const headers = { origin: process.env.APP_URL! };
+  async function apiRequest(path: string, method: string, body?: unknown) {
+    return page.evaluate(
+      async ({ path, method, body }) => {
+        const response = await fetch(path, {
+          method,
+          credentials: "same-origin",
+          headers:
+            body === undefined
+              ? undefined
+              : { "content-type": "application/json" },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        return { status: response.status, text: await response.text() };
+      },
+      { path, method, body },
+    );
+  }
   try {
     await login(page, "admin@meterwerk.demo");
     await page.goto("/tenants");
     const customer = page.getByRole("row").filter({
-      has: page.locator('a[href="/dashboard?tenantId=demo-tenant-0"]'),
+      has: page.locator(`a[href="/dashboard?tenantId=${tenantId}"]`),
     });
     await customer.getByRole("link", { name: "Benutzer verwalten" }).click();
-    await expect(page).toHaveURL(/\/users\?tenantId=demo-tenant-0/);
+    await expect(page).toHaveURL(new RegExp(`/users\\?tenantId=${tenantId}`));
     await page.getByText("＋ Benutzer anlegen", { exact: true }).click();
     const create = page
       .locator("details")
@@ -55,6 +73,9 @@ test("selected customer user CRUD, password retention and server-side request ta
     await expect(
       create.getByLabel("Rolle").locator('option[value="SUPER_ADMIN"]'),
     ).toHaveCount(0);
+    const auditBeforeFormEscalation = await db.auditEvent.count({
+      where: { tenantId, action: "users.create" },
+    });
     // Manipulate the actual Server Action FormData; bypass the UI role allowlist.
     await create.getByLabel("Rolle").evaluate((select: HTMLSelectElement) => {
       select.add(new Option("Injected", "SUPER_ADMIN"));
@@ -63,6 +84,11 @@ test("selected customer user CRUD, password retention and server-side request ta
     await create.getByRole("button", { name: "Speichern" }).click();
     await expect(create.getByRole("alert")).toContainText("role");
     expect(await db.user.count({ where: { email } })).toBe(0);
+    expect(
+      await db.auditEvent.count({
+        where: { tenantId, action: "users.create" },
+      }),
+    ).toBe(auditBeforeFormEscalation);
     // React resets uncontrolled fields after an action; refill with a valid role.
     await create.getByLabel("Name", { exact: false }).fill("Browser Admin");
     await create.getByLabel("E-Mail", { exact: false }).fill(email);
@@ -91,20 +117,66 @@ test("selected customer user CRUD, password retention and server-side request ta
     await expect(row).toContainText("Browser Admin Updated");
     const after = await db.user.findUniqueOrThrow({ where: { email } });
     expect(after.passwordHash === before.passwordHash).toBe(true);
-    expect(after.tenantId).toBe("demo-tenant-0");
+    expect(after.tenantId).toBe(tenantId);
     expect(after.role).toBe("TENANT_ADMIN");
-    const elevated = await page.request.post(
-      "/api/users?tenantId=demo-tenant-0",
-      { data: payload, headers },
+    const authenticatedList = await apiRequest(
+      `/api/users?tenantId=${tenantId}`,
+      "GET",
     );
-    expect(elevated.status()).toBe(400);
-    const noTenant = await page.request.post("/api/users", {
-      data: { ...payload, role: "USER" },
-      headers,
+    expect(authenticatedList.status).toBe(200);
+    const usersBeforeEscalation = await db.user.count({
+      where: { tenantId },
     });
-    expect(noTenant.status()).toBe(400);
-    const listed = await page.request.get("/api/users?tenantId=demo-tenant-0");
-    const body = await listed.text();
+    const auditBeforeEscalation = await db.auditEvent.count({
+      where: {
+        tenantId,
+        action: { in: ["users.create", "users.update"] },
+      },
+    });
+    const elevated = await apiRequest(
+      `/api/users?tenantId=${tenantId}`,
+      "POST",
+      payload,
+    );
+    expect(elevated.status).toBe(400);
+    expect(await db.user.count({ where: { tenantId } })).toBe(
+      usersBeforeEscalation,
+    );
+    expect(
+      await db.auditEvent.count({
+        where: {
+          tenantId,
+          action: { in: ["users.create", "users.update"] },
+        },
+      }),
+    ).toBe(auditBeforeEscalation);
+    const updateAttempt = await apiRequest(
+      `/api/users/${after.id}?tenantId=${tenantId}`,
+      "PATCH",
+      { ...payload, role: "SUPER_ADMIN", password: "" },
+    );
+    expect(updateAttempt.status).toBe(400);
+    expect(
+      await db.user.findUniqueOrThrow({
+        where: { id: after.id },
+        select: { role: true },
+      }),
+    ).toEqual({ role: "TENANT_ADMIN" });
+    expect(
+      await db.auditEvent.count({
+        where: {
+          tenantId,
+          action: { in: ["users.create", "users.update"] },
+        },
+      }),
+    ).toBe(auditBeforeEscalation);
+    const noTenant = await apiRequest("/api/users", "POST", {
+      ...payload,
+      role: "USER",
+    });
+    expect(noTenant.status).toBe(400);
+    const listed = await apiRequest(`/api/users?tenantId=${tenantId}`, "GET");
+    const body = listed.text;
     expect(body.includes(password)).toBe(false);
     expect(body.includes("passwordHash")).toBe(false);
     expect((await page.locator("body").innerText()).includes(password)).toBe(
@@ -146,14 +218,12 @@ test("selected customer user CRUD, password retention and server-side request ta
         where: { email: "foreign-attempt@example.invalid" },
       }),
     ).toBe(0);
-    const foreign = await page.request.patch(
+    const foreign = await apiRequest(
       `/api/users/${after.id}?tenantId=demo-tenant-1`,
-      {
-        data: { ...payload, role: "USER", tenantId: "demo-tenant-1" },
-        headers,
-      },
+      "PATCH",
+      { ...payload, role: "USER", tenantId: "demo-tenant-1" },
     );
-    expect(foreign.status()).toBe(403);
+    expect(foreign.status).toBe(403);
     await page.goto("/users?tenantId=demo-tenant-1");
     // Next.js streamed notFound responses retain HTTP 200; assert denial UI and no data.
     await expect(

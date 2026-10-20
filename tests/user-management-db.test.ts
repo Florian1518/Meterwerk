@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
@@ -72,7 +72,13 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.$disconnect();
   if (started) await postgres.stop();
-});
+  const resolvedDirectory = resolve(directory);
+  if (
+    !resolvedDirectory.startsWith(`${resolve(".local")}\\user-management-test-`)
+  )
+    throw new Error(`Refusing unexpected test cleanup: ${resolvedDirectory}`);
+  rmSync(resolvedDirectory, { recursive: true, force: true });
+}, 120000);
 
 it("enforces tenant user isolation, password validation and last-admin protection through mutate", async () => {
   const { mutate } = await import("@/server/mutations");
@@ -128,8 +134,104 @@ it("enforces tenant user isolation, password validation and last-admin protectio
   expect(admin.active).toBe(true);
   expect(await verifyPassword(admin.passwordHash, input.password)).toBe(true);
   const own: Actor = admin;
+  const tenantManager = await mutate(
+    own,
+    {
+      ...input,
+      name: "Manager",
+      email: "manager@example.invalid",
+      role: "MANAGER",
+    },
+    first.id,
+  );
+  const secondAdmin = await mutate(
+    own,
+    {
+      ...input,
+      name: "Second Admin",
+      email: "second-admin@example.invalid",
+      role: "TENANT_ADMIN",
+    },
+    first.id,
+  );
+  const countBeforeCreateEscalation = await db.user.count({
+    where: { tenantId: first.id },
+  });
+  const createAuditBeforeEscalation = await db.auditEvent.count({
+    where: {
+      tenantId: first.id,
+      action: { in: ["users.create", "users.update"] },
+    },
+  });
+  await expect(
+    mutate(
+      own,
+      { ...input, email: "escalated@example.invalid", role: "SUPER_ADMIN" },
+      first.id,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    mutate(
+      actor,
+      {
+        ...input,
+        email: "platform-escalated@example.invalid",
+        role: "SUPER_ADMIN",
+      },
+      first.id,
+    ),
+  ).rejects.toThrow();
+  expect(await db.user.count({ where: { tenantId: first.id } })).toBe(
+    countBeforeCreateEscalation,
+  );
+  expect(
+    await db.auditEvent.count({
+      where: {
+        tenantId: first.id,
+        action: { in: ["users.create", "users.update"] },
+      },
+    }),
+  ).toBe(createAuditBeforeEscalation);
+  for (const target of [created.id, tenantManager.id, secondAdmin.id]) {
+    await expect(
+      mutate(
+        actor,
+        {
+          ...input,
+          operation: "update",
+          id: target,
+          role: "SUPER_ADMIN",
+          password: "",
+        },
+        first.id,
+      ),
+    ).rejects.toThrow();
+  }
+  expect(await db.user.count({ where: { tenantId: first.id } })).toBe(
+    countBeforeCreateEscalation,
+  );
+  expect(
+    await db.auditEvent.count({
+      where: {
+        tenantId: first.id,
+        action: { in: ["users.create", "users.update"] },
+      },
+    }),
+  ).toBe(createAuditBeforeEscalation);
+  await mutate(
+    own,
+    {
+      ...input,
+      operation: "delete",
+      id: secondAdmin.id,
+      confirmation: "DELETE",
+    },
+    first.id,
+  );
   const listed = await listResource(actor, "users", first.id);
-  expect(listed.map((u) => u.id)).toEqual([created.id]);
+  expect(listed.map((u) => u.id).sort()).toEqual(
+    [created.id, tenantManager.id].sort(),
+  );
   expect(listed[0]).not.toHaveProperty("passwordHash");
   expect(listed[0]).not.toHaveProperty("mfaSecretEncrypted");
   expect(await listResource(own, "users")).toEqual(listed);
@@ -172,6 +274,34 @@ it("enforces tenant user isolation, password validation and last-admin protectio
     email: "member@example.invalid",
     password: "x".repeat(14),
   });
+  const memberCreateAuditCount = await db.auditEvent.count({
+    where: {
+      tenantId: first.id,
+      action: { in: ["users.create", "users.update"] },
+    },
+  });
+  await expect(
+    mutate(
+      own,
+      {
+        ...input,
+        operation: "update",
+        id: member.id,
+        role: "SUPER_ADMIN",
+        password: "",
+      },
+      first.id,
+    ),
+  ).rejects.toThrow();
+  expect(await db.user.count({ where: { tenantId: first.id } })).toBe(3);
+  expect(
+    await db.auditEvent.count({
+      where: {
+        tenantId: first.id,
+        action: { in: ["users.create", "users.update"] },
+      },
+    }),
+  ).toBe(memberCreateAuditCount);
   await expect(
     mutate(
       actor,
@@ -259,7 +389,7 @@ it("enforces tenant user isolation, password validation and last-admin protectio
     await db.auditEvent.count({
       where: { action: "users.create", tenantId: first.id },
     }),
-  ).toBe(2);
+  ).toBe(4);
   await db.user.createMany({
     data: Array.from({ length: 201 }, (_, i) => ({
       tenantId: first.id,
@@ -268,7 +398,7 @@ it("enforces tenant user isolation, password validation and last-admin protectio
       passwordHash: admin.passwordHash,
     })),
   });
-  expect(await listResource(actor, "users", first.id)).toHaveLength(203);
+  expect(await listResource(actor, "users", first.id)).toHaveLength(204);
   expect(await listResource(actor, "users", second.id)).toHaveLength(0);
   await mutate(actor, {
     kind: "tenants",
