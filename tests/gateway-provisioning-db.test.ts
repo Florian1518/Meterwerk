@@ -395,7 +395,11 @@ it.each(["USER", "MANAGER", "TENANT_ADMIN"] as const)(
         service.assignGatewayProperty(g.id, { propertyId: p2.id, revision: 0 }),
       () =>
         credentials.createPilotGateway({ name: "x", externalGatewayId: "x" }),
-      () => credentials.manageGatewayCredential(g.id, { operation: "CREATE" }),
+      () =>
+        credentials.revokeGatewayCredential(g.id, {
+          operation: "REVOKE",
+          credentialId: "missing",
+        }),
       () => identity.registerGatewayCommunicationIdentity(g.id, metadata()),
     ])
       await expect(run()).rejects.toMatchObject({ status: 403 });
@@ -579,6 +583,55 @@ it("serializes assignment with property change", async () => {
   ]);
   expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
 });
+it("serializes a command against a property move and rejects competing property revisions", async () => {
+  const g = await gateway();
+  const d = await device(g.id);
+  actor = { ...admin, role: "TENANT_ADMIN", tenantId: "own" };
+  const fleet = await import("../src/server/device-fleet");
+  const commandRace = await Promise.allSettled([
+    fleet.queueDeviceCommand(d.id, { action: "STATUS_REQUEST" }, "own"),
+    service.assignGatewayProperty(
+      g.id,
+      { propertyId: p2.id, revision: 0 },
+      "own",
+    ),
+  ]);
+  expect(
+    commandRace.filter((result) => result.status === "fulfilled"),
+  ).toHaveLength(1);
+  const command = await db.gatewayCommand.findFirst({
+    where: { deviceId: d.id },
+  });
+  expect(command?.gatewayId).toBe(g.id);
+  expect(
+    (await db.gateway.findUniqueOrThrow({ where: { id: g.id } })).propertyId,
+  ).toBe(p1.id);
+
+  const empty = await gateway();
+  const third = await property("own");
+  actor = admin;
+  const competing = await Promise.allSettled([
+    service.assignGatewayProperty(
+      empty.id,
+      { propertyId: p2.id, revision: 0 },
+      "own",
+    ),
+    service.assignGatewayProperty(
+      empty.id,
+      { propertyId: third.id, revision: 0 },
+      "own",
+    ),
+  ]);
+  expect(
+    competing.filter((result) => result.status === "fulfilled"),
+  ).toHaveLength(1);
+  expect(
+    competing.filter((result) => result.status === "rejected"),
+  ).toHaveLength(1);
+  expect(
+    (await db.gateway.findUniqueOrThrow({ where: { id: empty.id } })).revision,
+  ).toBe(1);
+});
 it("blocks hierarchy changes with gateway descendants", async () => {
   const g = await gateway();
   await device(g.id);
@@ -731,7 +784,11 @@ it("decommission revokes signatures, cancels open commands, blocks ingestion and
     ingestion.ingestGatewayMessage(message.topic, message.payload),
   ).rejects.toBeDefined();
   await expect(
-    credentials.manageGatewayCredential(g.id, { operation: "CREATE" }, "own"),
+    credentials.revokeGatewayCredential(
+      g.id,
+      { operation: "REVOKE", credentialId: "missing" },
+      "own",
+    ),
   ).rejects.toMatchObject({ status: 409 });
   await expect(
     identity.registerGatewayCommunicationIdentity(g.id, metadata(), "own"),
@@ -880,25 +937,40 @@ it("failure reason is required and a new provisioning attempt clears it", async 
     provisioningStartedAt: expect.any(Date),
   });
 });
-it("concurrent credential creation cannot survive decommission", async () => {
+it("decommission revokes registered credentials and prevents later public-key registration", async () => {
   const g = await gateway();
-  await Promise.allSettled([
-    credentials.manageGatewayCredential(g.id, { operation: "CREATE" }, "own"),
-    service.changeGatewayLifecycle(
+  const first = generateKeyPairSync("ed25519");
+  const credential = await credentials.registerGatewayPublicKey(
+    g.id,
+    {
+      publicKey: first.publicKey
+        .export({ type: "spki", format: "pem" })
+        .toString(),
+    },
+    "own",
+  );
+  await service.changeGatewayLifecycle(
+    g.id,
+    { status: "DECOMMISSIONED", revision: 0 },
+    "own",
+  );
+  expect(
+    await db.gatewayCredential.findUniqueOrThrow({
+      where: { id: credential.id },
+    }),
+  ).toMatchObject({ status: "REVOKED", revokedAt: expect.any(Date) });
+  const later = generateKeyPairSync("ed25519");
+  await expect(
+    credentials.registerGatewayPublicKey(
       g.id,
-      { status: "DECOMMISSIONED", revision: 0 },
+      {
+        publicKey: later.publicKey
+          .export({ type: "spki", format: "pem" })
+          .toString(),
+      },
       "own",
     ),
-  ]);
-  expect(
-    (await db.gateway.findUniqueOrThrow({ where: { id: g.id } }))
-      .lifecycleStatus,
-  ).toBe("DECOMMISSIONED");
-  expect(
-    await db.gatewayCredential.count({
-      where: { gatewayId: g.id, status: "ACTIVE" },
-    }),
-  ).toBe(0);
+  ).rejects.toMatchObject({ status: 409 });
 });
 it("global search enforces direct grants, including legacy gateways", async () => {
   const visible = await gateway(),
@@ -951,6 +1023,24 @@ it("communication inventory is strict public metadata with unique lowercase SHA2
   await expect(
     identity.registerGatewayCommunicationIdentity(g.id, data, "own"),
   ).rejects.toBeDefined();
+  const foreignGateway = await db.gateway.create({
+    data: {
+      tenantId: "foreign",
+      propertyId: foreign.id,
+      name: "Foreign fingerprint test",
+      externalGatewayId: randomUUID(),
+      manufacturer: "Test",
+      model: "Test",
+      status: "OFFLINE",
+    },
+  });
+  await expect(
+    identity.registerGatewayCommunicationIdentity(
+      foreignGateway.id,
+      { ...metadata(), certificateFingerprint: data.certificateFingerprint },
+      "foreign",
+    ),
+  ).rejects.toMatchObject({ status: 409 });
   await expect(
     identity.registerGatewayCommunicationIdentity(
       g.id,
@@ -1117,7 +1207,7 @@ it.each(blockers)(
         });
         break;
       case "SIGNATURE_CREDENTIAL_MISSING":
-        await credentials.manageGatewayCredential(
+        await credentials.revokeGatewayCredential(
           g.id,
           { operation: "REVOKE", credentialId: message.credential.id },
           "own",
@@ -1142,14 +1232,9 @@ it.each(blockers)(
         });
         break;
       case "REVOCATION_PENDING": {
-        const old = await identity.registerGatewayCommunicationIdentity(
-          g.id,
-          metadata(),
-          "own",
-        );
         await identity.confirmGatewayCommunicationIdentity(
           g.id,
-          { identityId: old.id, operation: "REQUEST_REVOCATION" },
+          { identityId: communication.id, operation: "REQUEST_REVOCATION" },
           "own",
         );
         break;
@@ -1250,7 +1335,7 @@ it("database prevents a missing tenant; public readiness rejects foreign and unk
   ).rejects.toMatchObject({ status: 404 });
 });
 it("new attempt requires a new accepted heartbeat and preserves historical firstContact", async () => {
-  const { g } = await readyFixture();
+  const { g, message } = await readyFixture();
   const before = await db.gateway.findUniqueOrThrow({ where: { id: g.id } });
   await service.changeGatewayLifecycle(
     g.id,
@@ -1262,6 +1347,9 @@ it("new attempt requires a new accepted heartbeat and preserves historical first
     { status: "PROVISIONING", revision: 3 },
     "own",
   );
+  await expect(
+    ingestion.ingestGatewayMessage(message.topic, message.payload),
+  ).resolves.toBeNull();
   expect((await readiness(g.id)).blockers.map((b) => b.code)).toContain(
     "CURRENT_CONTACT_MISSING",
   );
@@ -1414,6 +1502,21 @@ it("manual communication confirmations enforce validity, identity, tenant and re
   ).toBe(1);
   await call("REQUEST_REVOCATION");
   await expect(call("CONFIRM_ENABLED")).rejects.toMatchObject({ status: 409 });
+  const replacementData = metadata();
+  await expect(
+    identity.registerGatewayCommunicationIdentity(g.id, replacementData, "own"),
+  ).rejects.toMatchObject({ status: 409 });
+  await call("CONFIRM_REVOKED");
+  const replacement = await identity.registerGatewayCommunicationIdentity(
+    g.id,
+    replacementData,
+    "own",
+  );
+  await identity.confirmGatewayCommunicationIdentity(
+    g.id,
+    { identityId: replacement.id, operation: "CONFIRM_ENABLED" },
+    "own",
+  );
   await service.changeGatewayLifecycle(
     g.id,
     { status: "DECOMMISSIONED", revision: 0 },
@@ -1722,6 +1825,114 @@ it.each(["TENANT_ADMIN", "MANAGER", "USER"] as const)(
     }
   },
 );
+it("legacy credential HTTP endpoints reject CREATE and ROTATE but preserve revocation", async () => {
+  const { NextRequest } = await import("next/server");
+  const credential =
+    await import("../src/app/api/gateways/[id]/credentials/route");
+  const platformCredential =
+    await import("../src/app/api/platform/gateways/[id]/credentials/route");
+  const g = await gateway();
+  actor = admin;
+  const previousUrl = process.env.APP_URL;
+  process.env.APP_URL = "http://localhost:3105";
+  const context = { params: Promise.resolve({ id: g.id }) };
+  const req = (path: string, body: unknown) =>
+    new NextRequest(`http://localhost:3105${path}`, {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3105",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  try {
+    const before = await db.gatewayCredential.count({
+      where: { gatewayId: g.id },
+    });
+    for (const operation of ["CREATE", "ROTATE"] as const) {
+      expect(
+        (
+          await credential.POST(
+            req(`/api/gateways/${g.id}/credentials?tenantId=own`, {
+              operation,
+            }),
+            context,
+          )
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await platformCredential.POST(
+            req(`/api/platform/gateways/${g.id}/credentials`, {
+              tenantId: "own",
+              confirmed: true,
+              operation,
+            }),
+            context,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      await db.gatewayCredential.count({ where: { gatewayId: g.id } }),
+    ).toBe(before);
+    const keys = generateKeyPairSync("ed25519");
+    const first = await credentials.registerGatewayPublicKey(
+      g.id,
+      {
+        publicKey: keys.publicKey
+          .export({ type: "spki", format: "pem" })
+          .toString(),
+      },
+      "own",
+    );
+    expect(
+      (
+        await credential.POST(
+          req(`/api/gateways/${g.id}/credentials?tenantId=own`, {
+            operation: "REVOKE",
+            credentialId: first.id,
+          }),
+          context,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await db.gatewayCredential.findUniqueOrThrow({ where: { id: first.id } }),
+    ).toMatchObject({ status: "REVOKED" });
+    const secondKeys = generateKeyPairSync("ed25519");
+    const second = await credentials.registerGatewayPublicKey(
+      g.id,
+      {
+        publicKey: secondKeys.publicKey
+          .export({ type: "spki", format: "pem" })
+          .toString(),
+      },
+      "own",
+    );
+    expect(
+      (
+        await platformCredential.POST(
+          req(`/api/platform/gateways/${g.id}/credentials`, {
+            tenantId: "own",
+            confirmed: true,
+            operation: "REVOKE",
+            credentialId: second.id,
+          }),
+          context,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await db.gatewayCredential.findUniqueOrThrow({
+        where: { id: second.id },
+      }),
+    ).toMatchObject({ status: "REVOKED" });
+  } finally {
+    if (previousUrl === undefined) delete process.env.APP_URL;
+    else process.env.APP_URL = previousUrl;
+  }
+});
 it("expired signature and future communication identities cannot satisfy readiness", async () => {
   const { g, message, communication } = await readyFixture();
   await db.gatewayCredential.update({

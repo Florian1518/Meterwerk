@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   listGatewayCredentials,
-  manageGatewayCredential,
+  revokeGatewayCredential,
 } from "@/server/gateway-credentials";
 import { failure, readBody } from "@/server/http";
 const headers = { "Cache-Control": "private, no-store", Pragma: "no-cache" };
@@ -27,7 +27,7 @@ export async function POST(
 ) {
   try {
     return NextResponse.json(
-      await manageGatewayCredential(
+      await revokeGatewayCredential(
         (await context.params).id,
         await readBody(request),
         request.nextUrl.searchParams.get("tenantId"),

@@ -6,8 +6,8 @@ Phase 4b ergänzt den bestehenden Webserver, PostgreSQL, MQTT-Worker und Edge-Ag
 
 1. **Gateway-PC vorbereiten:** Unterstütztes Windows/Linux, Node ≥22.12, pnpm, RS485-Treiber, stabile Uhrzeitsynchronisierung und gesicherte Netzwerkverbindung bereitstellen. Dediziertes Dienstkonto und restriktive Dateirechte verwenden.
 2. **Agent installieren:** Geprüften Commit bereitstellen, `pnpm install --frozen-lockfile`; native SerialPort-Bindings auf dem Zielsystem installieren. `pnpm edge-gateway --version` zeigt die Agent-Version. Installationspfad und persistentes Datenverzeichnis trennen.
-3. **Gateway anlegen:** Als TENANT_ADMIN unter `/system-status` Name und Standortkennung eingeben. SUPER_ADMIN wählt explizit einen Mandanten. Die erzeugte interne Gateway-ID ist die Identität für MQTT, Zertifikat und Agent; nicht die frei gewählte Standortkennung.
-4. **Credential erzeugen:** Gateway auswählen, optionales Ablaufdatum setzen und Credential erstellen. Die Anzeige liefert Credential-ID und privaten Ed25519-Schlüssel einmalig. Auf dem Gateway geschützt speichern; danach Anzeige schließen. Ein erneutes GET liefert ausschließlich Metadaten.
+3. **Gateway vorbereiten:** In „Gateways & Geräte“ wählt SUPER_ADMIN den Kunden und eine zugehörige Liegenschaft, dann erfasst die externe Gateway-ID und vorhandene Stammdaten. NEW ist ein administrativer Lifecycle, keine Online-Aussage.
+4. **Signaturidentität:** Es gibt keinen produktiven HTTP-CREATE-/ROTATE-Pfad, der einen privaten Schlüssel an den Browser liefert. Meterwerk registriert nur einen lokal auf dem Gateway erzeugten Ed25519-Public-Key. Die lokale Erzeugung und sichere Bereitstellung durch einen realen Agenten ist eine Voraussetzung für eine Hardwareabnahme und wird durch diese Adminoberfläche nicht erledigt.
 5. **Lokal hinterlegen:** `EDGE_CONFIG_PATH` auf die geschützte Konfiguration setzen. `gatewayId`, `credentialId`, `privateKeyPath`, `receiptPublicKeyPath`, `dataDirectory` und Endpunktfreigaben eintragen. `deviceId` nach der Gerätezuordnung übernehmen. Im Pilot kein unkonfiguriertes Gerät betreiben. Den öffentlichen Receipt-Schlüssel über einen vertrauenswürdigen Kanal verteilen.
 6. **RS485 anschließen:** Elektrofachkraft, Gerätehandbuch und [Hardware-Inbetriebnahme](HARDWARE-COMMISSIONING.md) beachten. A/B, Bezugspotenzial und Terminierung prüfen.
 7. **COM-Port prüfen:** `pnpm modbus:ports` direkt am Gateway ausführen. Port ausdrücklich in `allowedSerialPorts` freigeben; für TCP entsprechend `allowedTcpEndpoints`.
@@ -37,9 +37,13 @@ Worker: eigene TLS-Dateien, `MQTT_RECEIPT_KEY_PATH` für den privaten Receipt-Sc
 
 ## Credential-Lebenszyklus
 
-Die bestehende Ed25519-Architektur bleibt bestehen. Es gibt kein auf dem Server gespeichertes Gateway-Passwort: gespeichert werden öffentlicher Verifikationsschlüssel und SHA-256-Fingerprint sowie createdAt, lastUsedAt, expiresAt und revokedAt. Der private Schlüssel ist nach der Erstellung/Rotation nur in der einmaligen POST-Antwort verfügbar, mit `private, no-store`; Listen, Audit und Logs enthalten ihn nicht. Ein Passwort-Hash wäre für diesen asymmetrischen Signaturvertrag kein Ersatz.
-
-Rotation erzeugt ein neues Schlüsselpaar und widerruft den ausgewählten Vorgänger atomar. Den neuen privaten Schlüssel und die Credential-ID lokal ersetzen und den Agenten neu starten; bis dahin schlagen Nachrichten fehl und verbleiben in der begrenzten Queue. Bei Verlust der einmaligen Anzeige ein neues Credential erzeugen und das verlorene widerrufen. Widerruf/Ablauf verhindert serverseitige Ingestion sofort. **Broker-Zertifikate sind ein separater Lebenszyklus:** bei kompromittiertem Gerät zusätzlich Clientzertifikat per CRL widerrufen und bestehende MQTT-Verbindung trennen. Rotation eines Signaturschlüssels ersetzt kein TLS-Zertifikat.
+Das bestehende Ed25519-Modell speichert nur den Public Key und den SHA-256-Fingerprint sowie createdAt, lastUsedAt, expiresAt und revokedAt. Der
+private Schlüssel wird lokal auf dem Gateway erzeugt und verlässt es nicht. Die
+Plattform-APIs erzeugen oder liefern keine privaten Gateway-Schlüssel. Rotation
+bedeutet: lokal ein neues Schl�sselpaar erzeugen, den neuen Public Key registrieren,
+extern den Betrieb geordnet umstellen und das alte Credential widerrufen. Es gibt
+keinen serverseitigen Einmal-Download. Widerruf/Ablauf verhindert serverseitige
+Ingestion sofort. Broker-Zertifikate bleiben ein separater externer PKI-Lebenszyklus.
 
 ## Queue, Retry und Quarantäne
 

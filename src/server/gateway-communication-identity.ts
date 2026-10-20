@@ -45,6 +45,37 @@ export async function registerGatewayCommunicationIdentity(
     if (!gateway) throw new AccessError(404, "Gateway nicht gefunden.");
     if (gateway.lifecycleStatus === "DECOMMISSIONED")
       throw new AccessError(409, "Gateway ist stillgelegt.");
+    // Serialize fingerprint checks across tenants without storing private PKI
+    // material or adding a second uniqueness/status model.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${value.certificateFingerprint}, 0))`;
+    if (
+      await tx.gatewayCommunicationIdentity.findFirst({
+        where: { certificateFingerprint: value.certificateFingerprint },
+        select: { id: true },
+      })
+    )
+      throw new AccessError(
+        409,
+        "Zertifikatsfingerprint ist bereits registriert.",
+      );
+    const now = new Date();
+    if (
+      await tx.gatewayCommunicationIdentity.findFirst({
+        where: {
+          gatewayId,
+          tenantId,
+          enabledConfirmedAt: { not: null },
+          revocationConfirmedAt: null,
+          notBefore: { lte: now },
+          expiresAt: { gt: now },
+        },
+        select: { id: true },
+      })
+    )
+      throw new AccessError(
+        409,
+        "Zuerst die aktive Kommunikationsidentität extern widerrufen und bestätigen.",
+      );
     const row = await tx.gatewayCommunicationIdentity.create({
       data: {
         ...value,
@@ -120,6 +151,25 @@ export async function confirmGatewayCommunicationIdentity(
       throw new AccessError(
         409,
         "Freischaltung für diese Identität nicht zulässig.",
+      );
+    if (
+      value.operation === "CONFIRM_ENABLED" &&
+      (await tx.gatewayCommunicationIdentity.findFirst({
+        where: {
+          gatewayId,
+          tenantId,
+          id: { not: row.id },
+          enabledConfirmedAt: { not: null },
+          revocationConfirmedAt: null,
+          notBefore: { lte: now },
+          expiresAt: { gt: now },
+        },
+        select: { id: true },
+      }))
+    )
+      throw new AccessError(
+        409,
+        "Eine andere gültige Kommunikationsidentität ist bereits extern freigeschaltet.",
       );
     if (value.operation === "CONFIRM_REVOKED" && !row.revocationRequestedAt)
       throw new AccessError(409, "Widerruf zuerst anfordern.");

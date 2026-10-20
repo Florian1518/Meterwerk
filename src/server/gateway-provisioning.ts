@@ -9,7 +9,7 @@ import {
 } from "./gateway-lifecycle";
 import {
   registerGatewayPublicKey,
-  manageGatewayCredential,
+  revokeGatewayCredential,
 } from "./gateway-credentials";
 import {
   registerGatewayCommunicationIdentity,
@@ -55,7 +55,7 @@ export async function mutateGatewayProvisioning(id: string, raw: unknown) {
         .object({ credentialId: z.string().min(1) })
         .strict()
         .parse(value.data);
-      return manageGatewayCredential(
+      return revokeGatewayCredential(
         id,
         { operation: "REVOKE", ...data },
         tenantId,

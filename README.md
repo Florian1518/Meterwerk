@@ -196,10 +196,10 @@ storniert offene Commands und deaktiviert serverseitiges Modbus-Polling. Devices
 bleiben eigenständig. Externe Brokerwiderrufe müssen separat ausgeführt und
 bestätigt werden; ohne diesen Nachweis besteht keine Aussage vollständiger Sperrung.
 
-Legacy-Ausnahme: CREATE/ROTATE mit einmaliger Private-Key-Antwort bleibt für
-bestehende Test-/Legacy-Aufrufer in POST /api/gateways/[id]/credentials sowie
-POST /api/platform/gateways/[id]/credentials erreichbar, ausschließlich für
-SUPER_ADMIN. Die neue Provisioning-UI bietet diese Erzeugung nicht an.
-Der normale Workflow nutzt POST /api/platform/gateways/[id]/provisioning mit
-PUBLIC_KEY. Keine Hardware, MQTT-Verbindung, Zertifikatsausstellung oder
-Broker-ACL-Änderung wird durch diese Verwaltungsaktionen ausgelöst.
+Die bisherigen HTTP-CREATE-/ROTATE-Aktionen für Gateway-Credentials sind
+deaktiviert. Die Credential-Endpunkte erlauben nur noch Widerruf; neue
+Signaturidentitäten werden über den Public-Key-Provisioningpfad registriert.
+Private Keys werden weder durch die Plattform-API noch im Admin-Browser erzeugt.
+Der lokale Demo-Seed `seed-edge.ts` ist separat auf `SEED_DEMO=true`, Nicht-
+Produktion und Loopback-Datenbank beschränkt. Keine Hardware, MQTT-Verbindung,
+Zertifikatsausstellung oder Broker-ACL-Änderung wird ausgelöst.

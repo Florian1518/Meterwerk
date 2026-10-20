@@ -107,8 +107,13 @@ Live-Daten werden alle fünf Sekunden über authentifizierte API-Zugriffe aktual
 
 Phase 4b behält die signierte Phase-3-Kette und die Phase-4a-Profile unverändert bei. Pilot-MQTT nutzt gegenseitiges TLS, mindestens TLS 1.2, geprüften Servernamen und kontrollierte CA. Der Broker bindet ACLs an den zertifizierten CN, nicht an eine frei gewählte Client-ID. Gateway-CN entspricht der internen Gateway-ID; `meterwerk-ingestion` ist ausschließlich für den Worker reserviert. Die lokale anonyme Demo bleibt isoliert verfügbar. TLS-/Brokeridentität und Ed25519-Nachrichtensignatur sind getrennte Sicherheitsgrenzen.
 
-Gateway-Credentials bleiben asymmetrisch: nur öffentlicher Schlüssel und SHA-256-Fingerprint in PostgreSQL, private Schlüssel ausschließlich in einmaligen, nicht cachebaren Erstellungs-/Rotationsantworten. Rotation/Widerruf sperren das alte Credential mit atomarem Audit. Ablauf und lastUsedAt werden bei Ingestion berücksichtigt. TLS-Clientzertifikate benötigen zusätzlich CA-/CRL-Verwaltung und Verbindungsabbruch bei Widerruf. Diese Verwaltungsmaßnahmen werden nicht durch eine zusätzliche Passwortdatenbank ersetzt.
-
+Gateway-Credentials speichern nur den öffentlichen Ed25519-Schlüssel und den
+SHA-256-Fingerprint. Private Keys werden lokal auf dem Gateway erzeugt; produktive
+HTTP-APIs erzeugen oder liefern keine privaten Schlüssel. Die lokale
+Demo-Einrichtung `seed-edge.ts` bleibt auf SEED_DEMO=true, Nicht-Produktion und
+eine Loopback-Datenbank beschränkt. Ablauf, Widerruf und lastUsedAt werden bei
+Ingestion berücksichtigt. TLS-Clientzertifikate benötigen zusätzlich CA-/CRL-
+Verwaltung und Verbindungsabbruch bei Widerruf.
 Die bestehende Dateiqueue bleibt erhalten und lesbar für Phase-3-Werkzeuge. Ein Sidecar speichert Retry-Zeitpunkte, Altersmetadaten und begrenzte Quarantäne. Kapazität/Alter sind begrenzt, Backoff übersteht Neustarts. Zu große neue Einträge, abgelaufene Daten und ausgeschöpfte Sendeversuche werden quarantänisiert. Quarantäneverlust ist explizit gezählt und sichtbar; unbegrenzte Offline-Verlustfreiheit wird nicht behauptet. Der Agent öffnet MQTT erst nach Laden des lokalen Zustands und Registrierung seiner Listener, um ein verlorenes Connect-Ereignis zu verhindern.
 
 WorkerHealth und TechnicalAlert sind mandantengebunden mit Tenant-Fremdschlüssel; Alarmobjekte sind serverseitig abgeleitete polymorphe Referenzen, keine clientseitig wählbaren Fremd-IDs. Der bestehende Worker beobachtet Verbindung und Geräte, während die authentifizierte Statusabfrage einen ausgefallenen Worker ebenfalls erkennt. Eindeutigkeit je Tenant/Typ/Objekt und eine Tenant-Sperre deduplizieren Übergänge; Erholung löst Alarme. MQTT-Unterbrechungsbeginn liegt in PostgreSQL, sodass mehrere Beobachter denselben Schwellenwert nutzen. Vollständiger Hostausfall erfordert einen externen Überwacher.
@@ -388,7 +393,8 @@ direkte SQL-Schreibzugriffe gehören nicht zur unterstützten Administration.
 
 Stilllegung widerruft alle aktiven GatewayCredentials, storniert PENDING, QUEUED,
 SENT und ACKNOWLEDGED Commands als CANCELLED, setzt pollingEnabled=false und
-markiert externe Kommunikationsidentitäten mit revocationRequestedAt. Das Audit
+markiert externe
+Kommunikationsidentitäten mit revocationRequestedAt. Das Audit
 benennt den erforderlichen externen Brokerwiderruf. Device-Lifecycle und technischer
 Gatewaystatus werden nicht umgedeutet. Gateway-Ingestion prüft den terminalen
 Lifecycle unter derselben Gateway-Sperre. DB-Trigger verweigern aktive neue
@@ -455,10 +461,11 @@ Eine freie Datumsänderung wird nicht angeboten.
 registerGatewayPublicKey akzeptiert ausschließlich Ed25519 SPKI-PEM mit PUBLIC
 KEY-Begrenzern. Private-Key-PEM wird vor dem Krypto-Parser abgewiesen. Gespeichert
 wird im bestehenden GatewayCredential-Modell; Antwort und Audit enthalten nur
-ID/Fingerprint/Status/Ablauf. Der Private Key entsteht lokal am Gateway. Die
-bestehenden SUPER_ADMIN-CREATE/ROTATE-Legacy-APIs bleiben kompatibel, sind aber
-nicht Bestandteil der neuen UI. Kein zweites Credentialmodell wird angelegt.
-
+ID/Fingerprint/Status/Ablauf. Private Keys entstehen lokal auf dem Gateway;
+produktive HTTP-CREATE-/ROTATE-Pfade sind deaktiviert und die Credential-APIs
+nehmen nur Widerruf an. Der lokale Demo-Seed ist auf SEED_DEMO=true, Nicht-
+Produktion und Loopback-Datenbank begrenzt. Kein zweites Credentialmodell wird
+angelegt.
 Kommunikationsidentitäten sind weiterhin öffentliches Inventar. Manuelle
 CONFIRM_ENABLED-, REQUEST_REVOCATION- und CONFIRM_REVOKED-Aktionen schreiben
 Serverzeit und Audit unter Gateway-Sperre. Freischaltung setzt aktuelle Gültigkeit,

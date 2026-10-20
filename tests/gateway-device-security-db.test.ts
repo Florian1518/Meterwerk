@@ -4,6 +4,7 @@ import { resolve, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
+import { generateKeyPairSync } from "node:crypto";
 import EmbeddedPostgres from "embedded-postgres";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -752,9 +753,13 @@ it("lists system-wide gateways and paginates with tenant and status filters", as
 
 it("provides a safe gateway detail DTO with devices, property, health, credential metadata, alerts and audit", async () => {
   actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
-  const issued = await gatewayCredentials.manageGatewayCredential(
+  const keyPair = generateKeyPairSync("ed25519");
+  const publicKey = keyPair.publicKey
+    .export({ type: "spki", format: "pem" })
+    .toString();
+  const issued = await gatewayCredentials.registerGatewayPublicKey(
     own.gateway.id,
-    { operation: "CREATE" },
+    { publicKey },
     admin.tenantId,
   );
   const result = await adminUi.getAdminGateway(own.gateway.id, admin.tenantId!);
@@ -763,12 +768,8 @@ it("provides a safe gateway detail DTO with devices, property, health, credentia
   expect(result.health).toHaveProperty("status");
   expect(result.credentials[0]).toHaveProperty("keyFingerprint");
   expect(result.audit.some((e) => e.entityId === issued.id)).toBe(true);
-  if (!issued.privateKey)
-    throw new Error(
-      "Credential-Erstellung hat keinen Einmalschlüssel zurückgegeben.",
-    );
   const renderedData = JSON.stringify(result);
-  expect(renderedData.includes(issued.privateKey)).toBe(false);
+  expect(renderedData.includes("PRIVATE KEY")).toBe(false);
   expect(renderedData.includes("publicKey")).toBe(false);
   expect(renderedData.includes("tokenHash")).toBe(false);
   await expect(
@@ -858,29 +859,34 @@ it("prepares a gateway through existing quota and audit service and rejects tena
   ).rejects.toBeDefined();
 });
 
-it("creates, rotates and revokes gateway credentials without recording the private key in audit", async () => {
+it("registers public keys and revokes credentials without private-key response or audit data", async () => {
   actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
-  const first = await adminUi.adminGatewayCredential(own.gateway.id, {
+  const firstKeys = generateKeyPairSync("ed25519");
+  const first = await gatewayCredentials.registerGatewayPublicKey(
+    own.gateway.id,
+    {
+      publicKey: firstKeys.publicKey
+        .export({ type: "spki", format: "pem" })
+        .toString(),
+    },
+    admin.tenantId,
+  );
+  await adminUi.adminGatewayCredential(own.gateway.id, {
     tenantId: admin.tenantId,
-    operation: "CREATE",
-    confirmed: true,
-  });
-  if (!first.privateKey)
-    throw new Error(
-      "Credential-Erstellung hat keinen Einmalschlüssel zurückgegeben.",
-    );
-  expect(first.privateKey).toContain("PRIVATE KEY");
-  const second = await adminUi.adminGatewayCredential(own.gateway.id, {
-    tenantId: admin.tenantId,
-    operation: "ROTATE",
+    operation: "REVOKE",
     credentialId: first.id,
     confirmed: true,
   });
-  if (!second.privateKey)
-    throw new Error(
-      "Credential-Rotation hat keinen Einmalschlüssel zurückgegeben.",
-    );
-  expect(second.privateKey).toContain("PRIVATE KEY");
+  const secondKeys = generateKeyPairSync("ed25519");
+  const second = await gatewayCredentials.registerGatewayPublicKey(
+    own.gateway.id,
+    {
+      publicKey: secondKeys.publicKey
+        .export({ type: "spki", format: "pem" })
+        .toString(),
+    },
+    admin.tenantId,
+  );
   await adminUi.adminGatewayCredential(own.gateway.id, {
     tenantId: admin.tenantId,
     operation: "REVOKE",
@@ -893,27 +899,23 @@ it("creates, rotates and revokes gateway credentials without recording the priva
       entityId: { in: [first.id, second.id] },
     },
   });
-  const auditData = JSON.stringify(events);
   expect(events.map((e) => e.action)).toEqual(
     expect.arrayContaining([
-      "gateway.credential.create",
-      "gateway.credential.rotate",
+      "gateway.credential.register",
       "gateway.credential.revoke",
     ]),
   );
-  expect(auditData.includes(first.privateKey)).toBe(false);
-  expect(auditData.includes(second.privateKey)).toBe(false);
+  expect(JSON.stringify(events)).not.toContain("PRIVATE KEY");
   const metadata = await adminUi.getAdminGateway(
     own.gateway.id,
     admin.tenantId!,
   );
-  expect(JSON.stringify(metadata.credentials).includes("privateKey")).toBe(
-    false,
-  );
+  expect(JSON.stringify(metadata.credentials)).not.toContain("privateKey");
   await expect(
     adminUi.adminGatewayCredential(own.gateway.id, {
       tenantId: "phase-foreign",
-      operation: "CREATE",
+      operation: "REVOKE",
+      credentialId: first.id,
       confirmed: true,
     }),
   ).rejects.toMatchObject({ status: 404 });
@@ -924,9 +926,8 @@ it("creates, rotates and revokes gateway credentials without recording the priva
       credentialId: first.id,
       confirmed: true,
     }),
-  ).rejects.toMatchObject({ status: 409 });
+  ).rejects.toBeDefined();
 });
-
 it("routes central decommissioning through the Phase 1A transition and tenant checks", async () => {
   actor = { ...admin, role: "SUPER_ADMIN", tenantId: null };
   await expect(

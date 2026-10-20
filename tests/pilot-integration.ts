@@ -1,6 +1,11 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { randomBytes, createHash, randomUUID } from "node:crypto";
+import {
+  randomBytes,
+  createHmac,
+  randomUUID,
+  generateKeyPairSync,
+} from "node:crypto";
 import { db } from "../src/server/db";
 import { reconcileAlerts } from "../src/server/system-status";
 import { ingestGatewayMessage } from "../src/server/gateway-ingestion";
@@ -27,7 +32,12 @@ let createdGatewayId: string | undefined;
 const noGrantId = `test-${randomUUID()}`;
 async function cookie(userId: string) {
   const token = randomBytes(32).toString("hex"),
-    id = createHash("sha256").update(token).digest("hex");
+    id = createHmac(
+      "sha256",
+      process.env.SESSION_SECRET ?? "development-session-secret",
+    )
+      .update(token)
+      .digest("hex");
   sessions.push(id);
   await db.session.create({
     data: { id, userId, expiresAt: new Date(Date.now() + 600000) },
@@ -110,17 +120,32 @@ try {
     name: "Denied",
     externalGatewayId: "test-denied",
   });
-  await request("/api/gateways", 400, admin, {
+  await request("/api/gateways", 403, admin, {
     name: "Denied",
     externalGatewayId: "test-denied",
     tenantId: "demo-tenant-1",
   });
+  await db.subscription.updateMany({
+    where: { tenantId },
+    data: { planId: "plan-enterprise" },
+  });
   createdGatewayId = (
     await (
-      await request("/api/gateways", 201, admin, {
-        name: "Pilot fixture",
-        externalGatewayId: randomUUID(),
-      })
+      await request(
+        `/api/gateways?platformAdmin=1&tenantId=${tenantId}`,
+        201,
+        platform,
+        {
+          name: "Pilot fixture",
+          externalGatewayId: randomUUID(),
+          propertyId: (
+            await db.property.findFirstOrThrow({
+              where: { tenantId },
+              select: { id: true },
+            })
+          ).id,
+        },
+      )
     ).json()
   ).id;
   await request(root, 401);
@@ -128,28 +153,43 @@ try {
   await request(root, 403, manager);
   await request(root + "?tenantId=demo-tenant-1", 403, admin);
   await request(`/api/gateways/${foreignId}/credentials`, 404, admin);
-  await request(root, 400, admin, { operation: "CREATE", role: "SUPER_ADMIN" });
-  await request(root, 400, admin, {
-    operation: "CREATE",
-    expiresAt: "2000-01-01T00:00:00Z",
+  await request(root, 400, platform, { operation: "CREATE" });
+  await request(root, 400, platform, {
+    operation: "ROTATE",
+    credentialId: "missing",
   });
-  const created = (await (
-    await request(root, 200, admin, { operation: "CREATE" })
-  ).json()) as { id: string; privateKey: string };
-  assert.match(created.privateKey, /PRIVATE KEY/);
-  count++;
-  const list = await (await request(root, 200, admin)).text();
-  assert.ok(
-    !list.includes(created.privateKey) &&
-      !list.includes("privateKey") &&
-      !list.includes("publicKey"),
+  await request(
+    `/api/platform/gateways/${gatewayId}/credentials`,
+    400,
+    platform,
+    { tenantId, confirmed: true, operation: "CREATE" },
   );
+  const pair = generateKeyPairSync("ed25519");
+  const privateKey = pair.privateKey
+    .export({ type: "pkcs8", format: "pem" })
+    .toString();
+  const publicKey = pair.publicKey
+    .export({ type: "spki", format: "pem" })
+    .toString();
+  const registerPath = `/api/platform/gateways/${gatewayId}/provisioning`;
+  const createdResponse = await request(registerPath, 200, platform, {
+    tenantId,
+    confirmed: true,
+    operation: "PUBLIC_KEY",
+    data: { publicKey },
+  });
+  const created = (await createdResponse.json()) as { id: string };
+  assert.ok(!JSON.stringify(created).includes("PRIVATE KEY"));
+  const list = await (
+    await request(root + `?tenantId=${tenantId}`, 200, platform)
+  ).text();
+  assert.ok(!list.includes("privateKey") && !list.includes("publicKey"));
   count++;
   const credential = await db.gatewayCredential.findUniqueOrThrow({
     where: { id: created.id },
   });
   assert.equal(credential.keyFingerprint?.length, 64);
-  assert.ok(!JSON.stringify(credential).includes(created.privateKey));
+  assert.ok(!JSON.stringify(credential).includes("PRIVATE KEY"));
   count++;
   const topic = `meterwerk/v1/gateways/${gatewayId}/heartbeat`;
   const body = () => ({
@@ -163,7 +203,7 @@ try {
   });
   await ingestGatewayMessage(
     topic,
-    Buffer.from(signedMessage(topic, created.id, body(), created.privateKey)),
+    Buffer.from(signedMessage(topic, created.id, body(), privateKey)),
   );
   count++;
   assert.ok(
@@ -174,23 +214,38 @@ try {
     ).lastUsedAt,
   );
   count++;
+  await request(registerPath, 200, platform, {
+    tenantId,
+    confirmed: true,
+    operation: "REVOKE_SIGNATURE",
+    data: { credentialId: created.id },
+  });
+  const rotatedPair = generateKeyPairSync("ed25519");
+  const rotatedPrivateKey = rotatedPair.privateKey
+    .export({ type: "pkcs8", format: "pem" })
+    .toString();
+  const rotatedPublicKey = rotatedPair.publicKey
+    .export({ type: "spki", format: "pem" })
+    .toString();
   const rotated = (await (
-    await request(root, 200, admin, {
-      operation: "ROTATE",
-      credentialId: created.id,
+    await request(registerPath, 200, platform, {
+      tenantId,
+      confirmed: true,
+      operation: "PUBLIC_KEY",
+      data: { publicKey: rotatedPublicKey },
     })
-  ).json()) as { id: string; privateKey: string };
+  ).json()) as { id: string };
   await assert.rejects(
     ingestGatewayMessage(
       topic,
-      Buffer.from(signedMessage(topic, created.id, body(), created.privateKey)),
+      Buffer.from(signedMessage(topic, created.id, body(), privateKey)),
     ),
   );
   count++;
   const wrong = `meterwerk/v1/gateways/${foreignId}/heartbeat`;
   await ingestGatewayMessage(
     topic,
-    Buffer.from(signedMessage(topic, rotated.id, body(), rotated.privateKey)),
+    Buffer.from(signedMessage(topic, rotated.id, body(), rotatedPrivateKey)),
   );
   count++;
   await db.gatewayCredential.update({
@@ -200,7 +255,7 @@ try {
   await assert.rejects(
     ingestGatewayMessage(
       topic,
-      Buffer.from(signedMessage(topic, rotated.id, body(), rotated.privateKey)),
+      Buffer.from(signedMessage(topic, rotated.id, body(), rotatedPrivateKey)),
     ),
   );
   count++;
@@ -211,22 +266,36 @@ try {
   await assert.rejects(
     ingestGatewayMessage(
       wrong,
-      Buffer.from(signedMessage(wrong, rotated.id, body(), rotated.privateKey)),
+      Buffer.from(signedMessage(wrong, rotated.id, body(), rotatedPrivateKey)),
     ),
   );
   count++;
-  await request(root, 404, admin, {
-    operation: "REVOKE",
-    credentialId: "foreign",
-  });
-  await request(root, 200, admin, {
-    operation: "REVOKE",
-    credentialId: rotated.id,
-  });
+  await request(
+    `/api/platform/gateways/${gatewayId}/credentials`,
+    404,
+    platform,
+    {
+      tenantId,
+      confirmed: true,
+      operation: "REVOKE",
+      credentialId: "foreign",
+    },
+  );
+  await request(
+    `/api/platform/gateways/${gatewayId}/credentials`,
+    200,
+    platform,
+    {
+      tenantId,
+      confirmed: true,
+      operation: "REVOKE",
+      credentialId: rotated.id,
+    },
+  );
   await assert.rejects(
     ingestGatewayMessage(
       topic,
-      Buffer.from(signedMessage(topic, rotated.id, body(), rotated.privateKey)),
+      Buffer.from(signedMessage(topic, rotated.id, body(), rotatedPrivateKey)),
     ),
   );
   count++;
@@ -244,7 +313,7 @@ try {
       id: deviceId,
       tenantId,
       gatewayId,
-      meterId: "demo-modbus-meter",
+      meterId: "demo-tenant-0-property-0-building-unit-0-meter-0",
       externalDeviceId: deviceId,
       manufacturer: "Test",
       model: "Test",

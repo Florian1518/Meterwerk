@@ -1,10 +1,5 @@
 import "server-only";
-import {
-  generateKeyPairSync,
-  createHash,
-  createPublicKey,
-  randomUUID,
-} from "node:crypto";
+import { createHash, createPublicKey, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "./db";
 import { requireActor } from "./auth";
@@ -16,24 +11,9 @@ import {
 } from "./policy";
 import { lockGatewayTenant } from "./gateway-assignment";
 import { requireTenantQuota } from "./licensing";
-const operation = z.discriminatedUnion("operation", [
-  z
-    .object({
-      operation: z.literal("CREATE"),
-      expiresAt: z.iso.datetime().optional(),
-    })
-    .strict(),
-  z
-    .object({
-      operation: z.literal("ROTATE"),
-      credentialId: z.string().min(1),
-      expiresAt: z.iso.datetime().optional(),
-    })
-    .strict(),
-  z
-    .object({ operation: z.literal("REVOKE"), credentialId: z.string().min(1) })
-    .strict(),
-]);
+const revokeInput = z
+  .object({ operation: z.literal("REVOKE"), credentialId: z.string().min(1) })
+  .strict();
 export async function createPilotGateway(
   raw: unknown,
   requested?: string | null,
@@ -132,6 +112,7 @@ export async function registerGatewayPublicKey(
   if (expiresAt && expiresAt <= new Date())
     throw new AccessError(400, "Ablaufdatum muss in der Zukunft liegen.");
   return db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
     await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${gatewayId} AND "tenantId"=${tenantId} FOR UPDATE`;
     const gateway = await tx.gateway.findFirst({
       where: { id: gatewayId, tenantId },
@@ -208,18 +189,14 @@ export async function listGatewayCredentials(
     orderBy: { createdAt: "desc" },
   });
 }
-export async function manageGatewayCredential(
+export async function revokeGatewayCredential(
   gatewayId: string,
   raw: unknown,
   requested?: string | null,
 ) {
   const { actor, tenantId } = await access(gatewayId, requested);
   requirePlatform(actor);
-  const value = operation.parse(raw);
-  const expiresAt =
-    "expiresAt" in value && value.expiresAt ? new Date(value.expiresAt) : null;
-  if (expiresAt && expiresAt.getTime() <= Date.now())
-    throw new AccessError(400, "Ablaufdatum muss in der Zukunft liegen.");
+  const value = revokeInput.parse(raw);
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${gatewayId} AND "tenantId"=${tenantId} FOR UPDATE`;
     const gateway = await tx.gateway.findFirst({
@@ -229,55 +206,24 @@ export async function manageGatewayCredential(
     if (!gateway) throw new AccessError(404, "Gateway nicht gefunden.");
     if (gateway.lifecycleStatus === "DECOMMISSIONED")
       throw new AccessError(409, "Gateway ist stillgelegt.");
-    if (value.operation !== "CREATE") {
-      const previous = await tx.gatewayCredential.findFirst({
-        where: { id: value.credentialId, gatewayId, tenantId },
-      });
-      if (!previous) throw new AccessError(404, "Credential nicht gefunden.");
-      if (value.operation === "ROTATE" && previous.status !== "ACTIVE")
-        throw new AccessError(409, "Credential bereits widerrufen.");
+    const previous = await tx.gatewayCredential.findFirst({
+      where: { id: value.credentialId, gatewayId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!previous) throw new AccessError(404, "Credential nicht gefunden.");
+    if (previous.status === "ACTIVE")
       await tx.gatewayCredential.update({
         where: { id: previous.id },
         data: { status: "REVOKED", revokedAt: new Date() },
       });
-    }
-    let result: { id: string; privateKey?: string } = {
-      id: "credentialId" in value ? value.credentialId : "",
-    };
-    if (value.operation !== "REVOKE") {
-      const keys = generateKeyPairSync("ed25519");
-      const publicKey = keys.publicKey
-        .export({ type: "spki", format: "pem" })
-        .toString();
-      const fingerprint = createHash("sha256")
-        .update(keys.publicKey.export({ type: "spki", format: "der" }))
-        .digest("hex");
-      const id = randomUUID();
-      await tx.gatewayCredential.create({
-        data: {
-          id,
-          tenantId,
-          gatewayId,
-          publicKey,
-          keyFingerprint: fingerprint,
-          expiresAt,
-        },
-      });
-      result = {
-        id,
-        privateKey: keys.privateKey
-          .export({ type: "pkcs8", format: "pem" })
-          .toString(),
-      };
-    }
     await tx.auditEvent.create({
       data: {
         tenantId,
         actorId: actor.id,
-        entityId: result.id,
-        action: `gateway.credential.${value.operation.toLowerCase()}`,
+        entityId: previous.id,
+        action: "gateway.credential.revoke",
       },
     });
-    return result;
+    return { id: previous.id, status: "REVOKED" as const };
   });
 }

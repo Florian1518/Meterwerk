@@ -25,9 +25,7 @@ test.describe("Phase 1C-B Gateway-Provisioning im Browser", () => {
   }) => {
     await login(page, "admin@meterwerk.demo");
     await page.goto("/platform-admin/gateways");
-    await expect(
-      page.getByRole("heading", { name: /Gateways/ }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Gateways/ })).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
     await page
       .locator("summary")
@@ -344,6 +342,182 @@ test.describe("Phase 1C-B Gateway-Provisioning im Browser", () => {
     }
   });
 
+  test("Stilllegung ist terminal und trennt Signaturwiderruf vom externen Brokerwiderruf", async ({
+    page,
+  }) => {
+    await login(page, "admin@meterwerk.demo");
+    await page.goto("/platform-admin/gateways");
+    await page
+      .locator("summary")
+      .getByText("Gateway vorbereiten", { exact: true })
+      .click();
+    const form = page.locator("form.create-form").first();
+    const props = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/platform/gateways/properties?tenantId=") &&
+        r.request().method() === "GET",
+    );
+    await form.getByLabel("Kunde").selectOption("gateway-browser-tenant");
+    expect((await props).status()).toBe(200);
+    await form
+      .locator('select[name="propertyId"]')
+      .selectOption("gateway-browser-property-a");
+    const externalId = `decommission-${randomUUID()}`;
+    await form.getByLabel("Hersteller").fill("Synthetik AG");
+    await form.getByLabel("Modell").fill("E2E Gateway");
+    await form
+      .getByLabel("Name", { exact: true })
+      .fill("Gateway Stilllegungstest");
+    await form.getByLabel("Externe Gateway-ID").fill(externalId);
+    const create = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/gateways?") && r.request().method() === "POST",
+    );
+    await form.getByRole("button", { name: "Gateway vorbereiten" }).click();
+    expect((await create).status()).toBe(201);
+    await expect(page).toHaveURL(
+      /\/platform-admin\/gateways\/[^?]+\?tenantId=gateway-browser-tenant/,
+    );
+    const gatewayId = decodeURIComponent(
+      new URL(page.url()).pathname.split("/").at(-1)!,
+    );
+
+    const keyPair = generateKeyPairSync("ed25519");
+    const publicKey = keyPair.publicKey
+      .export({ type: "spki", format: "pem" })
+      .toString();
+    const keyForm = page.locator("form.create-form").filter({
+      has: page.getByRole("heading", {
+        name: "Signatur-Public-Key registrieren",
+      }),
+    });
+    await keyForm.getByLabel("Ed25519 Public Key (SPKI-PEM)").fill(publicKey);
+    const keyDialog = page.waitForEvent("dialog").then((d) => d.accept());
+    await keyForm
+      .getByRole("button", { name: "Signatur-Public-Key registrieren" })
+      .click();
+    await keyDialog;
+    await expect(page.getByRole("status")).toContainText(
+      "Bestätigung gespeichert",
+    );
+
+    const commForm = page.locator("form.create-form").filter({
+      has: page.getByRole("heading", {
+        name: "Kommunikationsidentität registrieren",
+      }),
+    });
+    await commForm
+      .getByLabel(/Umgebung \/ Brokerreferenz/)
+      .fill("e2e-decommission-broker");
+    await commForm
+      .getByLabel(/Zertifikatsfingerprint/)
+      .fill(createHash("sha256").update(randomUUID()).digest("hex"));
+    await commForm.getByLabel("Issuer-Referenz").fill("e2e-issuer");
+    await commForm.getByLabel("Seriennummer (Hex, klein)").fill("c001");
+    await commForm
+      .getByLabel("Gültig ab (UTC)")
+      .fill(new Date(Date.now() - 60_000).toISOString().slice(0, 16));
+    await commForm
+      .getByLabel("Gültig bis (UTC)")
+      .fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 16));
+    const commDialog = page.waitForEvent("dialog").then((d) => d.accept());
+    await commForm
+      .getByRole("button", { name: "In Meterwerk registrieren" })
+      .click();
+    await commDialog;
+    await expect(page.getByRole("status")).toContainText(
+      "Bestätigung gespeichert",
+    );
+    await expect(page.locator("body")).toContainText(
+      "In Meterwerk registriert:",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Widerruf nicht angefordert",
+    );
+    await expect(page.locator("body")).not.toContainText("MQTT verbunden");
+
+    const confirm = page.waitForEvent("dialog").then(async (d) => {
+      expect(d.message()).toContain("Broker-Widerruf muss separat erfolgen");
+      await d.accept();
+    });
+    await page
+      .getByRole("button", { name: "Gateway endgültig stilllegen" })
+      .click();
+    await confirm;
+    await expect(page.getByRole("status")).toContainText(
+      "Bestätigung gespeichert",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Lifecycle: DECOMMISSIONED",
+    );
+    await expect(page.locator("body")).toContainText(
+      "DECOMMISSIONED ist terminal",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Anwendung: gesperrt (terminal)",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Gateway-Signaturcredentials: widerrufen",
+    );
+    await expect(page.locator("body")).toContainText(
+      "Widerruf angefordert; externe Bestätigung offen",
+    );
+    await expect(
+      page.getByRole("button", { name: "Gateway aktivieren" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Gateway endgültig stilllegen" }),
+    ).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText(
+      "vollständig gesperrt",
+    );
+    await expect(page.locator("body")).not.toContainText("MQTT verbunden");
+
+    const storedGateway = await page.evaluate(async (gatewayId) => {
+      const response = await fetch(
+        `/api/platform/gateways/${gatewayId}?tenantId=gateway-browser-tenant`,
+      );
+      return {
+        status: response.status,
+        body: (await response.json()) as {
+          gateway?: { id: string; revision: number; lifecycleStatus: string };
+        },
+      };
+    }, gatewayId);
+    expect(storedGateway.status).toBe(200);
+    expect(storedGateway.body.gateway?.lifecycleStatus).toBe("DECOMMISSIONED");
+    const gateway = storedGateway.body.gateway!;
+    const forbidden = await page.evaluate(
+      async ({ id, revision }) => {
+        const response = await fetch(
+          `/api/platform/gateways/${id}/provisioning`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tenantId: "gateway-browser-tenant",
+              confirmed: true,
+              operation: "LIFECYCLE",
+              data: { status: "ACTIVE", revision },
+            }),
+          },
+        );
+        return { status: response.status, body: await response.text() };
+      },
+      { id: gateway.id, revision: gateway.revision },
+    );
+    expect(forbidden.status, forbidden.body).toBe(409);
+    const revokeConfirm = page.waitForEvent("dialog").then((d) => d.accept());
+    await page
+      .getByRole("button", { name: "Widerruf extern bestätigen" })
+      .click();
+    await revokeConfirm;
+    await expect(page.locator("body")).toContainText(
+      "Widerruf extern bestätigt",
+    );
+    await expect(page.locator("body")).not.toContainText("MQTT verbunden");
+  });
+
   for (const [role, email] of [
     ["TENANT_ADMIN", "gateway-tenant-admin@browser.invalid"],
     ["MANAGER", "gateway-manager@browser.invalid"],
@@ -356,9 +530,9 @@ test.describe("Phase 1C-B Gateway-Provisioning im Browser", () => {
       const response = await page.goto("/platform-admin/gateways");
       expect(response?.status()).toBe(200);
       await expect(page).not.toHaveURL(/\/login/);
-      await expect(
-        page.getByRole("heading", { name: /Gateways/ }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: /Gateways/ })).toHaveCount(
+        0,
+      );
       await expect(page.locator("body")).not.toContainText(
         "Mandantenübergreifendes Gateway-Inventar",
       );

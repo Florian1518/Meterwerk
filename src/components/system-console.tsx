@@ -1,7 +1,6 @@
 "use client";
 import { dateTime, decimal } from "@/lib/format";
 import { useEffect, useState } from "react";
-import { Button } from "./ui/button";
 import type { systemStatus } from "@/server/system-status";
 type Serialized<T> = T extends Date
   ? string
@@ -32,9 +31,7 @@ export function SystemConsole({
   const [data, setData] = useState(initial),
     [error, setError] = useState(""),
     [gateway, setGateway] = useState(initial.gateways[0]?.id ?? ""),
-    [credentials, setCredentials] = useState<Credential[]>([]),
-    [secret, setSecret] = useState(""),
-    [expires, setExpires] = useState("");
+    [credentials, setCredentials] = useState<Credential[]>([]);
   const suffix = `?tenantId=${encodeURIComponent(initial.tenantId)}`;
   useEffect(() => {
     const refresh = async () => {
@@ -68,83 +65,8 @@ export function SystemConsole({
       })
       .catch((e) => setError(e.message));
   }, [gateway, suffix]);
-  async function command(operation: string, credentialId?: string) {
-    setSecret("");
-    try {
-      const response = await fetch(
-        `/api/gateways/${gateway}/credentials${suffix}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            operation,
-            ...(credentialId ? { credentialId } : {}),
-            ...(operation !== "REVOKE" && expires
-              ? { expiresAt: new Date(expires).toISOString() }
-              : {}),
-          }),
-        },
-      );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-      if (result.privateKey)
-        setSecret(
-          JSON.stringify(
-            { credentialId: result.id, privateKey: result.privateKey },
-            null,
-            2,
-          ),
-        );
-      const list = await fetch(`/api/gateways/${gateway}/credentials${suffix}`);
-      if (list.ok) setCredentials(await list.json());
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
   return (
     <div className="space-y-6">
-      <form
-        className="flex flex-wrap gap-3"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const form = new FormData(e.currentTarget);
-          try {
-            const r = await fetch(`/api/gateways${suffix}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: form.get("name"),
-                externalGatewayId: form.get("externalGatewayId"),
-              }),
-            });
-            const value = await r.json();
-            if (!r.ok) throw new Error(value.error);
-            const status = await fetch(`/api/system/health${suffix}`);
-            if (!status.ok)
-              throw new Error("Gateway erstellt; Status bitte erneut laden.");
-            setData(await status.json());
-            setGateway(value.id);
-            setSecret("");
-          } catch (error) {
-            setError((error as Error).message);
-          }
-        }}
-      >
-        <label>
-          Gateway-Name
-          <input required name="name" className="block rounded border p-2" />
-        </label>
-        <label>
-          Standort-Kennung
-          <input
-            required
-            name="externalGatewayId"
-            pattern="[A-Za-z0-9_-]{1,80}"
-            className="block rounded border p-2"
-          />
-        </label>
-        <Button type="submit">Gateway anlegen</Button>
-      </form>
       {error && (
         <p role="alert" className="text-red-700">
           {error}
@@ -272,7 +194,6 @@ export function SystemConsole({
           className="block rounded border p-2"
           value={gateway}
           onChange={(e) => {
-            setSecret("");
             setCredentials([]);
             setGateway(e.target.value);
           }}
@@ -284,35 +205,10 @@ export function SystemConsole({
           ))}
         </select>
       </label>
-      <label>
-        Ablaufdatum (optional, lokale Eingabezeit)
-        <input
-          className="block rounded border p-2"
-          type="datetime-local"
-          value={expires}
-          onChange={(e) => setExpires(e.target.value)}
-        />
-      </label>
-      <Button disabled={!gateway} onClick={() => void command("CREATE")}>
-        Credential erstellen
-      </Button>
       <p>
-        Rotation widerruft den bisherigen Schlüssel sofort. Neuen Schlüssel
-        einmalig sichern und am Gateway hinterlegen; anschließend Agent neu
-        starten.
+        Neue Gateway-Signaturidentitäten werden ausschließlich durch
+        Registrierung eines vom Gateway erzeugten Public Keys verwaltet.
       </p>
-      {secret && (
-        <div role="status">
-          <p>Nur einmal verfügbar. Nicht in Logs oder Tickets kopieren.</p>
-          <textarea
-            aria-label="Einmaliger Gateway-Schlüssel"
-            readOnly
-            value={secret}
-            className="h-48 w-full rounded border p-2"
-          />
-          <Button onClick={() => setSecret("")}>Anzeige schließen</Button>
-        </div>
-      )}
       <ul>
         {credentials.map((c) => (
           <li className="my-4 rounded border p-3" key={c.id}>
@@ -331,16 +227,6 @@ export function SystemConsole({
               {c.revokedAt ? stamp(c.revokedAt) : "Keiner"}
             </p>
             <p>SHA-256: {c.keyFingerprint ?? "Bestandscredential"}</p>
-            {c.status === "ACTIVE" && (
-              <>
-                <Button onClick={() => void command("ROTATE", c.id)}>
-                  Rotieren
-                </Button>{" "}
-                <Button onClick={() => void command("REVOKE", c.id)}>
-                  Widerrufen
-                </Button>
-              </>
-            )}
           </li>
         ))}
       </ul>

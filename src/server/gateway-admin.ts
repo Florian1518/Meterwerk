@@ -7,7 +7,7 @@ import { AccessError, requirePlatform } from "./policy";
 import {
   createPilotGateway,
   listGatewayCredentials,
-  manageGatewayCredential,
+  revokeGatewayCredential,
 } from "./gateway-credentials";
 import { gatewayHealth, deviceCompliance } from "./device-fleet-part3";
 import {
@@ -370,19 +370,17 @@ export async function adminGatewayCredential(id: string, raw: unknown) {
     .object({
       tenantId: z.string().min(1),
       confirmed: z.literal(true),
-      operation: z.enum(["CREATE", "ROTATE", "REVOKE"]),
-      credentialId: z.string().min(1).optional(),
-      expiresAt: z.iso.datetime().optional(),
+      operation: z.literal("REVOKE"),
+      credentialId: z.string().min(1),
     })
     .strict()
     .parse(raw);
   const identity = await gatewayIdentity(id, value.tenantId);
-  const operation = {
-    operation: value.operation,
-    ...(value.credentialId ? { credentialId: value.credentialId } : {}),
-    ...(value.expiresAt ? { expiresAt: value.expiresAt } : {}),
-  };
-  return manageGatewayCredential(id, operation, identity.tenantId);
+  return revokeGatewayCredential(
+    id,
+    { operation: value.operation, credentialId: value.credentialId },
+    identity.tenantId,
+  );
 }
 export async function decommissionAdminDevice(id: string, raw: unknown) {
   await authorize();

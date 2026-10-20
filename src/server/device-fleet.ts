@@ -9,6 +9,10 @@ import {
   tenantScope,
 } from "./policy";
 import { newDeviceToken, hashDeviceToken } from "./device-auth";
+import {
+  assertGatewayAssignment,
+  lockGatewayTenant,
+} from "./gateway-assignment";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const commandTypes = [
@@ -258,10 +262,25 @@ export async function queueDeviceCommand(
     .strict()
     .parse(raw);
   const command = await db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
+    const current = await tx.device.findFirst({
+      where: { id, tenantId },
+      select: { id: true, gatewayId: true, meterId: true },
+    });
+    if (!current) throw new AccessError(404, "Device nicht gefunden.");
+    if (!current.gatewayId)
+      throw new AccessError(409, "Device ist keinem Gateway zugeordnet.");
+    await assertGatewayAssignment(
+      tx,
+      tenantId,
+      current.gatewayId,
+      current.meterId,
+      id,
+    );
     const row = await tx.gatewayCommand.create({
       data: {
         tenantId,
-        gatewayId: device.gatewayId ?? "",
+        gatewayId: current.gatewayId,
         deviceId: id,
         action: value.action,
         revision: device.configurationVersions[0]?.version ?? 0,

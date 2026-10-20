@@ -1,6 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { db } from "./db";
+import {
+  assertGatewayAssignment,
+  lockGatewayTenant,
+} from "./gateway-assignment";
 import { requireActor } from "./auth";
 import {
   AccessError,
@@ -172,16 +176,24 @@ export async function processScheduledRollouts(limit = 20) {
         data: { status: "RUNNING" },
       });
       for (const target of rollout.targets) {
+        await lockGatewayTenant(tx, rollout.tenantId);
+        const device = await tx.device.findFirst({
+          where: { id: target.deviceId, tenantId: rollout.tenantId },
+          select: { id: true, gatewayId: true, meterId: true },
+        });
+        if (!device?.gatewayId)
+          throw new Error("Firmware-Rollout-Ziel hat kein Gateway.");
+        await assertGatewayAssignment(
+          tx,
+          rollout.tenantId,
+          device.gatewayId,
+          device.meterId,
+          device.id,
+        );
         await tx.gatewayCommand.create({
           data: {
             tenantId: rollout.tenantId,
-            gatewayId:
-              (
-                await tx.device.findUniqueOrThrow({
-                  where: { id: target.deviceId },
-                  select: { gatewayId: true },
-                })
-              ).gatewayId ?? "",
+            gatewayId: device.gatewayId,
             deviceId: target.deviceId,
             action: "FIRMWARE_CHECK",
             revision: 0,
