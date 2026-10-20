@@ -9,16 +9,23 @@ test("selected customer user CRUD, password retention and server-side request ta
     process.env.USER_MANAGEMENT_RELEASE_GATE !== "true",
     "Requires the isolated release-gate runner.",
   );
-  expect(process.env.DATABASE_URL).toBe(
-    "postgresql://release_test@127.0.0.1:55451/release_test",
-  );
+  const databaseUrl = new URL(process.env.DATABASE_URL!);
+  expect(databaseUrl.protocol).toBe("postgresql:");
+  expect(databaseUrl.username).toBe("release_test");
+  expect(databaseUrl.password).toBe("");
+  expect(databaseUrl.hostname).toBe("127.0.0.1");
+  expect(Number(databaseUrl.port)).toBeGreaterThan(0);
+  expect(databaseUrl.pathname).toBe("/release_test");
   const db = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
     log: [],
   });
-  const password = process.env.DEMO_PASSWORD!;
+  const password = process.env.USER_MANAGEMENT_BROWSER_PASSWORD!;
   const projectSuffix = testInfo.project.name.replace(/[^a-z0-9-]/gi, "-");
-  const tenantId = "gateway-browser-tenant";
+  const tenantId = process.env.USER_MANAGEMENT_BROWSER_TENANT_ID!;
+  const foreignTenantId =
+    process.env.USER_MANAGEMENT_BROWSER_FOREIGN_TENANT_ID!;
+  const adminEmail = process.env.USER_MANAGEMENT_BROWSER_ADMIN_EMAIL!;
   const email = `browser-admin-${projectSuffix}@example.invalid`;
   async function login(target: Page, address: string) {
     await target.goto("/login");
@@ -51,7 +58,7 @@ test("selected customer user CRUD, password retention and server-side request ta
     );
   }
   try {
-    await login(page, "admin@meterwerk.demo");
+    await login(page, adminEmail);
     await page.goto("/tenants");
     const customer = page.getByRole("row").filter({
       has: page.locator(`a[href="/dashboard?tenantId=${tenantId}"]`),
@@ -206,9 +213,9 @@ test("selected customer user CRUD, password retention and server-side request ta
     await ownCreate.getByLabel("Rolle").selectOption("USER");
     await ownCreate
       .locator('input[name="tenantId"]')
-      .evaluate((input: HTMLInputElement) => {
-        input.value = "demo-tenant-1";
-      });
+      .evaluate((input: HTMLInputElement, id: string) => {
+        input.value = id;
+      }, foreignTenantId);
     await ownCreate.getByRole("button", { name: "Speichern" }).click();
     await expect(ownCreate.getByRole("alert")).toContainText(
       "Kein Zugriff auf diesen Mandanten",
@@ -219,12 +226,12 @@ test("selected customer user CRUD, password retention and server-side request ta
       }),
     ).toBe(0);
     const foreign = await apiRequest(
-      `/api/users/${after.id}?tenantId=demo-tenant-1`,
+      `/api/users/${after.id}?tenantId=${foreignTenantId}`,
       "PATCH",
       { ...payload, role: "USER", tenantId: "demo-tenant-1" },
     );
     expect(foreign.status).toBe(403);
-    await page.goto("/users?tenantId=demo-tenant-1");
+    await page.goto(`/users?tenantId=${foreignTenantId}`);
     // Next.js streamed notFound responses retain HTTP 200; assert denial UI and no data.
     await expect(
       page.getByRole("heading", { name: "Seite nicht gefunden" }),

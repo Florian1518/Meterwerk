@@ -19,7 +19,7 @@ Suche und Sortierung erfolgen im Browser. Für sehr große Benutzerbestände ist
 serverseitige Paginierung noch offen. Es sind keine neuen Migrationen erforderlich.
 
 Isolierter Release-Gate nach `pnpm build`: `node tests/user-management-release.mjs`.
-Er erstellt eine neue lokale PostgreSQL-Instanz auf Port 55451, wendet die 47
+Er erstellt eine neue lokale PostgreSQL-Instanz auf Port 55451, wendet die 48
 bestehenden Migrationen an und verwendet ausschließlich synthetische Seed-Daten
 mit zufällig erzeugten Testzugängen. Anschließend laufen die vier Integrationstestsuiten
 und der Playwright-Benutzerverwaltungsablauf auf Port 3107. Beide Prozesse werden
