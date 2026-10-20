@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { resolve, dirname, relative, isAbsolute, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -9,11 +9,13 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { createInitialStagingAdmin } from "../src/server/staging-admin";
 import { verifyPassword } from "../src/server/password";
+import { reserveFreeTcpPort } from "./helpers/free-tcp-port";
 
 // Never reads DATABASE_URL or .env. Fresh loopback-only, passwordless test cluster.
 mkdirSync(".local", { recursive: true });
 const directory = mkdtempSync(resolve(".local/bootstrap-test-"));
-const port = 55449;
+const portReservation = await reserveFreeTcpPort();
+const { port } = portReservation;
 const url = `postgresql://bootstrap_test@127.0.0.1:${port}/bootstrap_test`;
 const postgres = new EmbeddedPostgres({
   databaseDir: directory,
@@ -50,6 +52,7 @@ beforeAll(async () => {
     ],
     { stdio: "pipe", windowsHide: true },
   );
+  await portReservation.release();
   await postgres.start();
   started = true;
   await postgres.createDatabase("bootstrap_test");
@@ -69,8 +72,25 @@ beforeAll(async () => {
   );
 }, 120000);
 afterAll(async () => {
+  await portReservation.release();
   await db.$disconnect();
   if (started) await postgres.stop();
+  const localRoot = resolve(".local");
+  const relativePath = relative(localRoot, resolve(directory));
+  if (
+    isAbsolute(relativePath) ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    relativePath.includes(sep) ||
+    !/^bootstrap-test-[A-Za-z0-9_-]+$/.test(relativePath)
+  )
+    throw new Error(`Refusing unexpected test cleanup: ${directory}`);
+  rmSync(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 100,
+  });
 });
 
 it("rolls back the administrator when the atomic audit fails", async () => {

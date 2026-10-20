@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import EmbeddedPostgres from "embedded-postgres";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { reserveFreeTcpPort } from "./helpers/free-tcp-port";
 import type { Actor } from "../src/server/policy";
 vi.mock("@/server/db", () => ({ db }));
 import { hashPassword, verifyPassword } from "../src/server/password";
@@ -14,7 +15,8 @@ import { hashPassword, verifyPassword } from "../src/server/password";
 // Never reads DATABASE_URL or .env. Fresh loopback-only, passwordless test cluster.
 mkdirSync(".local", { recursive: true });
 const directory = mkdtempSync(resolve(".local/user-management-test-"));
-const port = 55450;
+const portReservation = await reserveFreeTcpPort();
+const { port } = portReservation;
 const url = `postgresql://bootstrap_test@127.0.0.1:${port}/bootstrap_test`;
 const postgres = new EmbeddedPostgres({
   databaseDir: directory,
@@ -67,6 +69,7 @@ beforeAll(async () => {
     ],
     { stdio: "pipe", windowsHide: true },
   );
+  await portReservation.release();
   await postgres.start();
   started = true;
   await postgres.createDatabase("bootstrap_test");
@@ -86,12 +89,18 @@ beforeAll(async () => {
   );
 }, 120000);
 afterAll(async () => {
+  await portReservation.release();
   await db.$disconnect();
   if (started) await postgres.stop();
   const resolvedDirectory = resolve(directory);
   if (!isExpectedCleanupDirectory(resolvedDirectory))
     throw new Error(`Refusing unexpected test cleanup: ${resolvedDirectory}`);
-  rmSync(resolvedDirectory, { recursive: true, force: true });
+  rmSync(resolvedDirectory, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 100,
+  });
 }, 120000);
 
 it("restricts cleanup to direct test directories on POSIX and Windows paths", () => {

@@ -10,6 +10,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { Actor } from "../src/server/policy";
 import { defaultConfig, profiles } from "../src/lib/modbus/contracts";
+import { reserveFreeTcpPort } from "./helpers/free-tcp-port";
 vi.mock("@/server/db", () => ({ db }));
 vi.mock("@/server/auth", () => ({ requireActor: async () => actor }));
 vi.mock("@/server/licensing", () => ({
@@ -21,7 +22,8 @@ vi.mock("@/server/licensing", () => ({
 // Fresh loopback-only cluster; never uses .env, a seed or an existing database.
 mkdirSync(".local", { recursive: true });
 const directory = mkdtempSync(resolve(".local/gateway-security-test-"));
-const port = 55453;
+const portReservation = await reserveFreeTcpPort();
+const { port } = portReservation;
 const url = `postgresql://phase1a@127.0.0.1:${port}/phase1a`;
 const postgres = new EmbeddedPostgres({
   databaseDir: directory,
@@ -156,6 +158,7 @@ beforeAll(async () => {
     ],
     { stdio: "pipe", windowsHide: true },
   );
+  await portReservation.release();
   await postgres.start();
   started = true;
   await postgres.createDatabase("phase1a");
@@ -204,6 +207,7 @@ beforeEach(() => {
   actor = admin;
 });
 afterAll(async () => {
+  await portReservation.release();
   await db.$disconnect();
   if (started) await postgres.stop();
 });

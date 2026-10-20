@@ -5,12 +5,37 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { createServer } from "node:net";
 import EmbeddedPostgres from "embedded-postgres";
 
 mkdirSync(".local", { recursive: true });
 const directory = mkdtempSync(resolve(".local/user-release-"));
-const url = "postgresql://release_test@127.0.0.1:55451/release_test";
-const baseURL = "http://localhost:3107";
+async function findFreeTcpPort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.removeListener("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+    throw new Error("Could not allocate a local TCP port for the test.");
+  }
+  const { port } = address;
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
+  return port;
+}
+const port = await findFreeTcpPort();
+const appPort = await findFreeTcpPort();
+const url = `postgresql://release_test@127.0.0.1:${port}/release_test`;
+const baseURL = `http://127.0.0.1:${appPort}`;
 const env = {
   ...process.env,
   DATABASE_URL: url,
@@ -46,7 +71,7 @@ const pg = new EmbeddedPostgres({
   databaseDir: directory,
   user: "release_test",
   password: "",
-  port: 55451,
+  port,
   persistent: true,
   postgresFlags: ["-h", "127.0.0.1"],
   onLog() {},
@@ -111,7 +136,7 @@ try {
       "-H",
       "127.0.0.1",
       "-p",
-      "3107",
+      String(appPort),
     ],
     {
       env: { ...env, NODE_ENV: "production" },

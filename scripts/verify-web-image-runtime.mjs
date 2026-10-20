@@ -142,3 +142,116 @@ try {
       execFileSync("docker", ["rm", "--force", name], { stdio: "ignore" });
     } catch {}
 }
+
+const productionName = `meterwerk-web-production-health-${process.pid}`;
+let productionContainerId;
+try {
+  productionContainerId = docker(
+    "run",
+    "--detach",
+    "--network",
+    "host",
+    "--name",
+    productionName,
+    "-e",
+    `DATABASE_URL=${process.env.DATABASE_URL}`,
+    "-e",
+    "APP_URL=https://localhost:3000",
+    "-e",
+    "TRUSTED_HOSTS=localhost,127.0.0.1",
+    "-e",
+    "METERWERK_ENV=production",
+    "-e",
+    "NEXT_PUBLIC_METERWERK_ENV=production",
+    "-e",
+    "NODE_ENV=production",
+    "-e",
+    "SESSION_SECRET=ci-only-synthetic-session-secret-32-bytes",
+    "-e",
+    "MFA_ENCRYPTION_KEY=ci-only-synthetic-mfa-encryption-key-32-bytes",
+    "-e",
+    "EMAIL_PROVIDER=local",
+    image,
+  );
+
+  const headers = {
+    "x-forwarded-proto": "https",
+    "x-forwarded-host": "localhost",
+  };
+  let ready = false;
+  for (let attempt = 0; attempt < 120 && !ready; attempt++) {
+    const state = JSON.parse(
+      docker("inspect", "--format", "{{json .State}}", productionContainerId),
+    );
+    assert.equal(state.Running, true, "Production web image remains running");
+    try {
+      ready =
+        (
+          await fetch("http://127.0.0.1:3000/api/health/ready", {
+            headers,
+            signal: AbortSignal.timeout(1500),
+          })
+        ).status === 200;
+    } catch {
+      await delay(500);
+    }
+  }
+  assert(ready, "Production readiness works with trusted TLS proxy headers");
+
+  const buildInfoResponse = await fetch(
+    "http://127.0.0.1:3000/api/system/build-info",
+    { headers },
+  );
+  assert.equal(buildInfoResponse.status, 200);
+  const buildInfo = await buildInfoResponse.json();
+  assert.equal(
+    buildInfo.version,
+    inspection.Config.Labels["org.opencontainers.image.version"],
+  );
+  assert.equal(
+    buildInfo.commit,
+    inspection.Config.Labels["org.opencontainers.image.revision"],
+  );
+
+  const redirect = await fetch("http://127.0.0.1:3000/login", {
+    headers: {
+      host: "localhost:3000",
+      "x-forwarded-host": "localhost",
+      "x-forwarded-proto": "http",
+    },
+    redirect: "manual",
+  });
+  assert.equal(redirect.status, 308, "Plain HTTP still redirects to HTTPS");
+  assert.match(redirect.headers.get("location") ?? "", /^https:\/\//);
+
+  const untrustedHost = await fetch("http://127.0.0.1:3000/api/health/ready", {
+    headers: {
+      host: "attacker.example",
+      "x-forwarded-host": "attacker.example",
+      "x-forwarded-proto": "https",
+    },
+    redirect: "manual",
+  });
+  assert.equal(untrustedHost.status, 421, "Untrusted hosts remain rejected");
+
+  let containerState;
+  for (let attempt = 0; attempt < 90; attempt++) {
+    containerState = JSON.parse(
+      docker("inspect", "--format", "{{json .State}}", productionContainerId),
+    );
+    if (containerState.Health?.Status === "healthy") break;
+    await delay(1000);
+  }
+  assert.equal(containerState.Health?.Status, "healthy");
+  assert.equal(containerState.RestartCount, 0);
+  console.log(
+    "Production web image: readiness, Docker health, build metadata, HTTPS redirect and host rejection passed",
+  );
+} finally {
+  if (productionContainerId)
+    try {
+      execFileSync("docker", ["rm", "--force", productionName], {
+        stdio: "ignore",
+      });
+    } catch {}
+}

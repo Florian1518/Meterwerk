@@ -19,6 +19,7 @@ import { Client } from "pg";
 import type { Actor } from "../src/server/policy";
 import { signedMessage } from "../apps/edge-gateway/src/wire";
 import { defaultConfig, profiles } from "../src/lib/modbus/contracts";
+import { reserveFreeTcpPort } from "./helpers/free-tcp-port";
 
 vi.mock("@/server/db", () => ({ db }));
 vi.mock("@/server/auth", () => ({ requireActor: async () => actor }));
@@ -27,7 +28,8 @@ vi.mock("@/server/webhooks", () => ({ enqueueWebhookEvent: vi.fn() }));
 
 mkdirSync(".local", { recursive: true });
 const directory = mkdtempSync(resolve(".local/gateway-provisioning-test-"));
-const port = 55454;
+const portReservation = await reserveFreeTcpPort();
+const { port } = portReservation;
 const url = `postgresql://phase1c@127.0.0.1:${port}/phase1c`;
 const postgres = new EmbeddedPostgres({
   databaseDir: resolve(directory, "pg"),
@@ -223,6 +225,7 @@ beforeAll(async () => {
     ],
     { stdio: "pipe", windowsHide: true },
   );
+  await portReservation.release();
   await postgres.start();
   started = true;
   await postgres.createDatabase("phase1c");
@@ -303,6 +306,7 @@ beforeEach(() => {
   actor = admin;
 });
 afterAll(async () => {
+  await portReservation.release();
   await db.$disconnect();
   if (started) await postgres.stop();
 });
