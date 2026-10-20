@@ -80,6 +80,16 @@ beforeEach(() => {
       manufacturer: "Test",
       model: "Test",
       status: "OFFLINE",
+      lifecycleStatus: "PROVISIONING",
+      propertyId: null,
+      property: null,
+      revision: 1,
+      firstContactAt: null,
+      provisioningStartedAt: new Date("2026-01-01Z"),
+      provisioningFailedAt: null,
+      provisioningErrorCode: null,
+      commissionedAt: null,
+      communicationIdentities: [],
       lastSeenAt: null,
       installedAt: new Date("2026-01-01Z"),
       createdAt: new Date("2026-01-01Z"),
@@ -105,6 +115,20 @@ beforeEach(() => {
     alerts: [],
     audit: [],
     compliance: [],
+    readiness: {
+      ready: false,
+      currentContactAt: null,
+      steps: [{ label: "Installation bestätigt", status: "BLOCKED" }],
+      blockers: [
+        {
+          code: "INSTALLATION_UNCONFIRMED",
+          message: "Installation vor Ort ist nicht bestätigt.",
+        },
+      ],
+    },
+    properties: [],
+    allowedTransitions: ["FAILED", "DECOMMISSIONED"],
+    canAssignProperty: false,
   });
 });
 
@@ -210,12 +234,113 @@ it("renders safe credential metadata and no private material in normal detail HT
     }),
   );
   expect(html).toContain("fingerprint");
-  expect(html).toContain("Credential erzeugen");
+  expect(html).toContain("Signatur-Public-Key registrieren");
+  expect(html).not.toContain("Credential erzeugen");
+  expect(html).not.toContain("Rotieren");
+  expect(html).toContain("Keine Liegenschaft zugeordnet");
+  expect(html).toContain("PROVISIONING");
+  expect(html).toContain("Offline");
+  expect(html).toContain("Erster Kontakt");
+  expect(html).toContain("Letzter Kontakt");
+  expect(html).toContain("Offen / blockiert");
+  expect(html).toContain("Installation vor Ort ist nicht bestätigt.");
+  expect(html).toContain("externe Broker-Freischaltung bestätigt");
+  expect(html).not.toContain("MQTT verbunden");
+  expect(html).not.toContain("Gateway aktivieren");
   expect(html).not.toContain("PRIVATE KEY");
-  expect(html).not.toContain("publicKey");
   expect(html).not.toContain("tokenHash");
   expect(html).not.toContain("Neustart");
   expect(html).not.toContain("Firmware-Rollout");
+});
+
+it("renders direct gateway property without inferring from devices and separates lifecycle from online", async () => {
+  mocks.gatewayList.mockResolvedValue({
+    items: [
+      {
+        id: "direct",
+        tenantId: "tenant-a",
+        tenant: { name: "Kunde A" },
+        externalGatewayId: "direct",
+        property: { id: "property-a", name: "Direkte Liegenschaft" },
+        lifecycleStatus: "NEW",
+        status: "ONLINE",
+        firstContactAt: new Date("2026-01-01Z"),
+        lastSeenAt: new Date("2026-01-01Z"),
+        provisioningStartedAt: null,
+        commissionedAt: null,
+        credentials: [],
+        _count: { devices: 0 },
+        queueWarning: false,
+        queueDropped: 0,
+        quarantineSize: 0,
+      },
+    ],
+    total: 1,
+    page: 1,
+    pages: 1,
+  });
+  const html = renderToStaticMarkup(
+    await GatewaysPage({ searchParams: Promise.resolve({}) }),
+  );
+  expect(html).toContain("Direkte Liegenschaft");
+  expect(html).toContain("NEW");
+  expect(html).toContain("Online");
+  expect(html).toContain("Noch nicht gestartet");
+});
+it("shows activation only when supplied by the server and exposes no legacy key generator", async () => {
+  const data = await mocks.detail();
+  data.readiness = {
+    ready: true,
+    currentContactAt: new Date(),
+    steps: [{ label: "Geräte zugeordnet", status: "FULFILLED" }],
+    blockers: [],
+  };
+  data.allowedTransitions = ["ACTIVE", "FAILED", "DECOMMISSIONED"];
+  mocks.detail.mockResolvedValue(data);
+  const html = renderToStaticMarkup(
+    await GatewayDetailPage({
+      params: Promise.resolve({ id: "synthetic-gateway" }),
+      searchParams: Promise.resolve({ tenantId: "tenant-a" }),
+    }),
+  );
+  expect(html).toContain("Gateway aktivieren");
+  expect(html).toContain("Erfüllt");
+  expect(html).not.toContain("Credential erzeugen");
+  expect(html).not.toContain("privateKey");
+});
+it("terminal UI keeps external revocation outstanding and hides provisioning actions", async () => {
+  const data = await mocks.detail();
+  data.gateway.lifecycleStatus = "DECOMMISSIONED";
+  data.allowedTransitions = [];
+  data.gateway.communicationIdentities = [
+    {
+      id: "identity",
+      brokerReference: "test-broker",
+      certificateFingerprint: "abc",
+      issuerReference: "test",
+      serialNumber: "01",
+      commonName: "synthetic-gateway",
+      notBefore: new Date("2026-01-01Z"),
+      expiresAt: new Date("2030-01-01Z"),
+      registeredAt: new Date(),
+      enabledConfirmedAt: new Date(),
+      revocationRequestedAt: new Date(),
+      revocationConfirmedAt: null,
+    },
+  ];
+  mocks.detail.mockResolvedValue(data);
+  const html = renderToStaticMarkup(
+    await GatewayDetailPage({
+      params: Promise.resolve({ id: "synthetic-gateway" }),
+      searchParams: Promise.resolve({ tenantId: "tenant-a" }),
+    }),
+  );
+  expect(html).toContain("DECOMMISSIONED ist terminal");
+  expect(html).toContain("externe Bestätigung offen");
+  expect(html).toContain("Widerruf extern bestätigen");
+  expect(html).not.toContain("Gateway aktivieren");
+  expect(html).not.toContain("Signatur-Public-Key registrieren");
+  expect(html).not.toContain("vollständig gesperrt");
 });
 
 it("requires an explicitly selected customer in gateway detail", async () => {

@@ -411,3 +411,64 @@ bleiben erhalten. Andere bestehende Gatewayansichten behalten in dieser Phase
 ihre bisherigen gefilterten Device-Sichten. Neue Lifecycle-/Property-APIs und
 vollständige UI-Anbindung, Installationsnachweis, Readiness, Public-Key-Enrollment,
 Import-/Umzugsworkflow und manuelle PKI-Bestätigungsaktionen folgen in 1C-B.
+
+## Manueller Provisioning-Workflow, Phase 1C-B
+
+Die Phase-1C-A-Grundlage wird ohne Schemaänderung erweitert. Die folgenden
+Regeln ersetzen die damaligen Übergangsausnahmen: Jede Gateway-Anlage braucht
+eine tenantgesicherte Property; Propertywechsel einschließlich Legacy-NULL
+verlangen null Devices und null offene Commands. MAINTENANCE → ACTIVE entfällt;
+ein neuer PROVISIONING-Versuch mit eigenen Nachweisen ist erforderlich.
+
+Die Plattform-API /api/platform/gateways/[id]/provisioning bietet GET für
+Readiness und POST für bestätigte Lifecycle-, Property-, Installations-,
+Public-Key- und Kommunikationsidentitätsaktionen. Jede öffentliche Serverfunktion
+authentifiziert und prüft SUPER_ADMIN sowie expliziten Tenant selbst. POST nutzt
+readBody mit Origin-/Größenprüfung, strikte Zod-Verträge und no-store-Antworten.
+GET /api/platform/gateways/properties liefert nur Properties des explizit
+gewählten Kunden. Bestehende POST-/Importpfade behalten dieselben Plattformgrenzen.
+
+getGatewayProvisioningReadiness ist die zentrale abgeleitete Sicht; es gibt
+kein weiteres gespeichertes Statusmodell. Ihre interne Transaktionsfunktion
+liefert ausschließlich sichere Blockercodes, deutsche Erläuterungen und Schritte.
+Die Aktivierung läuft mit Serializable-Isolation, Tenant-/Gateway-/Device-Sperren
+und erneuter Readiness-Prüfung; Konflikte werden nicht automatisch als Erfolg
+behandelt. Erst dann werden ACTIVE, commissionedAt, Revision und Audit atomar
+geschrieben. Neue Commands und Identitätsänderungen serialisieren weiterhin
+an der Gateway-Zeile. Geräte-/Modbus-Nachweise werden aus bestehenden Daten
+geprüft, nicht aus dem letzten Commandresultat erraten.
+
+Der historische firstContactAt bleibt unverändert. gateway.heartbeat-Audit wird
+nur für neue akzeptierte Heartbeats und mit expliziter Serverzeit geschrieben,
+nachdem der Gateway-Lock erworben wurde. Ein solches Ereignis nach dem aktuellen
+provisioningStartedAt belegt den Kontakt dieses Versuchs; der geräteseitige
+lastSeenAt ist dafür keine Alternative. Fehlende oder entfernte Audit-Evidenz
+blockiert die Freigabe konservativ. Der bestehende Auditindex nach Tenant/Zeit
+wird genutzt; für große Flotten bleibt dessen Performance zu beobachten.
+
+Installation setzt installedAt ausschließlich bei bestätigter Vor-Ort-Installation
+in PROVISIONING und schreibt ein gleichzeitiges gateway.installation.confirm-
+Audit. Wiederholung ist idempotent. Ein historischer installedAt-Wert ohne dieses
+Audit ist kein Nachweis. Propertywechsel löschen diesen Nachweis am Gateway.
+Eine freie Datumsänderung wird nicht angeboten.
+
+registerGatewayPublicKey akzeptiert ausschließlich Ed25519 SPKI-PEM mit PUBLIC
+KEY-Begrenzern. Private-Key-PEM wird vor dem Krypto-Parser abgewiesen. Gespeichert
+wird im bestehenden GatewayCredential-Modell; Antwort und Audit enthalten nur
+ID/Fingerprint/Status/Ablauf. Der Private Key entsteht lokal am Gateway. Die
+bestehenden SUPER_ADMIN-CREATE/ROTATE-Legacy-APIs bleiben kompatibel, sind aber
+nicht Bestandteil der neuen UI. Kein zweites Credentialmodell wird angelegt.
+
+Kommunikationsidentitäten sind weiterhin öffentliches Inventar. Manuelle
+CONFIRM_ENABLED-, REQUEST_REVOCATION- und CONFIRM_REVOKED-Aktionen schreiben
+Serverzeit und Audit unter Gateway-Sperre. Freischaltung setzt aktuelle Gültigkeit,
+fehlenden Widerruf und nichtterminalen Lifecycle voraus. Ein bestätigter Widerruf
+verlangt zuvor eine Anforderung; nach Stilllegung bleibt dessen Bestätigung möglich.
+Ein offener Widerruf irgendeiner registrierten Identität blockiert Readiness.
+Keine dieser Aktionen spricht Mosquitto, eine CA oder einen Broker an.
+
+Die UI zeigt direkte Gateway-Property, Lifecycle getrennt von Online/Offline,
+historischen Erstkontakt und letzten Kontakt, konkrete Provisionierungsschritte
+und serverseitig zulässige Transitionen. Stilllegung unterscheidet Anwendungs-
+sperre, Signaturwiderruf und externen Brokerwiderruf. Terminalität betrifft den
+Gateway-Lifecycle, nicht automatisch Devices oder offline laufende Edge-Agenten.

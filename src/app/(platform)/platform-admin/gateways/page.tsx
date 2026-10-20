@@ -9,7 +9,12 @@ import {
   AdminPagination,
 } from "@/components/gateway-admin-navigation";
 import { PrepareGateway } from "@/components/gateway-admin-controls";
-import { credentialLabel, technicalLabels, utcTime } from "@/lib/gateway-admin";
+import {
+  credentialLabel,
+  lifecycleLabels,
+  technicalLabels,
+  utcTime,
+} from "@/lib/gateway-admin";
 export const metadata = { title: "Gateways & Geräte · Meterwerk" };
 export default async function AdminGatewaysPage({
   searchParams,
@@ -85,6 +90,8 @@ export default async function AdminGatewaysPage({
               <th>Lifecycle</th>
               <th>Verbindung</th>
               <th>Letzter Kontakt (UTC)</th>
+              <th>Erstkontakt (UTC)</th>
+              <th>Provisioning-Status</th>
               <th>Software</th>
               <th>Geräte</th>
               <th>Credential</th>
@@ -93,20 +100,6 @@ export default async function AdminGatewaysPage({
           </thead>
           <tbody>
             {result.items.map((g) => {
-              const properties = Array.from(
-                new Map(
-                  g.devices.flatMap((d) =>
-                    d.meter.unit.building.property
-                      ? [
-                          [
-                            d.meter.unit.building.property.id,
-                            d.meter.unit.building.property.name,
-                          ] as const,
-                        ]
-                      : [],
-                  ),
-                ).values(),
-              );
               const active = g.credentials.some(
                 (c) => credentialLabel(c) === "Aktiv",
               );
@@ -130,9 +123,11 @@ export default async function AdminGatewaysPage({
                     <small className="block">{g.externalGatewayId}</small>
                   </td>
                   <td>{g.tenant.name}</td>
-                  <td>{properties.length ? properties.join(", ") : "—"}</td>
+                  <td>{g.property?.name ?? "Keine Liegenschaft zugeordnet"}</td>
                   <td>{technicalLabels[g.status] ?? "Unbekannt"}</td>
-                  <td>—</td>
+                  <td>
+                    {g.lifecycleStatus} · {lifecycleLabels[g.lifecycleStatus]}
+                  </td>
                   <td>
                     {online
                       ? "Online"
@@ -141,6 +136,18 @@ export default async function AdminGatewaysPage({
                         : "Unbekannt"}
                   </td>
                   <td>{utcTime(g.lastSeenAt)}</td>
+                  <td>{utcTime(g.firstContactAt)}</td>
+                  <td>
+                    {g.lifecycleStatus === "FAILED"
+                      ? "Fehlgeschlagen"
+                      : g.lifecycleStatus === "DECOMMISSIONED"
+                        ? "Terminal"
+                        : g.commissionedAt
+                          ? "Aktivierung bestätigt"
+                          : g.provisioningStartedAt
+                            ? "Gestartet; Details prüfen"
+                            : "Noch nicht gestartet"}
+                  </td>
                   <td>{g.firmwareVersion ?? "—"}</td>
                   <td>{g._count.devices}</td>
                   <td>{credential}</td>

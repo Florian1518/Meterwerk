@@ -125,12 +125,10 @@ Liegenschaft. ONLINE/OFFLINE bleiben technische Kommunikationszustände. Die
 Erweiterungsmigration `202610190001_gateway_provisioning_foundation` erhält alle
 Bestandsdaten: keine automatische Property-Auswahl und keine ACTIVE-Freigabe.
 Vorhandene `installedAt`-Werte sind unbestätigte Altmetadaten; neue Vorbereitungen
-setzen kein Installationsdatum. Der Lifecycle-Service blockiert jede neue
-Aktivierung bis zur vollständigen Abschlussprüfung in Phase 1C-B.
+setzen kein Installationsdatum. Phase 1C-B ergänzt die nachweisgebundene Aktivierung; der manuelle Ablauf ist unten beschrieben.
 
 Gatewayanlage, Property-Zuordnung und Gateway-Identitätsmutationen sind jetzt
-SUPER_ADMIN-only. Der bisherige Anlagevertrag darf noch einen NEW-Datensatz ohne
-Property vorbereiten; Provisioning und neue Device-Zuordnungen benötigen eine
+SUPER_ADMIN-only. Seit Phase 1C-B benötigt jeder neue NEW-Datensatz eine direkte Property; Provisioning und neue Device-Zuordnungen benötigen eine
 direkte Liegenschaft. Unveränderte Legacy-Zuordnungen bleiben nutzbar. Device-
 Verwaltung für Kundenadministratoren bleibt innerhalb dieser Grenzen möglich.
 Gateway-Imports und Device-Imports mit Gateway-Zuordnung werden bei Bestätigung
@@ -142,8 +140,7 @@ storniert offene Commands und deaktiviert serverseitig Modbus-Polling atomar mit
 Audit. Devices bleiben eigenständig. Kommunikationsidentitäten enthalten nur
 öffentliche Inventarmetadaten; ein Widerruf wird als extern erforderlich erfasst.
 **Keine automatische MQTT-/PKI-/CRL-/Broker-Sperrung und kein garantierter
-Fernstopp eines offline laufenden Edge-Agenten.** Die bestehende Phase-1B-UI wird
-erst in 1C-B an die neuen Serverfunktionen angebunden.
+Fernstopp eines offline laufenden Edge-Agenten.** Die SUPER_ADMIN-Oberfläche verwendet seit Phase 1C-B die direkten Property- und Lifecycle-Daten.
 
 Gezielte Prüfung:
 `pnpm exec vitest run tests/gateway-provisioning-db.test.ts tests/gateway-device-security-db.test.ts tests/gateway-admin-ui.test.ts`.
@@ -151,3 +148,58 @@ Der neue DB-Test verwendet einen frischen Loopback-Cluster auf Port 55454 mit
 getrennten Fresh-/Upgrade-Datenbanken. Er migriert zunächst das Phase-1B-Schema,
 legt mehrdeutige Legacy-Daten an und prüft deren unveränderten Erhalt beim Upgrade.
 Keine vorhandene Datenbank, Hardware, Zertifikate oder MQTT-Verbindungen nötig.
+
+## Manueller Gateway-Provisioningprozess (Phase 1C-B)
+
+Unter „Gateways & Geräte“ wählt SUPER_ADMIN Kunde und dessen Liegenschaft,
+Name, externe Gateway-ID, Hersteller und Modell. Neue Gateways sind NEW;
+installedAt bleibt leer. Legacy-NULL wird als „Keine Liegenschaft zugeordnet“
+angezeigt und nicht aus Devices abgeleitet. ONLINE/OFFLINE bleibt unabhängig
+vom administrativen Lifecycle; ein Heartbeat aktiviert kein Gateway.
+
+1. Provisionierung ausdrücklich starten (NEW/FAILED/MAINTENANCE → PROVISIONING).
+2. Das Gateway erzeugt später seinen Ed25519 Private Key lokal. In Meterwerk
+   ausschließlich den Public Key als SPKI-PEM registrieren. Die Antwort enthält
+   Credential-ID und SHA-256-Fingerprint, keinen privaten Schlüssel.
+3. Öffentliche MQTT-Zertifikatsmetadaten registrieren (CN = interne Gateway-ID).
+   PKI und Brokerfreischaltung erfolgen extern/manuell. Erst danach deren
+   tatsächliche Ausführung ausdrücklich in Meterwerk bestätigen.
+4. Akzeptierten signierten Heartbeat empfangen und Installation vor Ort
+   ausdrücklich bestätigen. Die Installation erhält Serverzeit und Audit;
+   historische Installationsdaten allein reichen nicht aus.
+5. Devices zuordnen und bestehende Geräte-/Modbus-Inbetriebnahme abschließen.
+6. Die konkreten Schritte und Blocker prüfen und „Gateway aktivieren“ bestätigen.
+   Der Server prüft alle Nachweise erneut in der Aktivierungstransaktion.
+
+Readiness verlangt direkte Property, konsistente Stammdaten, PROVISIONING,
+gültiges aktives Ed25519-Credential, gültige und extern freigeschaltete
+Kommunikationsidentität, keinen unbestätigten Widerruf, bestätigte Installation,
+geeignete Devices derselben Property und abgeschlossene Inbetriebnahme.
+Modbus verlangt gültige Konfiguration, verifiziertes Katalogprofil, Messungsreview
+der aktuellen Revision, bestätigte Nutzungseinheit, ACTIVE/completedAt und keine
+ungeklärten Inbetriebnahmeaufträge der aktuellen Revision. Ein erfolgreicher
+Einzelcommand genügt nicht. Andere Protokolle benötigen Device-Lifecycle ACTIVE.
+
+firstContactAt bleibt historisch. Ein neuer Versuch benötigt zusätzlich ein
+atomar geschriebenes Heartbeat-Auditereignis mit Serverzeit nach
+provisioningStartedAt. lastSeenAt bleibt die akzeptierte Heartbeat-Zeit des
+Geräts; sie wird nicht als alleiniger Server-Empfangsnachweis verwendet.
+Aus MAINTENANCE ist deshalb keine direkte Aktivierung mehr vorgesehen.
+
+Propertywechsel erfolgen nur im selben Tenant, in NEW/MAINTENANCE und ohne
+Devices oder offene Commands. Das gilt auch für bisherige Legacy-NULL-Gateways.
+Ein Wechsel entwertet Installation und Aktivierung; Messhistorie wird nicht
+verschoben. Eine einfache Umhängung belegter Gateways wird abgelehnt.
+
+Stilllegung ist terminal und sperrt die Anwendung, widerruft Signaturcredentials,
+storniert offene Commands und deaktiviert serverseitiges Modbus-Polling. Devices
+bleiben eigenständig. Externe Brokerwiderrufe müssen separat ausgeführt und
+bestätigt werden; ohne diesen Nachweis besteht keine Aussage vollständiger Sperrung.
+
+Legacy-Ausnahme: CREATE/ROTATE mit einmaliger Private-Key-Antwort bleibt für
+bestehende Test-/Legacy-Aufrufer in POST /api/gateways/[id]/credentials sowie
+POST /api/platform/gateways/[id]/credentials erreichbar, ausschließlich für
+SUPER_ADMIN. Die neue Provisioning-UI bietet diese Erzeugung nicht an.
+Der normale Workflow nutzt POST /api/platform/gateways/[id]/provisioning mit
+PUBLIC_KEY. Keine Hardware, MQTT-Verbindung, Zertifikatsausstellung oder
+Broker-ACL-Änderung wird durch diese Verwaltungsaktionen ausgelöst.

@@ -112,6 +112,7 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
           actorId: gatewayId,
           action: "gateway.heartbeat",
           entityId: gatewayId,
+          createdAt: new Date(),
         },
       });
       return null;

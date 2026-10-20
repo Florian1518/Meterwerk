@@ -14,6 +14,11 @@ import {
   changeDeviceLifecycle,
   listPlatformDevices,
 } from "./device-management";
+import { getGatewayProvisioningReadiness } from "./gateway-readiness";
+import {
+  gatewayLifecycles,
+  isAllowedGatewayTransition,
+} from "./gateway-lifecycle";
 
 export async function requireGatewayAdminPage() {
   const actor = await requirePageActor();
@@ -70,6 +75,15 @@ export async function gatewayAdminTenants() {
     orderBy: [{ name: "asc" }, { id: "asc" }],
   });
 }
+export async function gatewayAdminProperties(tenantId: string) {
+  await authorize();
+  await tenantExists(tenantId);
+  return db.property.findMany({
+    where: { tenantId },
+    select: { id: true, name: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
+}
 export async function listAdminGateways(raw: unknown = {}) {
   await authorize();
   const value = filters.parse(raw);
@@ -105,6 +119,12 @@ export async function listAdminGateways(raw: unknown = {}) {
         tenantId: true,
         tenant: { select: tenantSelect },
         status: true,
+        lifecycleStatus: true,
+        property: { select: { id: true, name: true } },
+        firstContactAt: true,
+        provisioningStartedAt: true,
+        provisioningFailedAt: true,
+        commissionedAt: true,
         lastSeenAt: true,
         firmwareVersion: true,
         queueWarning: true,
@@ -112,23 +132,6 @@ export async function listAdminGateways(raw: unknown = {}) {
         quarantineSize: true,
         _count: { select: { devices: true } },
         credentials: { select: { status: true, expiresAt: true } },
-        devices: {
-          select: {
-            meter: {
-              select: {
-                unit: {
-                  select: {
-                    building: {
-                      select: {
-                        property: { select: { id: true, name: true } },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
       },
     }),
     db.gateway.count({ where }),
@@ -185,6 +188,33 @@ export async function getAdminGateway(id: string, expectedTenant?: string) {
       manufacturer: true,
       model: true,
       status: true,
+      lifecycleStatus: true,
+      revision: true,
+      propertyId: true,
+      property: { select: { id: true, name: true } },
+      firstContactAt: true,
+      provisioningStartedAt: true,
+      provisioningFailedAt: true,
+      provisioningErrorCode: true,
+      commissionedAt: true,
+      decommissionedAt: true,
+      communicationIdentities: {
+        orderBy: { registeredAt: "desc" },
+        select: {
+          id: true,
+          brokerReference: true,
+          certificateFingerprint: true,
+          issuerReference: true,
+          serialNumber: true,
+          commonName: true,
+          notBefore: true,
+          expiresAt: true,
+          registeredAt: true,
+          enabledConfirmedAt: true,
+          revocationRequestedAt: true,
+          revocationConfirmedAt: true,
+        },
+      },
       lastSeenAt: true,
       installedAt: true,
       createdAt: true,
@@ -272,7 +302,43 @@ export async function getAdminGateway(id: string, expectedTenant?: string) {
       gateway.devices.map((d) => deviceCompliance(d.id, identity.tenantId)),
     ),
   ]);
-  return { gateway, credentials, health, alerts, audit, compliance };
+  const [readiness, properties, openCommands] = await Promise.all([
+    getGatewayProvisioningReadiness(id, identity.tenantId),
+    gatewayAdminProperties(identity.tenantId),
+    db.gatewayCommand.count({
+      where: {
+        gatewayId: id,
+        tenantId: identity.tenantId,
+        status: { in: ["PENDING", "QUEUED", "SENT", "ACKNOWLEDGED"] },
+      },
+    }),
+  ]);
+  const allowedTransitions = gatewayLifecycles.filter(
+    (to) =>
+      isAllowedGatewayTransition(gateway.lifecycleStatus, to) &&
+      (to !== "ACTIVE" || readiness.ready) &&
+      (to !== "PROVISIONING" ||
+        (!!gateway.propertyId &&
+          !readiness.blockers.some((b) =>
+            ["TENANT_MISSING", "MASTER_DATA_INVALID"].includes(b.code),
+          ))),
+  );
+  const canAssignProperty =
+    ["NEW", "MAINTENANCE"].includes(gateway.lifecycleStatus) &&
+    gateway.devices.length === 0 &&
+    openCommands === 0;
+  return {
+    gateway,
+    credentials,
+    health,
+    alerts,
+    audit,
+    compliance,
+    readiness,
+    properties,
+    allowedTransitions,
+    canAssignProperty,
+  };
 }
 export async function prepareAdminGateway(tenantId: string, raw: unknown) {
   await authorize();
@@ -280,7 +346,9 @@ export async function prepareAdminGateway(tenantId: string, raw: unknown) {
     .object({
       name: z.string(),
       externalGatewayId: z.string(),
-      propertyId: z.string().min(1).optional(),
+      propertyId: z.string().min(1),
+      manufacturer: z.string().trim().min(1).max(160).optional(),
+      model: z.string().trim().min(1).max(160).optional(),
     })
     .strict()
     .parse(raw);
@@ -289,7 +357,9 @@ export async function prepareAdminGateway(tenantId: string, raw: unknown) {
     {
       name: value.name,
       externalGatewayId: value.externalGatewayId,
-      ...(value.propertyId ? { propertyId: value.propertyId } : {}),
+      propertyId: value.propertyId,
+      manufacturer: value.manufacturer,
+      model: value.model,
     },
     tenantId,
   );

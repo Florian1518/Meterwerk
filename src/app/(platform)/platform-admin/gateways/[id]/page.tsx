@@ -3,7 +3,7 @@ import {
   getAdminGateway,
   requireGatewayAdminPage,
 } from "@/server/gateway-admin";
-import { GatewayCredentialActions } from "@/components/gateway-admin-controls";
+import { GatewayProvisioningControls } from "@/components/gateway-provisioning-controls";
 import {
   complianceLabels,
   credentialLabel,
@@ -37,21 +37,11 @@ export default async function AdminGatewayDetail({
     alerts,
     audit,
     compliance,
+    readiness,
+    properties,
+    allowedTransitions,
+    canAssignProperty,
   } = await getAdminGateway(id, query.tenantId);
-  const properties = Array.from(
-    new Map(
-      g.devices.flatMap((d) =>
-        d.meter.unit.building.property
-          ? [
-              [
-                d.meter.unit.building.property.id,
-                d.meter.unit.building.property.name,
-              ] as const,
-            ]
-          : [],
-      ),
-    ).values(),
-  );
   return (
     <>
       <p>
@@ -72,8 +62,13 @@ export default async function AdminGatewayDetail({
           <p>Gateway-ID: {g.id}</p>
           <p>Externe ID: {g.externalGatewayId}</p>
           <p>Kunde: {g.tenant.name}</p>
-          <p>Liegenschaft: {properties.length ? properties.join(", ") : "—"}</p>
-          <p>Lifecycle: — (kein Gateway-Lifecycle im Datenmodell)</p>
+          <p>
+            Liegenschaft: {g.property?.name ?? "Keine Liegenschaft zugeordnet"}
+          </p>
+          <p>
+            Lifecycle: {g.lifecycleStatus} ·{" "}
+            {lifecycleLabels[g.lifecycleStatus]}
+          </p>
           <p>Technischer Status: {technicalLabels[g.status] ?? "Unbekannt"}</p>
           <p>Installiert: {utcTime(g.installedAt)}</p>
           <p>Erstellt: {utcTime(g.createdAt)}</p>
@@ -88,7 +83,8 @@ export default async function AdminGatewayDetail({
                 ? "Offline"
                 : "Unbekannt"}
           </p>
-          <p>Letzter Heartbeat: {utcTime(g.lastSeenAt)}</p>
+          <p>Erster Kontakt (UTC): {utcTime(g.firstContactAt)}</p>
+          <p>Letzter Kontakt (UTC): {utcTime(g.lastSeenAt)}</p>
           <p>Health: {healthLabels[health.status] ?? "Unbekannt"}</p>
           <ul>
             {health.reasons.map((r) => (
@@ -199,12 +195,131 @@ export default async function AdminGatewayDetail({
           Private Schlüssel und öffentliche Schlüssel werden hier nicht
           ausgegeben.
         </p>
-        <GatewayCredentialActions
-          gatewayId={g.id}
-          tenantId={g.tenantId}
-          credentials={credentials.map((c) => ({ id: c.id, status: c.status }))}
-        />
       </section>
+      <section className="panel mt-4">
+        <h2>Provisionierung</h2>
+        <p>Beginn (UTC): {utcTime(g.provisioningStartedAt)}</p>
+        <p>
+          Akzeptierter Kontakt im aktuellen Versuch (UTC):{" "}
+          {utcTime(readiness.currentContactAt)}
+        </p>
+        <p>Aktiviert (UTC): {utcTime(g.commissionedAt)}</p>
+        <p>
+          Fehler: {g.provisioningErrorCode ?? "—"} ·{" "}
+          {utcTime(g.provisioningFailedAt)}
+        </p>
+        <p>
+          Ein historisches Installationsdatum ohne Vor-Ort-Bestätigung ist kein
+          Installationsnachweis.
+        </p>
+        <ul>
+          {readiness.steps.map((step) => (
+            <li key={step.label}>
+              {step.label}:{" "}
+              {step.status === "FULFILLED" ? "Erfüllt" : "Offen / blockiert"}
+            </li>
+          ))}
+        </ul>
+        <p>Aktivierung möglich: {readiness.ready ? "Ja" : "Nein"}</p>
+        <ul>
+          {readiness.blockers.map((b) => (
+            <li key={b.code}>{b.message}</li>
+          ))}
+        </ul>
+      </section>
+      <section className="panel mt-4">
+        <h2>Kommunikationsidentitäten · öffentliche Metadaten</h2>
+        <p>
+          In Meterwerk registriert und externe Broker-Freischaltung bestätigt
+          sind getrennte Nachweise. Metadaten belegen keine aktive
+          MQTT-Verbindung. Alle Zeiten in UTC.
+        </p>
+        {!g.communicationIdentities.length && (
+          <p>Keine Kommunikationsidentität registriert.</p>
+        )}
+        {g.communicationIdentities.map((i) => (
+          <article key={i.id} className="mt-4 break-words">
+            <h3>{i.brokerReference}</h3>
+            <p>Identität: {i.id}</p>
+            <p>Fingerprint: {i.certificateFingerprint}</p>
+            <p>
+              Issuer: {i.issuerReference} · Seriennummer: {i.serialNumber}
+            </p>
+            <p>Common Name: {i.commonName}</p>
+            <p>
+              Gültigkeit: {utcTime(i.notBefore)} – {utcTime(i.expiresAt)}
+            </p>
+            <p>In Meterwerk registriert: {utcTime(i.registeredAt)}</p>
+            <p>
+              Externe Broker-Freischaltung bestätigt:{" "}
+              {utcTime(i.enabledConfirmedAt)}
+            </p>
+            <p>
+              Broker-/MQTT-Zugang:{" "}
+              {i.revocationConfirmedAt
+                ? "Widerruf extern bestätigt"
+                : i.revocationRequestedAt
+                  ? "Widerruf angefordert"
+                  : "Widerruf nicht angefordert"}
+            </p>
+            <p>
+              Widerruf angefordert: {utcTime(i.revocationRequestedAt)} · extern
+              bestätigt: {utcTime(i.revocationConfirmedAt)}
+            </p>
+          </article>
+        ))}
+      </section>
+      <section className="panel mt-4">
+        <h2>Stilllegung</h2>
+        <p>
+          Anwendung:{" "}
+          {g.lifecycleStatus === "DECOMMISSIONED"
+            ? "gesperrt (terminal)"
+            : "nicht durch Stilllegung gesperrt"}
+        </p>
+        <p>
+          Gateway-Signaturcredentials:{" "}
+          {credentials.some((c) => c.status === "ACTIVE")
+            ? "Widerruf offen"
+            : credentials.length
+              ? "widerrufen"
+              : "keine registriert"}
+        </p>
+        <p>
+          Broker-/MQTT-Zugang:{" "}
+          {g.communicationIdentities.length === 0
+            ? "Kein Inventarnachweis; externer Status unbekannt"
+            : g.communicationIdentities.every((i) => i.revocationConfirmedAt)
+              ? "Widerruf extern bestätigt"
+              : g.communicationIdentities.some(
+                    (i) => i.revocationRequestedAt && !i.revocationConfirmedAt,
+                  )
+                ? "Widerruf angefordert; externe Bestätigung offen"
+                : "Widerruf nicht angefordert"}
+        </p>
+        <p>
+          Devices bleiben eigenständig. Ein offline laufender Edge-Agent wird
+          nicht physisch ferngestoppt.
+        </p>
+      </section>
+      <GatewayProvisioningControls
+        id={g.id}
+        tenantId={g.tenantId}
+        revision={g.revision}
+        lifecycleStatus={g.lifecycleStatus}
+        allowedTransitions={allowedTransitions}
+        properties={properties}
+        propertyId={g.propertyId}
+        canAssignProperty={canAssignProperty}
+        credentials={credentials.map((c) => ({ id: c.id, status: c.status }))}
+        identities={g.communicationIdentities.map((i) => ({
+          id: i.id,
+          enabled: !!i.enabledConfirmedAt,
+          requested: !!i.revocationRequestedAt,
+          revoked: !!i.revocationConfirmedAt,
+          valid: i.notBefore <= new Date() && i.expiresAt > new Date(),
+        }))}
+      />
       <section className="panel mt-4">
         <h2>Wartung</h2>
         {g.maintenanceWindows.length ? (

@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
-import { utcInput } from "@/lib/format";
 async function post(url: string, data: unknown) {
   const response = await fetch(url, {
     method: "POST",
@@ -19,16 +18,47 @@ export function PrepareGateway({
 }: {
   tenants: { id: string; name: string }[];
 }) {
+  const [tenantId, setTenantId] = useState("");
+  const [properties, setProperties] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!tenantId) return;
+    fetch(
+      "/api/platform/gateways/properties?tenantId=" +
+        encodeURIComponent(tenantId),
+      { signal: controller.signal, cache: "no-store" },
+    )
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error);
+        return body;
+      })
+      .then((rows) => {
+        if (controller.signal.aborted) return;
+        setProperties(rows);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) {
+          setError(e.message);
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [tenantId]);
   return (
     <details className="create-details">
       <summary>Gateway vorbereiten</summary>
       <p>
         Interne Vorbereitung eines Gateway-Datensatzes. Broker-Zugang und
-        Hardware werden nicht eingerichtet. Eine Liegenschaft ergibt sich erst
-        aus zugeordneten Geräten.
+        Hardware werden nicht eingerichtet. Wählen Sie die direkte Liegenschaft
+        des Kunden.
       </p>
       <form
         className="create-form"
@@ -43,6 +73,9 @@ export function PrepareGateway({
               `/api/gateways?tenantId=${encodeURIComponent(tenantId)}&platformAdmin=1`,
               {
                 name: form.get("name"),
+                propertyId: form.get("propertyId"),
+                manufacturer: form.get("manufacturer"),
+                model: form.get("model"),
                 externalGatewayId: form.get("externalGatewayId"),
               },
             );
@@ -59,7 +92,17 @@ export function PrepareGateway({
         <div className="form-grid">
           <label>
             Kunde
-            <select name="tenantId" required defaultValue="">
+            <select
+              name="tenantId"
+              required
+              value={tenantId}
+              onChange={(e) => {
+                setTenantId(e.target.value);
+                setProperties([]);
+                setLoading(true);
+                setError("");
+              }}
+            >
               <option value="" disabled>
                 Bitte auswählen
               </option>
@@ -69,6 +112,36 @@ export function PrepareGateway({
                 </option>
               ))}
             </select>
+          </label>
+          <label>
+            Liegenschaft
+            <select
+              key={tenantId}
+              name="propertyId"
+              required
+              defaultValue=""
+              disabled={loading || !properties.length}
+            >
+              <option value="">
+                {loading ? "Wird geladen …" : "Bitte auswählen"}
+              </option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {tenantId && !loading && !properties.length && (
+              <small>Keine Liegenschaften für diesen Kunden vorhanden.</small>
+            )}
+          </label>
+          <label>
+            Hersteller
+            <input name="manufacturer" required maxLength={160} />
+          </label>
+          <label>
+            Modell
+            <input name="model" required maxLength={160} />
           </label>
           <label>
             Name
@@ -90,166 +163,11 @@ export function PrepareGateway({
             {error}
           </p>
         )}
-        <Button disabled={busy || !tenants.length}>
+        <Button disabled={busy || loading || !properties.length}>
           {busy ? "Wird vorbereitet …" : "Gateway vorbereiten"}
         </Button>
       </form>
     </details>
-  );
-}
-export function GatewayCredentialActions({
-  gatewayId,
-  tenantId,
-  credentials,
-}: {
-  gatewayId: string;
-  tenantId: string;
-  credentials: { id: string; status: string }[];
-}) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [message, setMessage] = useState("");
-  const [secret, setSecret] = useState<{
-    id: string;
-    privateKey: string;
-  } | null>(null);
-  const [expiresAt, setExpiresAt] = useState("");
-  const active = useRef(true);
-  useEffect(() => {
-    active.current = true;
-    const clear = () => {
-      active.current = false;
-      setSecret(null);
-    };
-    window.addEventListener("pagehide", clear);
-    // Hide/clear before internal navigation, including browser history restoration.
-    const navigate = (event: MouseEvent) => {
-      if (event.target instanceof Element && event.target.closest("a[href]"))
-        clear();
-    };
-    document.addEventListener("click", navigate, true);
-    return () => {
-      active.current = false;
-      setSecret(null);
-      window.removeEventListener("pagehide", clear);
-      document.removeEventListener("click", navigate, true);
-    };
-  }, []);
-  async function act(
-    operation: "CREATE" | "ROTATE" | "REVOKE",
-    credentialId?: string,
-  ) {
-    setSecret(null);
-    setError("");
-    setMessage("");
-    const question =
-      operation === "REVOKE"
-        ? "Credential unwiderruflich widerrufen? Das Gateway kann damit keine Daten mehr senden."
-        : operation === "ROTATE"
-          ? "Credential rotieren? Das bisherige Credential wird sofort widerrufen. Der neue private Schlüssel wird nur einmal angezeigt."
-          : "Credential erzeugen? Der private Schlüssel wird nur einmal angezeigt; ein Broker-Zugang wird dadurch nicht eingerichtet.";
-    if (!window.confirm(question)) return;
-    active.current = true;
-    setBusy(true);
-    try {
-      const result = await post(
-        `/api/platform/gateways/${encodeURIComponent(gatewayId)}/credentials`,
-        {
-          tenantId,
-          confirmed: true,
-          operation,
-          ...(credentialId ? { credentialId } : {}),
-          ...(expiresAt && operation !== "REVOKE"
-            ? { expiresAt: utcInput(expiresAt) }
-            : {}),
-        },
-      );
-      if (active.current) {
-        if (result.privateKey)
-          setSecret({ id: result.id, privateKey: result.privateKey });
-        setMessage(
-          operation === "REVOKE"
-            ? "Credential widerrufen."
-            : "Credential gespeichert. Schlüssel jetzt sicher übernehmen.",
-        );
-      }
-      router.refresh();
-    } catch (e) {
-      if (active.current)
-        setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="space-y-3">
-      <label>
-        Ablaufdatum (UTC, optional)
-        <input
-          type="datetime-local"
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-        />
-      </label>
-      <Button type="button" disabled={busy} onClick={() => void act("CREATE")}>
-        Credential erzeugen
-      </Button>
-      {credentials
-        .filter((c) => c.status === "ACTIVE")
-        .map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center gap-3">
-            <span className="break-all">{c.id}</span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void act("ROTATE", c.id)}
-            >
-              Rotieren
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="text-red-700"
-              disabled={busy}
-              onClick={() => void act("REVOKE", c.id)}
-            >
-              Unwiderruflich widerrufen
-            </Button>
-          </div>
-        ))}
-      {error && (
-        <p role="alert" className="form-error">
-          {error}
-        </p>
-      )}
-      {message && <p role="status">{message}</p>}
-      {secret && (
-        <section className="panel" aria-label="Einmaliger privater Schlüssel">
-          <h3>Dieser private Schlüssel wird nur einmal angezeigt.</h3>
-          <p>Nach dem Verlassen oder Neuladen ist er nicht erneut abrufbar.</p>
-          <p>Credential-ID: {secret.id}</p>
-          <label>
-            Privater Schlüssel
-            <textarea
-              readOnly
-              rows={6}
-              value={secret.privateKey}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSecret(null)}
-          >
-            Schlüssel ausblenden
-          </Button>
-        </section>
-      )}
-    </div>
   );
 }
 export function DecommissionDevice({

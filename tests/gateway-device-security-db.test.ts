@@ -830,6 +830,7 @@ it("prepares a gateway through existing quota and audit service and rejects tena
   const created = await adminUi.prepareAdminGateway(admin.tenantId!, {
     name: "Synthetic admin gateway",
     externalGatewayId: `admin-${serial}`,
+    propertyId: own.property.id,
   });
   expect(created.name).toBe("Synthetic admin gateway");
   expect(
@@ -845,6 +846,7 @@ it("prepares a gateway through existing quota and audit service and rejects tena
     adminUi.prepareAdminGateway("missing-tenant", {
       name: "Invalid",
       externalGatewayId: `missing-${serial}`,
+      propertyId: own.property.id,
     }),
   ).rejects.toMatchObject({ status: 404 });
   await expect(

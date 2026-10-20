@@ -4,6 +4,7 @@ import { db } from "./db";
 import { requireActor } from "./auth";
 import { AccessError, requirePlatform, tenantScope } from "./policy";
 import { lockGatewayTenant } from "./gateway-assignment";
+import { gatewayReadinessInTransaction } from "./gateway-readiness";
 
 export const gatewayLifecycles = [
   "NEW",
@@ -20,19 +21,12 @@ const transitions: Record<
   NEW: ["PROVISIONING", "DECOMMISSIONED"],
   PROVISIONING: ["ACTIVE", "FAILED", "DECOMMISSIONED"],
   ACTIVE: ["MAINTENANCE", "DECOMMISSIONED"],
-  MAINTENANCE: ["ACTIVE", "PROVISIONING", "FAILED", "DECOMMISSIONED"],
+  MAINTENANCE: ["PROVISIONING", "FAILED", "DECOMMISSIONED"],
   FAILED: ["PROVISIONING", "DECOMMISSIONED"],
   DECOMMISSIONED: [],
 };
 export function isAllowedGatewayTransition(from: string, to: string) {
   return (transitions[from as keyof typeof transitions] ?? []).includes(to);
-}
-// Fail closed until 1C-B implements installation/configuration/communication evidence.
-function requireGatewayReadiness(): never {
-  throw new AccessError(
-    409,
-    "Gateway-Aktivierung ist bis zur vollständigen Abschlussprüfung gesperrt.",
-  );
 }
 const input = z
   .object({
@@ -58,101 +52,124 @@ export async function changeGatewayLifecycle(
   requirePlatform(actor);
   const tenantId = tenantScope(actor, requested);
   const value = input.parse(raw);
-  return db.$transaction(async (tx) => {
-    await lockGatewayTenant(tx, tenantId);
-    await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${id} AND "tenantId"=${tenantId} FOR UPDATE`;
-    const row = await tx.gateway.findFirst({ where: { id, tenantId } });
-    if (!row) throw new AccessError(404, "Gateway nicht gefunden.");
-    if (row.lifecycleStatus === value.status)
-      return {
-        id,
-        lifecycleStatus: row.lifecycleStatus,
-        revision: row.revision,
-      };
-    if (row.revision !== value.revision)
-      throw new AccessError(409, "Gateway wurde zwischenzeitlich geändert.");
-    if (!isAllowedGatewayTransition(row.lifecycleStatus, value.status))
-      throw new AccessError(409, "Gateway-Statuswechsel nicht erlaubt.");
-    if (value.status === "ACTIVE") requireGatewayReadiness();
-    if (value.status === "PROVISIONING" && !row.propertyId)
-      throw new AccessError(409, "Zuerst eine Liegenschaft zuordnen.");
-    if (value.status === "FAILED" && !value.errorCode)
-      throw new AccessError(400, "Fehlercode erforderlich.");
-    if (value.status !== "FAILED" && value.errorCode)
-      throw new AccessError(
-        400,
-        "Fehlercode nur bei fehlgeschlagener Inbetriebnahme.",
-      );
-    const now = new Date();
-    if (value.status === "DECOMMISSIONED") {
-      await tx.gatewayCredential.updateMany({
-        where: { tenantId, gatewayId: id, status: "ACTIVE" },
-        data: { status: "REVOKED", revokedAt: now },
-      });
-      await tx.gatewayCommand.updateMany({
-        where: {
-          tenantId,
-          gatewayId: id,
-          status: { in: ["PENDING", "QUEUED", "SENT", "ACKNOWLEDGED"] },
-        },
-        data: { status: "CANCELLED", completedAt: now },
-      });
-      await tx.modbusConfiguration.updateMany({
-        where: { tenantId, device: { gatewayId: id, tenantId } },
-        data: { pollingEnabled: false },
-      });
-      await tx.gatewayCommunicationIdentity.updateMany({
-        where: {
-          tenantId,
-          gatewayId: id,
-          revocationRequestedAt: null,
-          revocationConfirmedAt: null,
-        },
-        data: { revocationRequestedAt: now },
-      });
-    }
-    const updated = await tx.gateway.update({
-      where: { id, tenantId, revision: value.revision },
-      data: {
-        lifecycleStatus: value.status,
-        revision: { increment: 1 },
-        ...(value.status === "PROVISIONING"
-          ? {
-              provisioningStartedAt: now,
-              commissionedAt: null,
-              provisioningFailedAt: null,
-              provisioningErrorCode: null,
-            }
-          : {}),
-        ...(value.status === "FAILED"
-          ? {
-              provisioningFailedAt: now,
-              provisioningErrorCode: value.errorCode,
-            }
-          : {}),
-        ...(value.status === "DECOMMISSIONED" ? { decommissionedAt: now } : {}),
-      },
-      select: { id: true, lifecycleStatus: true, revision: true },
-    });
-    await tx.auditEvent.create({
-      data: {
-        tenantId,
-        actorId: actor.id,
-        entityId: id,
-        action: "gateway.lifecycle.change",
-        details: {
-          from: row.lifecycleStatus,
-          to: value.status,
-          revision: updated.revision,
-          ...(value.errorCode ? { errorCode: value.errorCode } : {}),
+  return db.$transaction(
+    async (tx) => {
+      await lockGatewayTenant(tx, tenantId);
+      await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${id} AND "tenantId"=${tenantId} FOR UPDATE`;
+      const row = await tx.gateway.findFirst({ where: { id, tenantId } });
+      if (!row) throw new AccessError(404, "Gateway nicht gefunden.");
+      if (row.lifecycleStatus === value.status)
+        return {
+          id,
+          lifecycleStatus: row.lifecycleStatus,
+          revision: row.revision,
+        };
+      if (row.revision !== value.revision)
+        throw new AccessError(409, "Gateway wurde zwischenzeitlich geändert.");
+      if (!isAllowedGatewayTransition(row.lifecycleStatus, value.status))
+        throw new AccessError(409, "Gateway-Statuswechsel nicht erlaubt.");
+      if (value.status === "ACTIVE") {
+        await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "gatewayId"=${id} AND "tenantId"=${tenantId} ORDER BY "id" FOR UPDATE`;
+        const readiness = await gatewayReadinessInTransaction(tx, tenantId, id);
+        if (!readiness.ready)
+          throw new AccessError(
+            409,
+            "Aktivierung blockiert: " +
+              readiness.blockers.map((b) => b.message).join(" "),
+          );
+      }
+      if (value.status === "PROVISIONING" && !row.propertyId)
+        throw new AccessError(409, "Zuerst eine Liegenschaft zuordnen.");
+      if (
+        value.status === "PROVISIONING" &&
+        (!row.name.trim() ||
+          !row.manufacturer.trim() ||
+          !row.model.trim() ||
+          !/^[A-Za-z0-9_-]{1,80}$/.test(row.externalGatewayId))
+      )
+        throw new AccessError(409, "Gateway-Stammdaten sind unvollständig.");
+      if (value.status === "FAILED" && !value.errorCode)
+        throw new AccessError(400, "Fehlercode erforderlich.");
+      if (value.status !== "FAILED" && value.errorCode)
+        throw new AccessError(
+          400,
+          "Fehlercode nur bei fehlgeschlagener Inbetriebnahme.",
+        );
+      const now = new Date();
+      if (value.status === "DECOMMISSIONED") {
+        await tx.gatewayCredential.updateMany({
+          where: { tenantId, gatewayId: id, status: "ACTIVE" },
+          data: { status: "REVOKED", revokedAt: now },
+        });
+        await tx.gatewayCommand.updateMany({
+          where: {
+            tenantId,
+            gatewayId: id,
+            status: { in: ["PENDING", "QUEUED", "SENT", "ACKNOWLEDGED"] },
+          },
+          data: { status: "CANCELLED", completedAt: now },
+        });
+        await tx.modbusConfiguration.updateMany({
+          where: { tenantId, device: { gatewayId: id, tenantId } },
+          data: { pollingEnabled: false },
+        });
+        await tx.gatewayCommunicationIdentity.updateMany({
+          where: {
+            tenantId,
+            gatewayId: id,
+            revocationRequestedAt: null,
+            revocationConfirmedAt: null,
+          },
+          data: { revocationRequestedAt: now },
+        });
+      }
+      const updated = await tx.gateway.update({
+        where: { id, tenantId, revision: value.revision },
+        data: {
+          lifecycleStatus: value.status,
+          revision: { increment: 1 },
+          ...(value.status === "ACTIVE" ? { commissionedAt: now } : {}),
+          ...(value.status === "PROVISIONING"
+            ? {
+                provisioningStartedAt: now,
+                commissionedAt: null,
+                provisioningFailedAt: null,
+                provisioningErrorCode: null,
+              }
+            : {}),
+          ...(value.status === "FAILED"
+            ? {
+                provisioningFailedAt: now,
+                provisioningErrorCode: value.errorCode,
+              }
+            : {}),
           ...(value.status === "DECOMMISSIONED"
-            ? { brokerRevocation: "EXTERNAL_ACTION_REQUIRED" }
+            ? { decommissionedAt: now }
             : {}),
         },
-      },
-    });
-    return updated;
-  });
+        select: { id: true, lifecycleStatus: true, revision: true },
+      });
+      await tx.auditEvent.create({
+        data: {
+          tenantId,
+          actorId: actor.id,
+          entityId: id,
+          action: "gateway.lifecycle.change",
+          details: {
+            from: row.lifecycleStatus,
+            to: value.status,
+            revision: updated.revision,
+            ...(value.errorCode ? { errorCode: value.errorCode } : {}),
+            ...(value.status === "DECOMMISSIONED"
+              ? { brokerRevocation: "EXTERNAL_ACTION_REQUIRED" }
+              : {}),
+          },
+        },
+      });
+      return updated;
+    },
+    { isolationLevel: "Serializable" },
+  );
 }
 
 export async function assignGatewayProperty(
@@ -202,7 +219,7 @@ export async function assignGatewayProperty(
       },
     });
     if (
-      (gateway.propertyId && devices.length) ||
+      devices.length > 0 ||
       devices.some((d) => d.meter.unit.building.propertyId !== property.id)
     )
       throw new AccessError(
@@ -228,6 +245,7 @@ export async function assignGatewayProperty(
         propertyId: property.id,
         revision: { increment: 1 },
         commissionedAt: null,
+        installedAt: null,
       },
       select: { id: true, propertyId: true, revision: true },
     });
@@ -242,6 +260,62 @@ export async function assignGatewayProperty(
           to: property.id,
           revision: updated.revision,
         },
+      },
+    });
+    return updated;
+  });
+}
+
+export async function confirmGatewayInstallation(
+  id: string,
+  raw: unknown,
+  requested?: string | null,
+) {
+  const actor = await requireActor();
+  requirePlatform(actor);
+  const tenantId = tenantScope(actor, requested);
+  const value = z
+    .object({ revision: z.number().int().nonnegative() })
+    .strict()
+    .parse(raw);
+  return db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
+    await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${id} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const row = await tx.gateway.findFirst({ where: { id, tenantId } });
+    if (!row) throw new AccessError(404, "Gateway nicht gefunden.");
+    if (row.lifecycleStatus !== "PROVISIONING")
+      throw new AccessError(
+        409,
+        "Installation nur während der Provisionierung bestätigen.",
+      );
+    if (
+      row.installedAt &&
+      (await tx.auditEvent.findFirst({
+        where: {
+          tenantId,
+          entityId: id,
+          action: "gateway.installation.confirm",
+          createdAt: row.installedAt,
+        },
+        select: { id: true },
+      }))
+    )
+      return { id, installedAt: row.installedAt, revision: row.revision };
+    if (row.revision !== value.revision)
+      throw new AccessError(409, "Gateway wurde zwischenzeitlich geändert.");
+    const now = new Date();
+    const updated = await tx.gateway.update({
+      where: { id, tenantId, revision: value.revision },
+      data: { installedAt: now, revision: { increment: 1 } },
+      select: { id: true, installedAt: true, revision: true },
+    });
+    await tx.auditEvent.create({
+      data: {
+        tenantId,
+        actorId: actor.id,
+        entityId: id,
+        action: "gateway.installation.confirm",
+        createdAt: now,
       },
     });
     return updated;
