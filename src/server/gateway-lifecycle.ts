@@ -70,6 +70,7 @@ export async function changeGatewayLifecycle(
         throw new AccessError(409, "Gateway-Statuswechsel nicht erlaubt.");
       if (value.status === "ACTIVE") {
         await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "gatewayId"=${id} AND "tenantId"=${tenantId} ORDER BY "id" FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "GatewayCredential" WHERE "gatewayId"=${id} AND "tenantId"=${tenantId} ORDER BY "id" FOR UPDATE`;
         const readiness = await gatewayReadinessInTransaction(tx, tenantId, id);
         if (!readiness.ready)
           throw new AccessError(

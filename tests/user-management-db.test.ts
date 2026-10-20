@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import path, { resolve, dirname, posix, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -31,6 +31,22 @@ const db = new PrismaClient({
   log: [],
 });
 let started = false;
+
+function isExpectedCleanupDirectory(
+  candidate: string,
+  pathApi: typeof path = path,
+  localRoot = resolve(".local"),
+) {
+  const root = pathApi.resolve(localRoot);
+  const relativeDirectory = pathApi.relative(root, pathApi.resolve(candidate));
+  return (
+    relativeDirectory !== "" &&
+    relativeDirectory !== ".." &&
+    !relativeDirectory.startsWith(`..${pathApi.sep}`) &&
+    !pathApi.isAbsolute(relativeDirectory) &&
+    /^user-management-test-[A-Za-z0-9]+$/.test(relativeDirectory)
+  );
+}
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   const binaryModule = pathToFileURL(
@@ -73,12 +89,48 @@ afterAll(async () => {
   await db.$disconnect();
   if (started) await postgres.stop();
   const resolvedDirectory = resolve(directory);
-  if (
-    !resolvedDirectory.startsWith(`${resolve(".local")}\\user-management-test-`)
-  )
+  if (!isExpectedCleanupDirectory(resolvedDirectory))
     throw new Error(`Refusing unexpected test cleanup: ${resolvedDirectory}`);
   rmSync(resolvedDirectory, { recursive: true, force: true });
 }, 120000);
+
+it("restricts cleanup to direct test directories on POSIX and Windows paths", () => {
+  expect(
+    isExpectedCleanupDirectory(
+      "/workspace/project/.local/user-management-test-Ab12",
+      posix,
+      "/workspace/project/.local",
+    ),
+  ).toBe(true);
+  expect(
+    isExpectedCleanupDirectory(
+      "C:\\workspace\\project\\.local\\user-management-test-Ab12",
+      win32,
+      "C:\\workspace\\project\\.local",
+    ),
+  ).toBe(true);
+  expect(
+    isExpectedCleanupDirectory(
+      "/workspace/project/.local/other-data",
+      posix,
+      "/workspace/project/.local",
+    ),
+  ).toBe(false);
+  expect(
+    isExpectedCleanupDirectory(
+      "C:\\workspace\\project\\.local\\user-management-test-Ab12\\child",
+      win32,
+      "C:\\workspace\\project\\.local",
+    ),
+  ).toBe(false);
+  expect(
+    isExpectedCleanupDirectory(
+      "/workspace/project/.local/../user-management-test-Ab12",
+      posix,
+      "/workspace/project/.local",
+    ),
+  ).toBe(false);
+});
 
 it("enforces tenant user isolation, password validation and last-admin protection through mutate", async () => {
   const { mutate } = await import("@/server/mutations");

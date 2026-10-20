@@ -1678,10 +1678,41 @@ it("activation observes credential revocation committed while it waited for the 
     { status: "ACTIVE", revision: 2 },
     "own",
   );
-  const rejected = expect(activate).rejects.toBeDefined();
-  unlock();
-  await revoke;
-  await rejected;
+  const activationResult = activate.then(
+    () => ({ ok: true as const }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  const observer = new Client({ connectionString: url });
+  await observer.connect();
+  try {
+    const deadline = Date.now() + 10000;
+    let observedWait = false;
+    while (Date.now() < deadline) {
+      const result = await observer.query<{ pid: number }>(`
+        SELECT pid
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND state = 'active'
+          AND wait_event_type = 'Lock'
+          AND query ILIKE '%FROM "Gateway"%FOR UPDATE%'
+      `);
+      if (result.rowCount) {
+        observedWait = true;
+        break;
+      }
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    if (!observedWait)
+      throw new Error("Activation never entered the Gateway row-lock wait.");
+  } finally {
+    unlock();
+    await revoke;
+    await observer.end();
+  }
+  const result = await activationResult;
+  expect(result.ok).toBe(false);
+  if (result.ok)
+    throw new Error("Activation succeeded after credential revoke.");
   expect(
     (await db.gateway.findUniqueOrThrow({ where: { id: g.id } }))
       .lifecycleStatus,
