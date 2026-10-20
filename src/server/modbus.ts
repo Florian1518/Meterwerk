@@ -1,4 +1,8 @@
 import "server-only";
+import {
+  assertGatewayAssignment,
+  assertNoGatewayHierarchyMove,
+} from "./gateway-assignment";
 import { requireTenantQuota, recordTenantUsage } from "./licensing";
 import { z } from "zod";
 import { db } from "./db";
@@ -173,7 +177,7 @@ export async function writeModbus(
   raw: unknown,
   requested?: string | null,
 ) {
-  const { actor, tenantId, meter } = await access(meterId, requested, true);
+  const { actor, tenantId } = await access(meterId, requested, true);
   const value = operationSchema.parse(raw);
   return db.$transaction(async (tx) => {
     // Match ingestion order Gateway -> Device -> Meter. GatewayCommand inserts
@@ -184,13 +188,33 @@ export async function writeModbus(
     await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "tenantId"=${tenantId} AND ("id"=${targetGateway} OR "id" IN (SELECT "gatewayId" FROM "Device" WHERE "meterId"=${meterId} AND "tenantId"=${tenantId})) ORDER BY "id" FOR UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "meterId"=${meterId} AND "tenantId"=${tenantId} ORDER BY "id" FOR UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "Meter" WHERE "id"=${meterId} AND "tenantId"=${tenantId} FOR UPDATE`;
+    // Authorization preceded the transaction; hierarchy decisions must use the
+    // current row after the Tenant/Gateway/Device/Meter locks, not that snapshot.
+    const meter = await tx.meter.findFirstOrThrow({
+      where: { id: meterId, tenantId },
+    });
     let device = await tx.device.findFirst({
       where: { tenantId, meterId, protocol: "MODBUS" },
       include: { modbusConfig: true, diagnostic: true },
     });
     if (device?.lifecycleStatus === "DECOMMISSIONED")
       throw new AccessError(409, "Gerät ist außer Betrieb.");
+    if (device?.gatewayId) {
+      const parent = await tx.gateway.findFirst({
+        where: { id: device.gatewayId, tenantId },
+        select: { lifecycleStatus: true },
+      });
+      if (parent?.lifecycleStatus === "DECOMMISSIONED")
+        throw new AccessError(409, "Gateway ist stillgelegt.");
+    }
     if (value.operation === "CONFIGURE") {
+      await assertGatewayAssignment(
+        tx,
+        tenantId,
+        value.gatewayId,
+        meterId,
+        device?.id,
+      );
       if (meter.type !== "ELECTRICITY" || meter.measurementUnit !== "kWh")
         throw new AccessError(
           409,
@@ -387,6 +411,8 @@ export async function writeModbus(
         });
       }
       if (value.operation === "ASSIGN") {
+        if (value.unitId !== meter.unitId)
+          await assertNoGatewayHierarchyMove(tx, tenantId, { id: meterId });
         if (config.reviewedRevision !== config.revision)
           throw new AccessError(409, "Zuerst Messwerte prüfen und bestätigen.");
         const unit = await tx.unit.findFirst({

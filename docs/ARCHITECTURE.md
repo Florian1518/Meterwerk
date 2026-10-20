@@ -345,3 +345,69 @@ Statusmodells: ACTIVE, completedAt, reviewedRevision gleich revision,
 confirmedUnitId gleich aktueller Meter.unitId und verifiziertes Profil.
 ASSIGN_PROFILE ändert nur die mandantengeprüfte Profilzuordnung und benötigt
 keinen Lifecycle-Status. Keine Schemaänderung oder Migration erforderlich.
+
+## Gateway-Lifecycle und direkte Liegenschaft, Phase 1C-A
+
+`GatewayLifecycle` ist von `Gateway.status` getrennt. NEW, PROVISIONING, ACTIVE,
+MAINTENANCE, FAILED und DECOMMISSIONED bilden administrative Zustände ab;
+Heartbeats und Offline-Erkennung ändern ausschließlich Kommunikationsdaten.
+Der erste akzeptierte neue Heartbeat speichert `firstContactAt` als Serverzeit.
+Alle neuen Meilensteine verwenden PostgreSQL TIMESTAMPTZ(3). Bestehende
+Zeitspalten bleiben kompatibel; insbesondere wird `installedAt` nullable und
+bei neuer Vorbereitung nicht gesetzt. Historische Werte gelten nicht als
+Installationsnachweis. Es erfolgt keine Bestandsaktivierung oder Property-Inferenz.
+
+`changeGatewayLifecycle` und `assignGatewayProperty` authentifizieren selbst,
+verlangen SUPER_ADMIN sowie explizite Mandantenwahl, validieren strikt und
+schreiben Änderungen mit Audit in derselben Transaktion. Administrative Änderungen
+verwenden `revision` und Zeilensperren. Identische Zielzustände sind idempotent
+ohne erneutes Audit; sonst führt eine veraltete Revision zu einem Konflikt.
+Die erlaubten Übergänge stehen zentral in `gateway-lifecycle.ts`; alle Übergänge
+nach ACTIVE bleiben bis zur nachweisgebundenen Readiness-Prüfung gesperrt.
+Fehlergründe sind begrenzte Codes statt unbereinigter Providerantworten.
+
+Der zusammengesetzte FK `(propertyId, tenantId)` sichert die Gateway-Property-
+Tenantgrenze. Die zusätzliche Device-/Meter-Property-Invariante liegt in der
+transaktionalen Serverprüfung `assertGatewayAssignment`. Der aufrufende Service
+authentifiziert; der interne Helper ist kein externer Einstiegspunkt. Neue Links
+benötigen eine direkte Property. Bei NULL ist nur derselbe bereits gespeicherte
+Device-/Gateway-/Meter-Link zulässig. Erstanbindung eines Legacy-Gateways an eine
+Property prüft alle Devices; mehrere Properties werden zurückgewiesen.
+Propertywechsel verlangen NEW oder MAINTENANCE, keine zugeordneten Devices und
+keine offenen Commands; Erstanbindung von NULL darf konsistente Devices behalten.
+Tenantwechsel werden nicht angeboten. Propertyänderungen entwerten commissionedAt.
+
+Zuordnungs- und Hierarchieschreibpfade serialisieren über Tenant, danach Gateway
+und Device. Deviceanlage/-änderung und Modbus CONFIGURE nutzen denselben Helper.
+CRUD-Hierarchieverschiebungen und Modbus ASSIGN werden bei Gateway-Nachfahren
+konservativ blockiert. CSV-Bestätigung blockiert Gateway-Imports sowie Device-
+Imports mit Gateway-ID vollständig. Reine Device-Verwaltung behält bestehendes
+RBAC. Ein späterer Import-/Umzugsworkflow muss dieselben Sperren und Prüfungen
+verwenden. Der mehrstufige Property-Abgleich ist kein genereller DB-Trigger:
+direkte SQL-Schreibzugriffe gehören nicht zur unterstützten Administration.
+
+Stilllegung widerruft alle aktiven GatewayCredentials, storniert PENDING, QUEUED,
+SENT und ACKNOWLEDGED Commands als CANCELLED, setzt pollingEnabled=false und
+markiert externe Kommunikationsidentitäten mit revocationRequestedAt. Das Audit
+benennt den erforderlichen externen Brokerwiderruf. Device-Lifecycle und technischer
+Gatewaystatus werden nicht umgedeutet. Gateway-Ingestion prüft den terminalen
+Lifecycle unter derselben Gateway-Sperre. DB-Trigger verweigern aktive neue
+Credentials, offene Commands und neue Kommunikationsidentitäten für stillgelegte
+Gateways, auch aus bisherigen Command-Produzenten. Offline-Edge-Polling kann bis
+zum lokalen Eingriff weiterlaufen; keine Behauptung eines physischen Fernstopps.
+
+`GatewayCommunicationIdentity` ist ausschließlich öffentliches Inventar mit
+zusammengesetztem Gateway-/Tenant-FK. SHA-256-Fingerprints sind global eindeutig
+und kanonisch kleingeschrieben; CN entspricht der internen Gateway-ID. DB-Checks
+validieren Format, Gültigkeitsintervall und Widerrufszeitfolge. Der authentifizierte
+Registrierungsservice akzeptiert nur definierte Referenzen und Metadaten, schreibt
+Audit und meldet Brokerstatus UNVERIFIED. Er stellt weder Zertifikate aus noch
+bestätigt er deren Echtheit oder schaltet einen Broker frei. Private Keys, CA-Keys,
+Passphrases und geheime Brokerzugänge sind kein Bestandteil des Modells.
+
+Die globale Suche verwendet für USER die direkte Gateway-Property samt
+`propertyScope`; Legacy-NULL bleibt unsichtbar. Administrator- und MANAGER-Rechte
+bleiben erhalten. Andere bestehende Gatewayansichten behalten in dieser Phase
+ihre bisherigen gefilterten Device-Sichten. Neue Lifecycle-/Property-APIs und
+vollständige UI-Anbindung, Installationsnachweis, Readiness, Public-Key-Enrollment,
+Import-/Umzugsworkflow und manuelle PKI-Bestätigungsaktionen folgen in 1C-B.

@@ -96,6 +96,15 @@ enum DeviceLifecycleStatus {
   FAILED
 }
 
+enum GatewayLifecycle {
+  NEW
+  PROVISIONING
+  ACTIVE
+  MAINTENANCE
+  FAILED
+  DECOMMISSIONED
+}
+
 enum DeviceHealthStatus {
   HEALTHY
   WARNING
@@ -287,7 +296,7 @@ enum BillingInterval {
 }
 
 model Tenant {
-  demoScenarioStates DemoScenarioState[]
+  demoScenarioStates     DemoScenarioState[]
   checklistTemplates     ChecklistTemplate[]
   workOrders             WorkOrder[]
   id                     String                  @id @default(cuid())
@@ -837,6 +846,7 @@ model DeviceRateLimit {
 }
 
 model Property {
+  gateways     Gateway[]
   supportCases SupportCase[]
   workOrders   WorkOrder[]
   id           String          @id @default(cuid())
@@ -929,34 +939,70 @@ model Meter {
 }
 
 model Gateway {
-  supportCases       SupportCase[]
-  workOrders         WorkOrder[]
-  id                 String              @id @default(cuid())
-  tenantId           String
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  name               String
-  externalGatewayId  String
-  manufacturer       String
-  model              String
-  firmwareVersion    String?
-  queueSize          Int                 @default(0)
-  queueWarning       Boolean             @default(false)
-  quarantineSize     Int                 @default(0)
-  queueDropped       Int                 @default(0)
-  status             DeviceStatus        @default(MAINTENANCE)
-  lastSeenAt         DateTime?
-  installedAt        DateTime
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  devices            Device[]
-  credentials        GatewayCredential[]
-  commands           GatewayCommand[]
-  rules              Rule[]
-  maintenanceWindows MaintenanceWindow[]
+  propertyId              String?
+  property                Property?                      @relation(fields: [propertyId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  lifecycleStatus         GatewayLifecycle               @default(NEW)
+  revision                Int                            @default(0)
+  provisioningStartedAt   DateTime?                      @db.Timestamptz(3)
+  firstContactAt          DateTime?                      @db.Timestamptz(3)
+  commissionedAt          DateTime?                      @db.Timestamptz(3)
+  decommissionedAt        DateTime?                      @db.Timestamptz(3)
+  provisioningErrorCode   String?
+  provisioningFailedAt    DateTime?                      @db.Timestamptz(3)
+  communicationIdentities GatewayCommunicationIdentity[]
+  supportCases            SupportCase[]
+  workOrders              WorkOrder[]
+  id                      String                         @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name                    String
+  externalGatewayId       String
+  manufacturer            String
+  model                   String
+  firmwareVersion         String?
+  queueSize               Int                            @default(0)
+  queueWarning            Boolean                        @default(false)
+  quarantineSize          Int                            @default(0)
+  queueDropped            Int                            @default(0)
+  status                  DeviceStatus                   @default(MAINTENANCE)
+  lastSeenAt              DateTime?
+  installedAt             DateTime?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  devices                 Device[]
+  credentials             GatewayCredential[]
+  commands                GatewayCommand[]
+  rules                   Rule[]
+  maintenanceWindows      MaintenanceWindow[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, externalGatewayId])
   @@index([tenantId, status])
+  @@index([tenantId, propertyId])
+  @@index([tenantId, lifecycleStatus])
+}
+
+// Public inventory only. No CA access, private key or broker automation.
+model GatewayCommunicationIdentity {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  gatewayId              String
+  brokerReference        String
+  certificateFingerprint String    @unique
+  issuerReference        String
+  serialNumber           String
+  commonName             String
+  notBefore              DateTime  @db.Timestamptz(3)
+  expiresAt              DateTime  @db.Timestamptz(3)
+  registeredAt           DateTime  @default(now()) @db.Timestamptz(3)
+  enabledConfirmedAt     DateTime? @db.Timestamptz(3)
+  revocationRequestedAt  DateTime? @db.Timestamptz(3)
+  revocationConfirmedAt  DateTime? @db.Timestamptz(3)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  gateway                Gateway   @relation(fields: [gatewayId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@index([tenantId, gatewayId])
 }
 
 model GatewayCredential {
@@ -1794,7 +1840,7 @@ model DemoScenarioState {
   environment String
   tenantId    String?
   scenario    String
-  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   seed        Int      @default(20260925)
   activatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt

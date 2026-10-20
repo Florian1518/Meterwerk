@@ -98,6 +98,9 @@ export async function globalSearch(
       db.gateway.findMany({
         where: {
           tenantId,
+          ...(actor.role === "USER"
+            ? { property: propertyScope(actor, tenantId) }
+            : {}),
           externalGatewayId: { contains: q, mode: "insensitive" },
         },
         select: { id: true, name: true, externalGatewayId: true },

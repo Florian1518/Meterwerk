@@ -10,6 +10,10 @@ import {
   tenantScope,
 } from "./policy";
 import type { Prisma } from "@/generated/prisma/client";
+import {
+  assertGatewayAssignment,
+  lockGatewayTenant,
+} from "./gateway-assignment";
 
 export const lifecycleStatuses = [
   "NEW",
@@ -317,6 +321,14 @@ export async function createDevice(raw: unknown, requested?: string | null) {
   )
     throw new AccessError(404, "Device Profile nicht gefunden.");
   const row = await db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
+    if (value.gatewayId)
+      await assertGatewayAssignment(
+        tx,
+        tenantId,
+        value.gatewayId,
+        value.meterId,
+      );
     const created = await tx.device.create({
       data: {
         ...value,
@@ -379,6 +391,35 @@ export async function updateDevice(
     tags: value.tags as Prisma.InputJsonValue | undefined,
   };
   return db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
+    const current = await tx.device.findFirstOrThrow({
+      where: { id, tenantId },
+    });
+    const gatewayId = value.gatewayId ?? current.gatewayId;
+    if (
+      gatewayId &&
+      (value.gatewayId !== undefined || value.meterId !== undefined)
+    )
+      await assertGatewayAssignment(
+        tx,
+        tenantId,
+        gatewayId,
+        value.meterId ?? current.meterId,
+        id,
+      );
+    // Prevent lifecycle/decommission races while changing the association.
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${id} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const locked = await tx.device.findFirstOrThrow({
+      where: { id, tenantId },
+    });
+    if (
+      locked.lifecycleStatus === "DECOMMISSIONED" &&
+      (value.gatewayId !== undefined || value.meterId !== undefined)
+    )
+      throw new AccessError(
+        409,
+        "Stillgelegtes Gerät kann nicht umgeordnet werden.",
+      );
     const updated = await tx.device.update({ where: { id }, data });
     await tx.auditEvent.create({
       data: {

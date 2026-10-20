@@ -114,6 +114,40 @@ OTA und automatische Hardwareidentitäten bleiben Folgephasen.
 
 Gezielte Prüfung: pnpm exec vitest run tests/gateway-device-security-db.test.ts.
 Sie erstellt eine frische PostgreSQL-Testinstanz auf Loopback-Port 55453 mit
-synthetischen Daten und 47 Migrationen, ohne bestehende Datenbanken oder .env zu
+synthetischen Daten und den versionierten Migrationen, ohne bestehende Datenbanken oder .env zu
 verwenden. Lizenzprüfungen und der Session-Actor werden im Service-Test injiziert;
 es ist kein HTTP-/Hardwaretest. Testdateien bleiben unter .local zur Diagnose.
+
+## Gateway-Provisioning-Grundlage (Phase 1C-A)
+
+Gateways besitzen einen eigenen Lifecycle und eine zunächst optionale direkte
+Liegenschaft. ONLINE/OFFLINE bleiben technische Kommunikationszustände. Die
+Erweiterungsmigration `202610190001_gateway_provisioning_foundation` erhält alle
+Bestandsdaten: keine automatische Property-Auswahl und keine ACTIVE-Freigabe.
+Vorhandene `installedAt`-Werte sind unbestätigte Altmetadaten; neue Vorbereitungen
+setzen kein Installationsdatum. Der Lifecycle-Service blockiert jede neue
+Aktivierung bis zur vollständigen Abschlussprüfung in Phase 1C-B.
+
+Gatewayanlage, Property-Zuordnung und Gateway-Identitätsmutationen sind jetzt
+SUPER_ADMIN-only. Der bisherige Anlagevertrag darf noch einen NEW-Datensatz ohne
+Property vorbereiten; Provisioning und neue Device-Zuordnungen benötigen eine
+direkte Liegenschaft. Unveränderte Legacy-Zuordnungen bleiben nutzbar. Device-
+Verwaltung für Kundenadministratoren bleibt innerhalb dieser Grenzen möglich.
+Gateway-Imports und Device-Imports mit Gateway-Zuordnung werden bei Bestätigung
+vollständig blockiert. Hierarchieverschiebungen mit Gateway-Geräten sind bis zu
+einem eigenen Umzugsworkflow gesperrt. Es erfolgt keine automatische Umhängung.
+
+DECOMMISSIONED sperrt die Gateway-Ingestion, widerruft Signaturcredentials,
+storniert offene Commands und deaktiviert serverseitig Modbus-Polling atomar mit
+Audit. Devices bleiben eigenständig. Kommunikationsidentitäten enthalten nur
+öffentliche Inventarmetadaten; ein Widerruf wird als extern erforderlich erfasst.
+**Keine automatische MQTT-/PKI-/CRL-/Broker-Sperrung und kein garantierter
+Fernstopp eines offline laufenden Edge-Agenten.** Die bestehende Phase-1B-UI wird
+erst in 1C-B an die neuen Serverfunktionen angebunden.
+
+Gezielte Prüfung:
+`pnpm exec vitest run tests/gateway-provisioning-db.test.ts tests/gateway-device-security-db.test.ts tests/gateway-admin-ui.test.ts`.
+Der neue DB-Test verwendet einen frischen Loopback-Cluster auf Port 55454 mit
+getrennten Fresh-/Upgrade-Datenbanken. Er migriert zunächst das Phase-1B-Schema,
+legt mehrdeutige Legacy-Daten an und prüft deren unveränderten Erhalt beim Upgrade.
+Keine vorhandene Datenbank, Hardware, Zertifikate oder MQTT-Verbindungen nötig.

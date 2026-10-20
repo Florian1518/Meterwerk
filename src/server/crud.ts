@@ -1,4 +1,5 @@
 import "server-only";
+import { assertNoGatewayHierarchyMove } from "./gateway-assignment";
 import { z } from "zod";
 import { db } from "./db";
 import {
@@ -232,6 +233,14 @@ export async function writeResource(
         }
         case "buildings": {
           const data = schemas.buildings.parse(raw);
+          if (
+            prior &&
+            "propertyId" in prior &&
+            prior.propertyId !== data.propertyId
+          )
+            await assertNoGatewayHierarchyMove(tx, tenantId, {
+              unit: { buildingId: id },
+            });
           await existing(tx, "properties", data.propertyId, tenantId);
           resultId = (
             operation === "create"
@@ -242,6 +251,12 @@ export async function writeResource(
         }
         case "units": {
           const data = schemas.units.parse(raw);
+          if (
+            prior &&
+            "buildingId" in prior &&
+            prior.buildingId !== data.buildingId
+          )
+            await assertNoGatewayHierarchyMove(tx, tenantId, { unitId: id });
           await existing(tx, "buildings", data.buildingId, tenantId);
           resultId = (
             operation === "create"
@@ -252,6 +267,8 @@ export async function writeResource(
         }
         case "meters": {
           const value = schemas.meters.parse(raw);
+          if (prior && "unitId" in prior && prior.unitId !== value.unitId)
+            await assertNoGatewayHierarchyMove(tx, tenantId, { id });
           await existing(tx, "units", value.unitId, tenantId);
           if (
             prior &&

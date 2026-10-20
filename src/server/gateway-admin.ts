@@ -277,12 +277,20 @@ export async function getAdminGateway(id: string, expectedTenant?: string) {
 export async function prepareAdminGateway(tenantId: string, raw: unknown) {
   await authorize();
   const value = z
-    .object({ name: z.string(), externalGatewayId: z.string() })
+    .object({
+      name: z.string(),
+      externalGatewayId: z.string(),
+      propertyId: z.string().min(1).optional(),
+    })
     .strict()
     .parse(raw);
   await tenantExists(tenantId);
   return createPilotGateway(
-    { name: value.name, externalGatewayId: value.externalGatewayId },
+    {
+      name: value.name,
+      externalGatewayId: value.externalGatewayId,
+      ...(value.propertyId ? { propertyId: value.propertyId } : {}),
+    },
     tenantId,
   );
 }

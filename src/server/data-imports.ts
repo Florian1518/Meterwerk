@@ -971,6 +971,16 @@ export async function confirmCsvImport(
           (_, index) => !(batch.skippedRows as number[]).includes(index + 2),
         );
       const resource = z.enum(importResources).parse(batch.resource);
+      // Until the import contract supports explicit property selection, gateway
+      // inventory and gateway-bound devices must use the checked admin services.
+      if (
+        resource === "gateways" ||
+        (resource === "devices" && rows.some((row) => !!row.gatewayId))
+      )
+        throw new AccessError(
+          409,
+          "Gateway-Import und Gateway-Gerätezuordnung sind bis zum geprüften Provisioning-Import gesperrt.",
+        );
       if (!rows.length)
         throw new AccessError(
           409,

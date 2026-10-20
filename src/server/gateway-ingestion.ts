@@ -56,6 +56,7 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
     });
     if (
       !credential ||
+      credential.gateway.lifecycleStatus === "DECOMMISSIONED" ||
       credential.status !== "ACTIVE" ||
       (credential.expiresAt !== null && credential.expiresAt <= new Date()) ||
       credential.gatewayId !== match[1] ||
@@ -89,6 +90,9 @@ export async function ingestGatewayMessage(topic: string, payload: Buffer) {
         where: { id: gatewayId },
         data: {
           lastSeenAt: new Date(value.timestamp),
+          ...(!credential.gateway.firstContactAt
+            ? { firstContactAt: new Date() }
+            : {}),
           status: "ONLINE",
           firmwareVersion: value.agentVersion,
           queueSize: value.queueSize,

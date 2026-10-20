@@ -3,7 +3,13 @@ import { generateKeyPairSync, createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "./db";
 import { requireActor } from "./auth";
-import { AccessError, requireManage, tenantScope } from "./policy";
+import {
+  AccessError,
+  requireManage,
+  requirePlatform,
+  tenantScope,
+} from "./policy";
+import { lockGatewayTenant } from "./gateway-assignment";
 import { requireTenantQuota } from "./licensing";
 const operation = z.discriminatedUnion("operation", [
   z
@@ -28,16 +34,26 @@ export async function createPilotGateway(
   requested?: string | null,
 ) {
   const actor = await requireActor();
-  requireManage(actor);
+  requirePlatform(actor);
   const tenantId = tenantScope(actor, requested);
   const value = z
     .object({
       name: z.string().trim().min(1).max(160),
       externalGatewayId: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/),
+      propertyId: z.string().min(1).optional(),
     })
     .strict()
     .parse(raw);
   return db.$transaction(async (tx) => {
+    await lockGatewayTenant(tx, tenantId);
+    if (
+      value.propertyId &&
+      !(await tx.property.findFirst({
+        where: { id: value.propertyId, tenantId },
+        select: { id: true },
+      }))
+    )
+      throw new AccessError(404, "Liegenschaft nicht gefunden.");
     await requireTenantQuota(tx, tenantId, "gateways");
     const gateway = await tx.gateway.create({
       data: {
@@ -45,7 +61,7 @@ export async function createPilotGateway(
         ...value,
         manufacturer: "Pilot",
         model: "Edge Agent",
-        installedAt: new Date(),
+        installedAt: null,
         status: "OFFLINE",
       },
       select: { id: true, name: true },
@@ -99,6 +115,7 @@ export async function manageGatewayCredential(
   requested?: string | null,
 ) {
   const { actor, tenantId } = await access(gatewayId, requested);
+  requirePlatform(actor);
   const value = operation.parse(raw);
   const expiresAt =
     "expiresAt" in value && value.expiresAt ? new Date(value.expiresAt) : null;
@@ -106,6 +123,13 @@ export async function manageGatewayCredential(
     throw new AccessError(400, "Ablaufdatum muss in der Zukunft liegen.");
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Gateway" WHERE "id"=${gatewayId} AND "tenantId"=${tenantId} FOR UPDATE`;
+    const gateway = await tx.gateway.findFirst({
+      where: { id: gatewayId, tenantId },
+      select: { lifecycleStatus: true },
+    });
+    if (!gateway) throw new AccessError(404, "Gateway nicht gefunden.");
+    if (gateway.lifecycleStatus === "DECOMMISSIONED")
+      throw new AccessError(409, "Gateway ist stillgelegt.");
     if (value.operation !== "CREATE") {
       const previous = await tx.gatewayCredential.findFirst({
         where: { id: value.credentialId, gatewayId, tenantId },
