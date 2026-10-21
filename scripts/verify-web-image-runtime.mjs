@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import {
+  docker,
+  inspectContainer,
+  assertHealthyContainer,
+  stopContainer,
+} from "./web-image-docker.mjs";
 
 const image = process.env.METERWERK_WEB_IMAGE;
 assert(image, "METERWERK_WEB_IMAGE is required");
@@ -10,8 +16,6 @@ assert.equal(process.env.SEED_DEMO, "true");
 assert(process.env.DEMO_PASSWORD);
 const database = new URL(process.env.DATABASE_URL);
 assert(["127.0.0.1", "localhost"].includes(database.hostname));
-const docker = (...args) =>
-  execFileSync("docker", args, { encoding: "utf8" }).trim();
 const inspection = JSON.parse(docker("image", "inspect", image))[0];
 assert.equal(inspection.Config.User, "meterwerk");
 assert.deepEqual(inspection.Config.Entrypoint, ["node"]);
@@ -49,6 +53,7 @@ docker(
 
 const name = `meterwerk-web-image-${process.pid}`;
 let containerId;
+let report;
 try {
   containerId = docker(
     "run",
@@ -112,8 +117,15 @@ try {
     ["scripts/verify-release-runtime.mjs", "http://127.0.0.1:3000"],
     { stdio: "inherit", env: process.env },
   );
-  const stopped = docker("stop", "--time", "15", containerId);
-  const report = {
+  let testContainer;
+  for (let attempt = 0; attempt < 90; attempt++) {
+    testContainer = inspectContainer(containerId);
+    if (testContainer.State.Health?.Status === "healthy") break;
+    await delay(1000);
+  }
+  assertHealthyContainer(testContainer);
+  const stopped = stopContainer(containerId);
+  report = {
     status: "PASSED",
     imageId: inspection.Id,
     repoDigests: inspection.RepoDigests,
@@ -130,17 +142,8 @@ try {
     ],
     stopped,
   };
-  mkdirSync(".local/acceptance", { recursive: true });
-  writeFileSync(
-    ".local/acceptance/web-image-runtime.json",
-    JSON.stringify(report, null, 2),
-  );
-  console.log(JSON.stringify(report, null, 2));
 } finally {
-  if (containerId)
-    try {
-      execFileSync("docker", ["rm", "--force", name], { stdio: "ignore" });
-    } catch {}
+  if (containerId) docker("rm", "--force", containerId);
 }
 
 const productionName = `meterwerk-web-production-health-${process.pid}`;
@@ -236,22 +239,22 @@ try {
 
   let containerState;
   for (let attempt = 0; attempt < 90; attempt++) {
-    containerState = JSON.parse(
-      docker("inspect", "--format", "{{json .State}}", productionContainerId),
-    );
-    if (containerState.Health?.Status === "healthy") break;
+    containerState = inspectContainer(productionContainerId);
+    if (containerState.State.Health?.Status === "healthy") break;
     await delay(1000);
   }
-  assert.equal(containerState.Health?.Status, "healthy");
-  assert.equal(containerState.RestartCount, 0);
+  assertHealthyContainer(containerState);
+  stopContainer(productionContainerId);
   console.log(
     "Production web image: readiness, Docker health, build metadata, HTTPS redirect and host rejection passed",
   );
 } finally {
-  if (productionContainerId)
-    try {
-      execFileSync("docker", ["rm", "--force", productionName], {
-        stdio: "ignore",
-      });
-    } catch {}
+  if (productionContainerId) docker("rm", "--force", productionContainerId);
 }
+
+mkdirSync(".local/acceptance", { recursive: true });
+writeFileSync(
+  ".local/acceptance/web-image-runtime.json",
+  JSON.stringify(report, null, 2),
+);
+console.log(JSON.stringify(report, null, 2));
