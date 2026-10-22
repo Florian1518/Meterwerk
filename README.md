@@ -203,3 +203,11 @@ Private Keys werden weder durch die Plattform-API noch im Admin-Browser erzeugt.
 Der lokale Demo-Seed `seed-edge.ts` ist separat auf `SEED_DEMO=true`, Nicht-
 Produktion und Loopback-Datenbank beschränkt. Keine Hardware, MQTT-Verbindung,
 Zertifikatsausstellung oder Broker-ACL-Änderung wird ausgelöst.
+
+## Technisch bestätigte Modbus-Inbetriebnahme
+
+Der 9-Schritte-Assistent gibt Messwertprüfung, Nutzungseinheitsbestätigung und Abschluss erst nach serverseitiger Verifikation frei. Ein angelegter oder abgelaufener Gateway-Auftrag ist kein Erfolg. TEST-Ergebnis, validierte Messdaten und Bestätigungen müssen zur aktuellen Konfigurationsrevision gehören; jede Speicherung der Konfiguration startet die Verifikation erneut. Für Messwertprüfung und Abschluss gilt weiterhin das Fünf-Minuten-Fenster der Diagnose. Das Dreiphasen-Simulatorprofil ist ausschließlich ein Software-/Workflow-Test.
+
+Vor dem Webstart `pnpm db:migrate` mit erfolgreichem Baseline-Check ausführen. Die Migration `202610220001_modbus_commissioning_evidence` ergänzt Bestätigungszeitpunkte/Benutzer und repariert ausschließlich bereits abgeschlossene `TEST-EL-001`-Datensätze ohne technische Nachweise. Gültige Inbetriebnahmen bleiben gespeichert. In den hier geprüften lokalen Entwicklungs- und Acceptance-Datenbanken war dieser Zähler nicht vorhanden; ein externes Ziel wurde nicht verändert. Die lokale Entwicklungsdatenbank hatte eine abweichende Prüfsumme für `202609240008_dashboards`; ohne unterstützten Migrationspfad dort kein Upgrade erzwingen.
+
+Zusätzliche Prüfungen: `pnpm exec vitest run tests/modbus-commissioning.test.ts`. Der PostgreSQL-Test läuft ausschließlich auf der isolierten Acceptance-Datenbank: nach deren Start und Migration `node scripts/acceptance-local.mjs test commissioning-db node_modules/vitest/vitest.mjs run --config vitest.commissioning.config.ts` (entspricht `pnpm test:commissioning:integration` mit der Acceptance-Umgebung). Er verwendet synthetische Daten und bereinigt seinen eigenen Testmandanten.

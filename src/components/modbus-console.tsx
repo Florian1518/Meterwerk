@@ -34,6 +34,7 @@ export function ModbusConsole({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const first = initial.devices[0];
   const saved = first?.modbusConfig?.configuration as ModbusConfig | undefined;
   const [connection, setConnection] = useState(saved?.interface ?? "TCP");
@@ -72,6 +73,8 @@ export function ModbusConsole({
       });
       const value = await response.json();
       if (!response.ok) throw new Error(value.error ?? "Aktion fehlgeschlagen");
+      if ((body as { operation?: string }).operation === "CONFIGURE")
+        setDirty(false);
       setMessage(value.message);
       await refresh();
     } catch (cause) {
@@ -177,8 +180,9 @@ export function ModbusConsole({
         </p>
         <p>
           Gerät: <strong>{device?.status ?? "NOT_CONFIGURED"}</strong> ·
-          Inbetriebnahme: <strong>{config?.state ?? "NOT_CONFIGURED"}</strong> ·
-          Letzte Messung: {stamp(sample?.timestamp)}
+          Inbetriebnahme:{" "}
+          <strong>{device?.commissioning.stage ?? "DRAFT"}</strong> · Letzte
+          Messung: {stamp(sample?.timestamp)}
         </p>
         {(stale || !current) && sample && (
           <p role="status">
@@ -397,7 +401,11 @@ export function ModbusConsole({
             Ein geändertes Profil oder eine geänderte Schnittstelle erfordert
             eine erneute Messwertprüfung.
           </p>
-          <form onSubmit={configure} className="grid gap-4 sm:grid-cols-2">
+          <form
+            onSubmit={configure}
+            onChange={() => setDirty(true)}
+            className="grid gap-4 sm:grid-cols-2"
+          >
             <label>
               1 · Gateway auswählen
               <select
@@ -594,7 +602,7 @@ export function ModbusConsole({
           </ol>
           <div className="flex flex-wrap gap-3">
             <Button
-              disabled={busy || !config}
+              disabled={busy || dirty || !device?.commissioning.canReview}
               onClick={() =>
                 void action({ operation: "REVIEW", revision: config?.revision })
               }
@@ -621,15 +629,50 @@ export function ModbusConsole({
                   ))}
                 </select>
               </label>
-              <Button disabled={busy || !config}>Zuordnung bestätigen</Button>
+              <Button
+                disabled={busy || dirty || !device?.commissioning.canAssign}
+              >
+                Zuordnung bestätigen
+              </Button>
             </form>
             <Button
-              disabled={busy || !config}
+              disabled={busy || dirty || !device?.commissioning.canComplete}
               onClick={() => void action({ operation: "COMPLETE" })}
             >
               9 · Inbetriebnahme abschließen
             </Button>
           </div>
+          <p role="status">
+            {dirty
+              ? "Geänderte Konfiguration zuerst speichern; danach Verbindung und Messwerte erneut prüfen."
+              : device?.commissioning.reason}
+          </p>
+          <p>
+            Schritt 6:{" "}
+            {device?.commissioning.connectionVerified
+              ? "Verbindung erfolgreich"
+              : "Verbindung noch nicht bestätigt"}{" "}
+            · Schritt 7:{" "}
+            {device?.commissioning.readVerified
+              ? "Echter Read erfolgreich"
+              : "Erfolgreicher Read fehlt"}
+            ;{" "}
+            {device?.commissioning.reviewed
+              ? "Messwerte geprüft"
+              : "Messwertbestätigung fehlt"}{" "}
+            · Schritt 8:{" "}
+            {device?.commissioning.assigned
+              ? "Nutzungseinheit bestätigt"
+              : "Bestätigung fehlt"}{" "}
+            · Schritt 9:{" "}
+            {device?.commissioning.canComplete
+              ? "Abschluss freigegeben"
+              : "Abschluss gesperrt"}
+          </p>
+          <p>
+            Das Dreiphasen-Simulatorprofil bestätigt ausschließlich einen
+            Software-/Workflow-Test, keine echte Hardwarevalidierung.
+          </p>
         </section>
       )}
       <section className="panel p-5">

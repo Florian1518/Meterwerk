@@ -60,6 +60,7 @@ export async function acceptTelemetry(
   const connection = modbusConfigSchema.parse(snapshot.configuration);
   if (!value.error) {
     if (
+      value.values.length === 0 ||
       value.values.length !== profile.registers.length ||
       new Set(value.values.map((v) => v.metric)).size !== value.values.length
     )
@@ -261,23 +262,31 @@ export async function gatewayControl(
       },
     });
     if (!command) continue;
+    await tx.$queryRaw`SELECT "id" FROM "Device" WHERE "id"=${command.deviceId} AND "tenantId"=${tenantId} AND "gatewayId"=${gatewayId} FOR UPDATE`;
+    // Waiting for a concurrent configuration write must not extend the timeout.
+    if (command.expiresAt <= new Date()) continue;
     const config = await tx.modbusConfiguration.findFirst({
       where: {
         deviceId: command.deviceId,
         tenantId,
         revision: command.revision,
+        device: { gatewayId },
       },
     });
     if (!config) continue;
     await tx.gatewayCommand.update({
       where: { id: command.id },
       data: {
-        status: result.ok ? "SUCCEEDED" : "FAILED",
+        status: result.ok && !result.error ? "SUCCEEDED" : "FAILED",
         error: result.error,
         completedAt: new Date(),
       },
     });
-    if (result.ok && ["START", "STOP"].includes(command.action))
+    if (
+      result.ok &&
+      !result.error &&
+      ["START", "STOP"].includes(command.action)
+    )
       await tx.modbusConfiguration.update({
         where: { deviceId: command.deviceId },
         data: {
@@ -285,7 +294,12 @@ export async function gatewayControl(
             command.action === "START" && config.state !== "DISABLED",
         },
       });
-    if (result.ok && command.action === "TEST" && config.step < 7)
+    if (
+      result.ok &&
+      !result.error &&
+      command.action === "TEST" &&
+      config.step < 7
+    )
       await tx.modbusConfiguration.update({
         where: { deviceId: command.deviceId },
         data: { step: 7 },

@@ -54,6 +54,7 @@
     "test:security": "tsx --conditions=react-server tests/security-integration.ts",
     "test:phase3": "tsx --conditions=react-server scripts/phase3-e2e.ts",
     "test:modbus": "tsx --conditions=react-server tests/modbus-integration.ts",
+    "test:commissioning:integration": "vitest run --config vitest.commissioning.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "playwright test",

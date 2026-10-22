@@ -1870,8 +1870,13 @@ model ModbusConfiguration {
   step             Int                 @default(1)
   pollingEnabled   Boolean             @default(false)
   reviewedRevision Int?
+  reviewedAt       DateTime?
+  reviewedBy       String?
   confirmedUnitId  String?
+  assignedAt       DateTime?
+  assignedBy       String?
   completedAt      DateTime?
+  completedBy      String?
   updatedAt        DateTime            @updatedAt
 
   @@unique([deviceId, tenantId])
