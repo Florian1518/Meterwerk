@@ -1,8 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import {
+  BillingPriceSummary,
+  type BillingPriceData,
+} from "./billing-price-summary";
 
 type Data = {
-  subscription: {
+  subscription: BillingPriceData & {
     status: string;
     startsAt: string;
     endsAt: string | null;
@@ -74,6 +78,7 @@ export function TenantBillingSummary({ tenantId }: { tenantId: string }) {
             : "ohne festes Enddatum"}
         </p>
       )}
+      <BillingPriceSummary data={subscription} />
       <div style={{ overflowX: "auto" }}>
         <table>
           <caption>Ihre Nutzung und die wirksamen Planlimits</caption>

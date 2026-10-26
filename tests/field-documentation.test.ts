@@ -533,7 +533,11 @@ describe("Tenantgesicherte Mutationen und Reconnect", () => {
     });
     expect(mock.db.meter.update).toHaveBeenCalledWith({
       where: { id: "old" },
-      data: { status: "MAINTENANCE" },
+      data: { status: "MAINTENANCE", billable: false },
+    });
+    expect(mock.db.meter.update).toHaveBeenCalledWith({
+      where: { id: "new" },
+      data: { billable: true },
     });
     expect(
       mock.db.auditEvent.create.mock.calls.map((call) => call[0].data.action),

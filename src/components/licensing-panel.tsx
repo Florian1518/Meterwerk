@@ -1,6 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
+import {
+  BillingPriceSummary,
+  type BillingPriceData,
+} from "./billing-price-summary";
 const features = [
   "REPORTING",
   "ANALYTICS",
@@ -20,33 +24,35 @@ type Plan = {
   maxDevices: number;
   features: { feature: string; enabled: boolean }[];
 };
-type Subscription = {
-  status: string;
-  startsAt: string;
-  endsAt: string | null;
-  trialEndsAt: string | null;
-  billingInterval: "MONTHLY" | "YEARLY";
-  priceAmount: string | null;
-  priceCurrency: string | null;
-  billingContactName: string | null;
-  billingContactEmail: string | null;
-  billingContactCompany: string | null;
-  billingContactAddress: string | null;
-  externalBillingId: string | null;
-  plan: Plan;
-  tenant: {
-    featureOverrides: { feature: string; enabled: boolean }[];
-    planOverride: {
-      maxProperties: number | null;
-      maxMeters: number | null;
-      maxUsers: number | null;
-      maxGateways: number | null;
-      maxBuildings: number | null;
-      maxUnits: number | null;
-      maxDevices: number | null;
-    } | null;
-  };
-} | null;
+type Subscription =
+  | (BillingPriceData & {
+      status: string;
+      startsAt: string;
+      endsAt: string | null;
+      trialEndsAt: string | null;
+      billingInterval: "MONTHLY" | "YEARLY";
+      priceAmount: string | null;
+      priceCurrency: string | null;
+      billingContactName: string | null;
+      billingContactEmail: string | null;
+      billingContactCompany: string | null;
+      billingContactAddress: string | null;
+      externalBillingId: string | null;
+      plan: Plan;
+      tenant: {
+        featureOverrides: { feature: string; enabled: boolean }[];
+        planOverride: {
+          maxProperties: number | null;
+          maxMeters: number | null;
+          maxUsers: number | null;
+          maxGateways: number | null;
+          maxBuildings: number | null;
+          maxUnits: number | null;
+          maxDevices: number | null;
+        } | null;
+      };
+    })
+  | null;
 type Usage = {
   plan: { name: string };
   month: string;
@@ -103,6 +109,9 @@ export function LicensingPanel({
       setUsage(currentUsage);
       setBilling({
         billingInterval: current?.billingInterval ?? "MONTHLY",
+        pricingMode: current?.pricingMode ?? "FIXED",
+        basePriceAmount: current?.basePriceAmount ?? "",
+        pricePerMeterAmount: current?.pricePerMeterAmount ?? "",
         priceAmount: current?.priceAmount ?? "",
         priceCurrency: current?.priceCurrency ?? "EUR",
         billingContactName: current?.billingContactName ?? "",
@@ -349,14 +358,6 @@ export function LicensingPanel({
                   : "Monatlich"}
               </dd>
             </div>
-            <div>
-              <dt>SaaS-Preis</dt>
-              <dd>
-                {subscription.priceAmount === null
-                  ? "Noch nicht festgelegt"
-                  : `${Number(subscription.priceAmount).toLocaleString("de-DE", { minimumFractionDigits: 2 })} ${subscription.priceCurrency ?? ""}`}
-              </dd>
-            </div>
           </dl>
           <fieldset>
             <legend>Vertragsverwaltung (SUPER_ADMIN)</legend>
@@ -430,19 +431,44 @@ export function LicensingPanel({
                 </select>
               </label>
               <label>
-                SaaS-Preis (Dezimalbetrag)
-                <input
-                  inputMode="decimal"
-                  value={billing.priceAmount ?? ""}
-                  placeholder="z. B. 49,00"
+                Preismodell
+                <select
+                  value={billing.pricingMode ?? "FIXED"}
                   onChange={(event) =>
                     setBilling((current) => ({
                       ...current,
-                      priceAmount: event.target.value.replace(",", "."),
+                      pricingMode: event.target.value,
                     }))
                   }
-                />
+                >
+                  <option value="FIXED">Festpreis</option>
+                  <option value="BASE_PLUS_METER">
+                    Grundpreis + Messpunkte
+                  </option>
+                </select>
               </label>
+              {(billing.pricingMode === "BASE_PLUS_METER"
+                ? [
+                    ["basePriceAmount", "Grundpreis"],
+                    ["pricePerMeterAmount", "Preis je Messpunkt"],
+                  ]
+                : [["priceAmount", "SaaS-Festpreis"]]
+              ).map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    inputMode="decimal"
+                    value={billing[key] ?? ""}
+                    placeholder="z. B. 49,00"
+                    onChange={(event) =>
+                      setBilling((current) => ({
+                        ...current,
+                        [key]: event.target.value.replace(",", "."),
+                      }))
+                    }
+                  />
+                </label>
+              ))}
               <label>
                 Währung
                 <input
@@ -464,6 +490,9 @@ export function LicensingPanel({
                   operation: "billingMetadata",
                   tenantId,
                   billingInterval: billing.billingInterval,
+                  pricingMode: billing.pricingMode,
+                  basePriceAmount: billing.basePriceAmount || null,
+                  pricePerMeterAmount: billing.pricePerMeterAmount || null,
                   priceAmount: billing.priceAmount || null,
                   priceCurrency: billing.priceCurrency || null,
                   ...Object.fromEntries(
@@ -485,6 +514,11 @@ export function LicensingPanel({
               Zahlung aus und sind von Energietarifen getrennt.
             </p>
           </fieldset>
+          <BillingPriceSummary data={subscription} />
+          <p>
+            Die Übersicht zeigt die gespeicherten Preise. Beträge gelten je
+            gewähltem Intervall; keine Monats-/Jahresumrechnung.
+          </p>
           <fieldset>
             <legend>Features</legend>
             <div className="feature-grid">

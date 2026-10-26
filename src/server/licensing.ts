@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { db } from "./db";
+import { calculateBilling } from "./billing/pricing";
 import {
   AccessError,
   requireManage,
@@ -286,14 +287,25 @@ export async function listPlans(actor: Actor) {
 
 export async function tenantSubscription(actor: Actor, requested: string) {
   requirePlatform(actor);
-  return db.subscription.findFirst({
-    where: { tenantId: requested },
-    orderBy: { startsAt: "desc" },
-    include: {
-      plan: { include: { features: true } },
-      tenant: { include: { featureOverrides: true, planOverride: true } },
+  const tenantId = tenantScope(actor, requested);
+  return db.$transaction(
+    async (tx) => {
+      const subscription = await tx.subscription.findFirst({
+        where: { tenantId },
+        orderBy: { startsAt: "desc" },
+        include: {
+          plan: { include: { features: true } },
+          tenant: { include: { featureOverrides: true, planOverride: true } },
+        },
+      });
+      if (!subscription) return null;
+      const count = await tx.meter.count({
+        where: { tenantId, billable: true },
+      });
+      return { ...subscription, ...calculateBilling(subscription, count) };
     },
-  });
+    { isolationLevel: "RepeatableRead" },
+  );
 }
 
 /** Billing details are tenant-private; platform admins must select a tenant explicitly. */
@@ -304,34 +316,41 @@ export async function tenantBilling(actor: Actor, requested?: string | null) {
       "Nur Kundenadministratoren können SaaS-Vertragsdaten einsehen.",
     );
   const tenantId = tenantScope(actor, requested);
-  const subscription = await db.subscription.findFirst({
-    where: { tenantId },
-    orderBy: { startsAt: "desc" },
-    include: {
-      plan: { include: { features: true } },
-      tenant: { include: { featureOverrides: true, planOverride: true } },
+  return db.$transaction(
+    async (tx) => {
+      const subscription = await tx.subscription.findFirst({
+        where: { tenantId },
+        orderBy: { startsAt: "desc" },
+        include: {
+          plan: { include: { features: true } },
+          tenant: { include: { featureOverrides: true, planOverride: true } },
+        },
+      });
+      if (!subscription)
+        throw new AccessError(404, "Kein aktuelles SaaS-Abonnement gefunden.");
+      const entitlements = await getTenantEntitlements(tenantId, tx, true);
+      return {
+        id: subscription.id,
+        status: subscription.status,
+        startsAt: subscription.startsAt,
+        endsAt: subscription.endsAt,
+        trialEndsAt: subscription.trialEndsAt,
+        billingInterval: subscription.billingInterval,
+        ...calculateBilling(
+          subscription,
+          await tx.meter.count({ where: { tenantId, billable: true } }),
+        ),
+        billingContactName: subscription.billingContactName,
+        billingContactEmail: subscription.billingContactEmail,
+        billingContactCompany: subscription.billingContactCompany,
+        billingContactAddress: subscription.billingContactAddress,
+        plan: subscription.plan,
+        limits: entitlements.limits,
+        features: entitlements.features,
+      };
     },
-  });
-  if (!subscription)
-    throw new AccessError(404, "Kein aktuelles SaaS-Abonnement gefunden.");
-  const entitlements = await getTenantEntitlements(tenantId, db, true);
-  return {
-    id: subscription.id,
-    status: subscription.status,
-    startsAt: subscription.startsAt,
-    endsAt: subscription.endsAt,
-    trialEndsAt: subscription.trialEndsAt,
-    billingInterval: subscription.billingInterval,
-    priceAmount: subscription.priceAmount?.toString() ?? null,
-    priceCurrency: subscription.priceCurrency,
-    billingContactName: subscription.billingContactName,
-    billingContactEmail: subscription.billingContactEmail,
-    billingContactCompany: subscription.billingContactCompany,
-    billingContactAddress: subscription.billingContactAddress,
-    plan: subscription.plan,
-    limits: entitlements.limits,
-    features: entitlements.features,
-  };
+    { isolationLevel: "RepeatableRead" },
+  );
 }
 
 const assignment = z
@@ -473,13 +492,17 @@ export async function extendTrial(actor: Actor, input: unknown) {
   });
 }
 
+const billingMoney = z
+  .string()
+  .regex(/^\d{1,10}(\.\d{1,2})?$/)
+  .nullable();
 const billingMetadataInput = z.object({
+  pricingMode: z.enum(["FIXED", "BASE_PLUS_METER"]).optional(),
+  basePriceAmount: billingMoney.optional(),
+  pricePerMeterAmount: billingMoney.optional(),
   tenantId: z.string().min(1),
   billingInterval: z.enum(["MONTHLY", "YEARLY"]),
-  priceAmount: z
-    .string()
-    .regex(/^\d{1,10}(\.\d{1,2})?$/)
-    .nullable(),
+  priceAmount: billingMoney.optional(),
   priceCurrency: z
     .string()
     .regex(/^[A-Z]{3}$/)
@@ -501,6 +524,15 @@ export async function setBillingMetadata(actor: Actor, input: unknown) {
     });
     if (!current)
       throw new AccessError(404, "Kein aktuelles SaaS-Abonnement gefunden.");
+    const pricingMode = value.pricingMode ?? current.pricingMode;
+    if (pricingMode === "BASE_PLUS_METER") {
+      z.object({
+        basePriceAmount: billingMoney.unwrap(),
+        pricePerMeterAmount: billingMoney.unwrap(),
+      }).parse(value);
+    } else {
+      billingMoney.parse(value.priceAmount);
+    }
     const { tenantId, ...metadata } = value;
     const result = await tx.subscription.update({
       where: { id: current.id },
