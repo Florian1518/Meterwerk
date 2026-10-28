@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import pg from "pg";
+import { listPrismaMigrations } from "../tests/helpers/prisma-migrations.mjs";
 
 const baseUrl = new URL(process.env.DATABASE_URL ?? "");
 assert.equal(process.env.METERWERK_ENV, "test");
@@ -223,11 +224,8 @@ try {
   run(["validate", "--schema", "prisma/schema.prisma"], env);
   runNode(["scripts/verify-migration-baseline.mjs"], env);
   run(["migrate", "deploy"], env);
-  const currentNames = (
-    await (await import("node:fs/promises")).readdir("prisma/migrations")
-  )
-    .filter((name) => /^\d/.test(name))
-    .sort();
+  const currentNames = listPrismaMigrations();
+  assert(currentNames.length > 0, "No migration files found");
   const currentApplied = Number(
     (
       await db.query(
@@ -236,12 +234,19 @@ try {
     ).rows[0].count,
   );
   assert.equal(currentApplied, currentNames.length);
-  assert.equal(currentApplied, 47);
+
   const newHistory = (
     await db.query(
       'SELECT migration_name, checksum, started_at, finished_at, rolled_back_at FROM "_prisma_migrations" ORDER BY started_at',
     )
   ).rows;
+  assert.deepEqual(
+    newHistory
+      .filter((row) => row.finished_at !== null && row.rolled_back_at === null)
+      .map((row) => row.migration_name)
+      .sort(),
+    currentNames,
+  );
   assert.deepEqual(newHistory.slice(0, oldHistory.length), oldHistory);
   add("upgrade applied current migrations", {
     from: oldApplied,

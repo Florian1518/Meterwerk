@@ -23,22 +23,22 @@ Stand: 26.10.2026. Lokal abgenommen (LOCALLY ACCEPTED). Kein Push oder Deploymen
 
 ## Dateien dieses Auftrags
 
-| Datei | Änderung |
-| --- | --- |
-| `prisma/schema.prisma` | Pricing-Enum, drei Subscription-Felder, `Meter.billable` |
-| `prisma/migrations/202610260001_saas_pricing/migration.sql` | Additive Defaults und tenantgesicherter Altzähler-Backfill |
-| `src/server/billing/pricing.ts` | Zentrale Decimal-Berechnung mit Dezimalstrings |
-| `src/server/licensing.ts` | Beide Abfragen, Rollen-/Mandantenprüfung, Metadatenvalidierung |
-| `src/server/meter-replacement.ts` | Atomare Abrechenbarkeit bei Wechsel |
-| `src/components/billing-price-summary.tsx` | Gemeinsame, nicht editierbare Übersicht |
-| `src/components/licensing-panel.tsx` | Preismodellauswahl und passende Eingabefelder |
-| `src/components/tenant-billing-summary.tsx` | Kundenübersicht mit Preisen |
-| `tests/licensing-integration.ts` | Neue Tests eingebunden, lokale Datenbankprüfung ergänzt |
-| `tests/saas-pricing-integration.ts` | Isolierte Fixtures, Migration, Rollen, Isolation, Wechsel und Rollback |
-| `tests/saas-pricing.test.ts` | Centgenauigkeit, hohe Beträge, Nullpreise, serverseitige Summen in UI |
-| `tests/field-documentation.test.ts` | Bestehenden Wechseltest um beide Abrechenbarkeitsänderungen erweitert |
-| `README.md`, `docs/ARCHITECTURE.md` | Betrieb, Semantik und Einschränkungen dokumentiert |
-| `docs/SAAS-PRICING-IMPLEMENTATION.md` | Dieser Bericht |
+| Datei                                                       | Änderung                                                               |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `prisma/schema.prisma`                                      | Pricing-Enum, drei Subscription-Felder, `Meter.billable`               |
+| `prisma/migrations/202610260001_saas_pricing/migration.sql` | Additive Defaults und tenantgesicherter Altzähler-Backfill             |
+| `src/server/billing/pricing.ts`                             | Zentrale Decimal-Berechnung mit Dezimalstrings                         |
+| `src/server/licensing.ts`                                   | Beide Abfragen, Rollen-/Mandantenprüfung, Metadatenvalidierung         |
+| `src/server/meter-replacement.ts`                           | Atomare Abrechenbarkeit bei Wechsel                                    |
+| `src/components/billing-price-summary.tsx`                  | Gemeinsame, nicht editierbare Übersicht                                |
+| `src/components/licensing-panel.tsx`                        | Preismodellauswahl und passende Eingabefelder                          |
+| `src/components/tenant-billing-summary.tsx`                 | Kundenübersicht mit Preisen                                            |
+| `tests/licensing-integration.ts`                            | Neue Tests eingebunden, lokale Datenbankprüfung ergänzt                |
+| `tests/saas-pricing-integration.ts`                         | Isolierte Fixtures, Migration, Rollen, Isolation, Wechsel und Rollback |
+| `tests/saas-pricing.test.ts`                                | Centgenauigkeit, hohe Beträge, Nullpreise, serverseitige Summen in UI  |
+| `tests/field-documentation.test.ts`                         | Bestehenden Wechseltest um beide Abrechenbarkeitsänderungen erweitert  |
+| `README.md`, `docs/ARCHITECTURE.md`                         | Betrieb, Semantik und Einschränkungen dokumentiert                     |
+| `docs/SAAS-PRICING-IMPLEMENTATION.md`                       | Dieser Bericht                                                         |
 
 Vorhandene Änderungen an Modbus, Benutzer-/Liegenschaftsverwaltung und weiteren Dateien wurden beibehalten; sie gehören nicht zu diesem Auftrag.
 
@@ -54,21 +54,21 @@ Ein zusätzlicher Migrationstest führt die neue SQL-Datei in einem transaktiona
 
 `pnpm` war nicht im PATH verfügbar. Die entsprechenden installierten CLI-Einstiegspunkte wurden direkt mit Node ausgeführt.
 
-| Prüfung | Ergebnis |
-| --- | --- |
-| Prisma generate | Bestanden, Prisma Client 7.10.0 |
-| Billing-/Pricing-Vitest | 2 Dateien, 11 Tests bestanden |
-| Licensing-Integration | 6 bestehende Checks sowie neue Pricing- und Migrationsprüfungen bestanden |
-| TypeScript `tsc --noEmit` | Bestanden |
-| ESLint gesamtes Repository | Bestanden |
-| Vollständige Vitest-Suite | 47 Dateien, 367 Tests bestanden |
-| Allgemeine Integration | 18 Checks bestanden |
-| CSV-Import-Integration | 8 Checks bestanden |
-| Data-Quality-Integration | 6 Checks bestanden |
-| Rules-Integration | 7 Checks bestanden |
-| Next.js Produktionsbuild | Bestanden, 69 statische Seiten generiert |
-| `git diff --check` | Bestanden |
-| `git status --short` | Vor dem lokalen SaaS-Pricing-Commit geprüft; fachfremde Änderungen bleiben uncommitted |
+| Prüfung                    | Ergebnis                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| Prisma generate            | Bestanden, Prisma Client 7.10.0                                                        |
+| Billing-/Pricing-Vitest    | 2 Dateien, 11 Tests bestanden                                                          |
+| Licensing-Integration      | 6 bestehende Checks sowie neue Pricing- und Migrationsprüfungen bestanden              |
+| TypeScript `tsc --noEmit`  | Bestanden                                                                              |
+| ESLint gesamtes Repository | Bestanden                                                                              |
+| Vollständige Vitest-Suite  | 47 Dateien, 367 Tests bestanden                                                        |
+| Allgemeine Integration     | 18 Checks bestanden                                                                    |
+| CSV-Import-Integration     | 8 Checks bestanden                                                                     |
+| Data-Quality-Integration   | 6 Checks bestanden                                                                     |
+| Rules-Integration          | 7 Checks bestanden                                                                     |
+| Next.js Produktionsbuild   | Bestanden, 69 statische Seiten generiert                                               |
+| `git diff --check`         | Bestanden                                                                              |
+| `git status --short`       | Vor dem lokalen SaaS-Pricing-Commit geprüft; fachfremde Änderungen bleiben uncommitted |
 
 Die Windows-Sandbox verhinderte zunächst die Betriebssystem-Benutzerabfrage des TypeScript-Runners und der Embedded-Postgres-Tests. Diese Prüfungen wurden mit Freigabe außerhalb der Sandbox erfolgreich wiederholt. Ein bestehender Mock-Test erwartete nur die alte Statusänderung; nach Erweiterung um die beiden neuen `billable`-Änderungen war die gesamte Suite grün.
 

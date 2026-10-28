@@ -1,5 +1,9 @@
 # Architektur und Anforderungen
 
+## RC7-Migrationslinie
+
+Release Candidate `1.0.0-rc.7` baut auf dem tatsächlichen RC5/Staging-Commit `305580eb2f214bd867030545f0180bc8dbcb224f` auf. Die 49 historischen Migrationen einschließlich Gateway-Provisioning und Modbus-Commissioning-Evidence bleiben unverändert; `202610260001_saas_pricing` wird ausschließlich additiv ergänzt. Der divergierende RC6-Commit ist keine Upgrade-Basis. `scripts/acceptance-rc7-lineage.mjs` rekonstruiert RC5 aus Git-Blobs in einer leeren lokalen Testdatenbank, prüft vor und nach dem Upgrade Schema-Drift, historische Prüfsummen und unveränderte Gateway-/Modbus-Strukturen. Details: [RC7-Nachweis](RELEASE-RC7.md).
+
 ## Ziel und Umfang des Grundsystems
 
 Meterwerk ist eine zentral betriebene B2B-Smart-Metering-Plattform. Ein Betreiber verwaltet Kunden; Kunden verwalten ihre eigenen Immobilien, Benutzer und Zähler. Die erste Ausbaustufe stellt ein funktionierendes, datenbankgestütztes Grundsystem mit Demo-Daten bereit. Sie ist noch keine freigegebene Produktionsinstallation.

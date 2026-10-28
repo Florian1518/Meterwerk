@@ -1,5 +1,11 @@
 # Meterwerk
 
+## Release Candidate 1.0.0-rc.7
+
+RC7 basiert auf der tatsächlichen RC5/Staging-Linie mit 49 historischen Migrationen und ergänzt ausschließlich SaaS Pricing als Migration 50. RC6 bleibt wegen seiner divergierenden Migrationslinie historisch und wird nicht bereitgestellt. Git-Herkunft, Prüfablauf und lokale Abnahme: [RC7-Release-Nachweis](docs/RELEASE-RC7.md).
+
+Der reproduzierbare Upgrade-Test benötigt eine neue, leere lokale Acceptance-Datenbank: zunächst `node scripts/acceptance-local.mjs db`, dann `node scripts/acceptance-local.mjs upgrade rc7-upgrade scripts/acceptance-rc7-lineage.mjs`. Er setzt keine vorhandene Datenbank zurück. Die zusätzlich aktivierte Gateway-Browser-Suite benötigt nach dem synthetischen Seed einmalig `node scripts/acceptance-local.mjs test gateway-browser-fixture node_modules/tsx/dist/cli.mjs tests/helpers/gateway-browser-fixtures.ts`; anschließend `GATEWAY_PROVISIONING_E2E=true` in der Browser-Testumgebung setzen. User-Management verwendet weiterhin seinen eigenen isolierten Release-Runner.
+
 Meterwerk ist eine mandantenfähige Webanwendung zur Verwaltung und Auswertung von Zählern für Strom, Wasser, Gas und Wärme. Sie umfasst Benutzer- und Tenantverwaltung, Messwerte, Dashboards und Analytics, Regeln/Alarme, Reports, Geräte/Gateways, WorkOrders, Support, Public API, Webhooks und Operations.
 
 Die Anwendung basiert auf Next.js App Router, TypeScript, PostgreSQL und Prisma. Ein MQTT-Ingestion-Prozess und ein optionales Edge Gateway ergänzen den Webprozess. Die fachliche Wahrheit liegt in PostgreSQL; produktive Integrationen benötigen getrennte, sicher konfigurierte Infrastruktur.

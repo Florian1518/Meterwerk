@@ -178,27 +178,30 @@ test("read-only host mount policy is source-verified across Compose serializers"
       }
   assertStagingConfig(normalizedWithoutFalse);
 
-  const composeSource = readFileSync("compose.staging.external.yaml", "utf8");
-  assert.throws(
-    () =>
-      assertStagingConfig(config, {
-        composeSource: composeSource.replace(
-          "create_host_path: false",
-          "create_host_path: true",
-        ),
-      }),
-    /create_host_path: false/,
-  );
-  assert.throws(
-    () =>
-      assertStagingConfig(config, {
-        composeSource: composeSource.replace(
-          "    create_host_path: false\n",
-          "",
-        ),
-      }),
-    /create_host_path: false/,
-  );
+  const source = readFileSync("compose.staging.external.yaml", "utf8");
+  for (const newline of ["\n", "\r\n"]) {
+    const composeSource = source.replace(/\r?\n/g, newline);
+    assert.throws(
+      () =>
+        assertStagingConfig(config, {
+          composeSource: composeSource.replace(
+            "create_host_path: false",
+            "create_host_path: true",
+          ),
+        }),
+      /create_host_path: false/,
+    );
+    assert.throws(
+      () =>
+        assertStagingConfig(config, {
+          composeSource: composeSource.replace(
+            /^[ \t]*create_host_path: false\r?\n/m,
+            "",
+          ),
+        }),
+      /create_host_path: false/,
+    );
+  }
 
   const writable = structuredClone(config);
   writable.services["mqtt-worker"].volumes[0].read_only = false;

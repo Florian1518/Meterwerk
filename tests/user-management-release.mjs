@@ -193,7 +193,6 @@ try {
     "node_modules/@playwright/test/cli.js",
     "test",
     "user-management.spec.ts",
-    "--project=desktop",
   ]);
   console.log(
     `RELEASE GATE: ${migrationNames.length} migrations, four integration suites and browser flow passed.`,
