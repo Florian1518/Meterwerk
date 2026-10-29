@@ -37,7 +37,7 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
   await expect(page).toHaveURL(/dashboard/);
   await expect(
     page.getByRole("heading", {
-      name: "Dashboard",
+      name: "Dashboard Demo",
       exact: true,
       level: 1,
     }),
