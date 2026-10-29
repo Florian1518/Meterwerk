@@ -35,7 +35,13 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
     .fill(process.env.DEMO_PASSWORD!);
   await page.getByRole("button", { name: "Sicher anmelden" }).click();
   await expect(page).toHaveURL(/dashboard/);
-  await expect(page.locator("h1")).toContainText("Dashboard");
+  await expect(
+    page.getByRole("heading", {
+      name: "Dashboard",
+      exact: true,
+      level: 1,
+    }),
+  ).toBeVisible();
   await page.keyboard.press("Control+Home");
   await page.locator(".skip-link").focus();
   await page.keyboard.press("Enter");
@@ -69,10 +75,18 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
   await page.getByRole("button", { name: "Suche löschen" }).click();
   const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
   await nav.getByRole("link", { name: "Portfolio", exact: true }).click();
-  await expect(page.locator("h1")).toContainText("Portfolio");
+  await expect(
+    page.getByRole("heading", {
+      name: "Portfolio",
+      exact: true,
+      level: 1,
+    }),
+  ).toBeVisible();
   await accessible(page);
   await nav.getByRole("link", { name: "Zähler", exact: true }).click();
-  await expect(page.locator("h1")).toContainText("Zähler");
+  await expect(
+    page.getByRole("heading", { name: "Zähler", exact: true, level: 1 }),
+  ).toBeVisible();
   await accessible(page);
   await page.getByLabel("Einträge durchsuchen").fill("kein-treffer-ux-test");
   await expect(page.getByText("Keine Einträge gefunden")).toBeVisible();
@@ -125,13 +139,21 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
   );
   await page.getByLabel("Darstellung", { exact: true }).selectOption("light");
   await nav.getByRole("link", { name: "Systemstatus", exact: true }).click();
-  await expect(page.locator("h1")).toHaveText("Systemstatus");
+  await expect(
+    page.getByRole("heading", {
+      name: "Systemstatus",
+      exact: true,
+      level: 1,
+    }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Gateways", exact: true }),
   ).toBeVisible();
   await accessible(page);
   await nav.getByRole("link", { name: "Berichte", exact: true }).click();
-  await expect(page.locator("h1")).toHaveText("Berichte");
+  await expect(
+    page.getByRole("heading", { name: "Berichte", exact: true, level: 1 }),
+  ).toBeVisible();
   await accessible(page);
   await nav.getByRole("link", { name: "Alarme", exact: true }).click();
   await page.getByLabel("Alarmstatus", { exact: true }).selectOption("Offen");
@@ -142,7 +164,12 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
   );
   await accessible(page);
   await page.goto("/does-not-exist");
-  await expect(page.locator("h1")).toContainText(/gefunden|verfügbar/);
+  await expect(
+    page.getByRole("heading", {
+      name: /gefunden|verfügbar/,
+      level: 1,
+    }),
+  ).toBeVisible();
   await accessible(page);
   await page.goto("/service-unavailable");
   await accessible(page);
