@@ -92,7 +92,7 @@ jobs:
         run: node scripts/verify-worker-image-runtime.mjs
       - name: Generate image SBOM when Docker tooling provides it
         run: |
-          if docker scout sbom --help >/dev/null 2>&1; then
+          if docker scout version >/dev/null 2>&1; then
             mkdir -p .local/acceptance
             docker scout sbom --format cyclonedx "$METERWERK_WEB_IMAGE" > .local/acceptance/web-image-sbom.cdx.json
             docker scout sbom --format cyclonedx "$METERWERK_WORKER_IMAGE" > .local/acceptance/worker-image-sbom.cdx.json
