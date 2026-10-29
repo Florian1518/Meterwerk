@@ -77,7 +77,7 @@ test("Login, Navigation, Suche, Portfolio, Zähler, Gateway, Berichte, Alarme un
   await nav.getByRole("link", { name: "Portfolio", exact: true }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Portfolio",
+      name: "Portfolioübersicht Demo",
       exact: true,
       level: 1,
     }),
