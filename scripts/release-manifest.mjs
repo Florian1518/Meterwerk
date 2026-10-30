@@ -137,6 +137,18 @@ export function verifyMalware(report, subject) {
 
 export function verifyManifestFiles(manifest, root, expected) {
   parseManifest(manifest, expected);
+  assert.deepEqual(
+    inventory(root)
+      .filter(
+        (file) =>
+          !["release-manifest.json", "release-manifest.sigstore.json"].includes(
+            file,
+          ),
+      )
+      .sort(),
+    Object.keys(manifest.files).sort(),
+    "Unbound or missing release files",
+  );
   for (const [file, checksum] of Object.entries(manifest.files)) {
     assert.match(checksum, /^[a-f0-9]{64}$/);
     const bytes = readFileSync(contained(root, file));
@@ -144,13 +156,16 @@ export function verifyManifestFiles(manifest, root, expected) {
       "ci-only-synthetic-session-secret",
       "ci-only-synthetic-mfa-key-32-bytes",
       "ci-only-synthetic-demo-password",
-      "-----BEGIN PRIVATE KEY-----",
-      "-----BEGIN RSA PRIVATE KEY-----",
     ])
       assert(
         !bytes.includes(Buffer.from(forbidden)),
         "Forbidden credential material in release evidence",
       );
+    assert.doesNotMatch(
+      bytes.toString("utf8"),
+      /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/,
+      "Private key marker in release evidence",
+    );
     assert.equal(sha256(bytes), checksum, `Tampered evidence: ${file}`);
   }
   const read = (file) => {
