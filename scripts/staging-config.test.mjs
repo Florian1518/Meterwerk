@@ -568,17 +568,24 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   );
   assert.match(
     migrations,
-    /pnpm install --frozen-lockfile --prod --filter @meterwerk\/migration-runtime/,
+    /COPY packages\/migration-runtime\/package\.json \.\/package\.json/,
   );
   assert.match(
     migrations,
-    /ln -s \/app\/packages\/migration-runtime\/node_modules \/app\/node_modules/,
+    /COPY packages\/migration-runtime\/pnpm-lock\.yaml packages\/migration-runtime\/pnpm-workspace\.yaml \.\//,
   );
+  assert.match(migrations, /pnpm install --frozen-lockfile --prod/);
   const migrationPackage = JSON.parse(
     readFileSync("packages/migration-runtime/package.json", "utf8"),
   );
+  const migrationLock = readFileSync(
+    "packages/migration-runtime/pnpm-lock.yaml",
+    "utf8",
+  );
   assert(migrationPackage.dependencies.prisma);
   assert(migrationPackage.dependencies.tsx);
+  assert.doesNotMatch(migrationLock, /embedded-postgres/);
+  assert.doesNotMatch(migrations, /COPY package\.json pnpm-lock\.yaml/);
   assert.match(migrations, /COPY scripts\/verify-migration-baseline.mjs/);
   assert.match(migrations, /node_modules\/prisma\/build\/index.js/);
   assert.match(migrations, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
@@ -595,6 +602,7 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   assert(migrationPackage.dependencies.tsx, "migration runtime includes tsx");
   assert.equal(packageJson.dependencies?.prisma, undefined);
   assert.equal(packageJson.devDependencies?.prisma, "^7.2.0");
+  assert.equal(migrationPackage.packageManager, "pnpm@12.5.1");
   assert(
     migrationPackage.dependencies.prisma,
     "migration runtime includes Prisma CLI",
