@@ -585,6 +585,15 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   assert(migrationPackage.dependencies.prisma);
   assert(migrationPackage.dependencies.tsx);
   assert.doesNotMatch(migrationLock, /embedded-postgres/);
+  const migrationWorkspace = readFileSync(
+    "packages/migration-runtime/pnpm-workspace.yaml",
+    "utf8",
+  );
+  assert.match(migrationWorkspace, /deepmerge-ts:\s*8\.0\.2/);
+  assert.match(migrationWorkspace, /mysql2:\s*3\.23\.1/);
+  assert.match(migrationLock, /deepmerge-ts@8\.0\.2/);
+  assert.match(migrationLock, /mysql2@3\.23\.1/);
+  assert.doesNotMatch(migrationLock, /deepmerge-ts@7\.1\.5|mysql2@3\.15\.3/);
   assert.doesNotMatch(migrations, /COPY package\.json pnpm-lock\.yaml/);
   assert.match(migrations, /COPY scripts\/verify-migration-baseline.mjs/);
   assert.match(migrations, /node_modules\/prisma\/build\/index.js/);

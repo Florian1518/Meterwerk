@@ -5,3 +5,9 @@ allowBuilds:
   "@prisma/engines": true
   esbuild: true
   prisma: true
+
+# Prisma's CLI pins affected transitive versions. Keep its build-time config
+# merger and unused MySQL adapter on the patched releases until Prisma updates.
+overrides:
+  deepmerge-ts: 8.0.2
+  mysql2: 3.23.1
