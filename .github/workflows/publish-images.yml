@@ -109,13 +109,13 @@ jobs:
           docker run --rm --network none \
             -e DATABASE_URL=postgresql://127.0.0.1:5432/meterwerk_build \
             "meterwerk-migrations:$GITHUB_SHA" \
-            sh -ec 'pnpm db:generate && pnpm exec prisma --version'
+            sh -ec 'node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js --version'
       - name: Verify migration runner against the isolated CI database
         run: |
           docker run --rm --network host \
             -e DATABASE_URL="$DATABASE_URL" \
             "meterwerk-migrations:$GITHUB_SHA" \
-            sh -ec 'pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status'
+            sh -ec 'node node_modules/prisma/build/index.js generate && node scripts/verify-migration-baseline.mjs && node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate status'
       - name: Smoke Web image
         env:
           METERWERK_WEB_IMAGE: meterwerk-web:${{ github.sha }}

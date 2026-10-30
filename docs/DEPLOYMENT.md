@@ -35,7 +35,7 @@ Diese Anleitung beschreibt einen providerunabhängigen, kontrollierten App-Rollo
 
 Release anhand eines unveränderlichen Git-SHA/Artefakts bauen: `pnpm install --frozen-lockfile`, `pnpm db:generate`, `pnpm build`. `compose.production.yaml` enthält App, MQTT und einen MQTT-Worker; PostgreSQL ist extern über `DATABASE_URL` bereitzustellen. Rules-/Rollout-Worker separat und nur mit tatsächlichem Entrypoint betreiben. Siehe [WORKERS.md](WORKERS.md).
 
-Vor Rollout Version, SHA, Konfiguration und Datenbankziel prüfen. Für kritische Migrationen verifiziertes Backup sicherstellen. Migrationen mit der passenden Release-Version kontrolliert deployen (`pnpm db:migrate` oder entsprechender Prisma-Befehl im freigegebenen Image). Dann App und Worker bereitstellen. Schemaänderungen können abgestimmte Release-Schritte benötigen.
+Vor Rollout Version, SHA, Konfiguration und Datenbankziel prüfen. Für kritische Migrationen verifiziertes Backup sicherstellen. Migrationen mit der passenden Release-Version kontrolliert deployen (`pnpm db:migrate` lokal oder `node node_modules/prisma/build/index.js migrate deploy` im freigegebenen Migrationsimage). Dann App und Worker bereitstellen. Schemaänderungen können abgestimmte Release-Schritte benötigen.
 
 ## Netzwerk und Health
 

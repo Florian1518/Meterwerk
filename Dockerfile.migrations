@@ -8,23 +8,24 @@ LABEL org.opencontainers.image.source=https://github.com/Florian1518/Meterwerk \
   org.opencontainers.image.revision=$GIT_SHA \
   org.opencontainers.image.created=$BUILD_TIMESTAMP \
   org.opencontainers.image.base.name=node:22-alpine
-# Cache the pinned package manager at build time for the isolated runtime network.
+# The package manager is installed only for image construction.
 ENV COREPACK_HOME=/opt/corepack
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile --prod=false
+RUN pnpm install --frozen-lockfile --prod
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 COPY scripts/verify-migration-baseline.mjs ./scripts/verify-migration-baseline.mjs
 COPY scripts/staging-create-admin.ts ./scripts/staging-create-admin.ts
 COPY src/server/password.ts src/server/staging-admin.ts src/server/staging-database.mjs ./src/server/
 # Generation requires a URL syntactically, but never connects to a database.
-RUN DATABASE_URL=postgresql://build@127.0.0.1:5432/build pnpm exec prisma generate
+RUN DATABASE_URL=postgresql://build@127.0.0.1:5432/build node node_modules/prisma/build/index.js generate
 RUN mkdir -p /app/src/generated \
   && chown -R node:node /app \
-  && chmod -R a+rX /opt/corepack
-ENV NODE_ENV=production COREPACK_ENABLE_NETWORK=0 \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/corepack /opt/yarn-* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/pnpm /usr/local/bin/yarn /usr/local/bin/yarnpkg
+ENV NODE_ENV=production \
   BUILD_VERSION=$VERSION GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP
 USER node
 # No automatic schema mutation on container start.
-CMD ["pnpm", "exec", "prisma", "--version"]
+CMD ["node", "node_modules/prisma/build/index.js", "--version"]

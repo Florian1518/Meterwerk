@@ -81,8 +81,8 @@ function assertThreeImagePublish(workflow) {
     "docker build -f Dockerfile ",
     "docker build -f Dockerfile.worker ",
     "docker build -f Dockerfile.migrations ",
-    "pnpm db:generate && pnpm exec prisma --version",
-    "pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status",
+    "node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js --version",
+    "node scripts/verify-migration-baseline.mjs && node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate status",
     "node scripts/verify-web-image-runtime.mjs",
     "node scripts/verify-worker-image-runtime.mjs",
   ];

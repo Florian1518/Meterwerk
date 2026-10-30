@@ -210,7 +210,7 @@ export function assertStagingConfig(
     "operations",
   ), "Migrations must be opt-in");
   require(migration.command?.join(" ") ===
-    "pnpm exec prisma migrate status", "Default migration command must be read-only");
+    "node node_modules/prisma/build/index.js migrate status", "Default migration command must be read-only");
   for (const key of ["DATABASE_URL", "GIT_COMMIT_SHA", "RELEASE_VERSION"])
     require(migration.environment[key] ===
       web[key], `Migration runner: inconsistent ${key}`);

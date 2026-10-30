@@ -46,18 +46,9 @@ Quellen: [GitHub Attestations](https://docs.github.com/en/actions/how-tos/secure
 
 ## Abnahme
 
-OPEN: Implementierung, lokale Gates und autoritative CI-/Release-Evidence stehen aus.
-Keine Production-Freigabe.
+TEILWEISE IMPLEMENTIERT; Freigabe offen. CI Run 41020977994 für Commit 51a703b722f6c4f7b1da8443166167eb5b47d523 ist grün. Release Candidate Run 41020984252 blockierte im finalen Image-/Datei-Scan: Migration meldete 0 gescannte Dateien, außerdem fanden Grype-Reports High-Pakete. Die uncommitteten Korrekturen entfernen globale Paketmanager und Dev-Abhängigkeiten aus den finalen Runtimes und scannen das kopierte finale Dateisystem. Neuer Linux-Release-Run und akzeptiertes Evidence-Artifact stehen aus. Keine Production-Freigabe.
 
-Lokale Prüfung am 30.10.2026: 19 neue Manifest-/Source-/Security-Negativtests,
-16 bestehende Image-Policytests und 10 Staging-Konfigurationstests bestanden.
-Typecheck, Lint, Format, Production Build, 77 Security-Regressionstests,
-Secret Scan (0 Review-Funde), Dokumentationschecks und `git diff --check` bestanden.
-Integration auf neu angelegter isolierter Demo-DB: 18 Zugriffstests, 8 CSV-Import-,
-6 Datenqualitäts- und 7 Rules-Checks bestanden. Alle 560 Unit-Testfälle bestanden;
-der Gesamtlauf scheiterte beim Windows-EPERM-Cleanup einer bestehenden
-Embedded-Postgres-Testsuite. Der erste Sandboxlauf hatte ENOMEM beim Benutzer-
-Lookup. Kein lokaler Docker-Daemon: autoritative Linux-Image-Gates stehen aus.
+Lokale Prüfung am 30.10.2026: 45 Node-Tests für Manifest, Image-Policy, Source-State und Staging sowie 52 Supply-Chain-Vitest-Tests bestanden; zusätzlich 11 Staging-Admin-Tests. Typecheck, Lint, Format, Production Build, 77 Security-Regressionstests, Secret Scan (0 Review-Funde), Dokuchecks und Diff-Check bestanden. Integration auf isolierter Demo-DB: 18 Zugriffstests, 8 CSV-Import-, 6 Datenqualitätstests und 7 Rules-Checks bestanden. Alle 560 Unit-Testfälle bestanden; der Gesamtlauf endete dennoch mit Fehler beim Windows-EPERM-Cleanup einer Embedded-Postgres-Testsuite. Kein lokaler Docker-Daemon. CI 41020977994 war grün; Release 41020984252 blockierte im finalen Malware-/Vulnerability-Scan. Fixes warten auf autoritative Linux-Image-Gates.
 
 ## Releasevertrag
 
@@ -118,7 +109,8 @@ ClamAV 1.5.4 aktualisiert Signaturen verpflichtend via FreshClam. Version samt
 Definitionsstand, Definitionshash, UTC-Zeit, Subject und Scananzahl werden
 erfasst. Das gesamte auslieferbare Versionsverzeichnis einschließlich Web-Tar
 und Workerdateien wird vor Freigabe gescannt. Container werden ohne Ausführung
-exportiert; ClamAV prüft das finale zusammengeführte Dateisystem als Tar.
+in ein isoliertes temporäres Verzeichnis kopiert; ClamAV prüft jede Datei des
+finalen zusammengeführten Dateisystems.
 Historische gelöschte Layer und Laufzeitverhalten sind nicht Gegenstand dieser
 Dateisignaturprüfung. Es wird keine Malwarefreiheitsgarantie behauptet.
 

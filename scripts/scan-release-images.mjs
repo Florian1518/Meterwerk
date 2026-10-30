@@ -113,11 +113,18 @@ function malware(path, subject, file) {
     exitCode: result.status,
     status: result.status === 0 && scannedFiles > 0 ? "PASSED" : "FAILED",
   });
-  assert.equal(
-    result.status,
-    0,
-    `Malware scanner failed for ${file}; exit=${result.status}`,
-  );
+  if (result.status !== 0) {
+    const diagnostics = `${result.stdout ?? ""}\n${result.stderr ?? ""}`
+      .split(/\r?\n/)
+      .filter((line) =>
+        /(?:^|\s)(?:ERROR|WARNING):|LibClamAV Error:/i.test(line),
+      )
+      .map((line) => line.replaceAll(path, "[scan target]").slice(0, 240))
+      .slice(0, 10);
+    throw new Error(
+      `Malware scanner failed for ${file}; exit=${result.status}; ${diagnostics.join(" | ") || "scanner returned a non-passing status"}`,
+    );
+  }
   assert(scannedFiles > 0, "Malware scanner did not scan any files");
 }
 
@@ -173,9 +180,12 @@ for (const role of roles) {
     securityFailure = true;
   }
   const container = run("docker", ["create", reference]).trim();
-  const exported = resolve(process.env.RUNNER_TEMP, `${role}-filesystem.tar`);
+  const exported = resolve(process.env.RUNNER_TEMP, `${role}-filesystem`);
+  mkdirSync(exported, { recursive: true });
   try {
-    run("docker", ["export", "--output", exported, container]);
+    // Copy, but never execute, the final merged root filesystem. ClamAV then
+    // examines files directly instead of treating the Docker export as an archive.
+    run("docker", ["cp", `${container}:/`, exported]);
   } finally {
     run("docker", ["rm", container]);
   }

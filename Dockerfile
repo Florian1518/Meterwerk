@@ -40,6 +40,8 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 BUILD_VERSION=$VERSION \
   GIT_COMMIT_SHA=$GIT_SHA BUILD_TIMESTAMP=$BUILD_TIMESTAMP \
   NEXT_PUBLIC_METERWERK_ENV=$NEXT_PUBLIC_METERWERK_ENV
 RUN addgroup -S meterwerk && adduser -S meterwerk -G meterwerk
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 RUN mkdir -p /app/.local/attachments && chown -R meterwerk:meterwerk /app/.local
 COPY --from=builder --chown=meterwerk:meterwerk /app/.next/standalone ./
 COPY --from=builder --chown=meterwerk:meterwerk /app/.next/static ./.next/static

@@ -511,7 +511,7 @@ test("publish policy permits exactly three SHA-tagged images and requires all ga
     },
     (w) => {
       w.jobs.publish.steps = w.jobs.publish.steps.filter(
-        (s) => !s.run?.includes("pnpm exec prisma --version"),
+        (s) => !s.run?.includes("node_modules/prisma/build/index.js --version"),
       );
     },
     (w) => {
@@ -557,12 +557,37 @@ test("build wiring supplies staging at build time and keeps migration tooling se
       ),
     );
   const migrations = readFileSync("Dockerfile.migrations", "utf8");
-  assert.match(migrations, /pnpm install --frozen-lockfile --prod=false/);
+  const webRunner = dockerfile.split(
+    /FROM node:22-alpine@sha256:[a-f0-9]{64} AS runner/,
+  )[1];
+  assert.match(webRunner, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
+  assert.equal(
+    (webRunner.match(/rm -rf \/usr\/local\/lib\/node_modules\/npm/g) ?? [])
+      .length,
+    1,
+  );
+  assert.match(migrations, /pnpm install --frozen-lockfile --prod/);
   assert.match(migrations, /COPY scripts\/verify-migration-baseline.mjs/);
-  assert.match(migrations, /COREPACK_ENABLE_NETWORK=0/);
+  assert.match(migrations, /node_modules\/prisma\/build\/index.js/);
+  assert.match(migrations, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
+  assert.match(migrations, /\/opt\/corepack/);
+  assert.match(migrations, /\/usr\/local\/bin\/pnpm/);
   assert.doesNotMatch(
     migrations,
     /CMD.*(?:db:migrate|migrate.*deploy)|ENTRYPOINT.*migrate/,
   );
   assert.match(migrations, /USER node/);
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  assert(
+    packageJson.dependencies.tsx,
+    "manual migration-image admin bootstrap requires tsx",
+  );
+  assert.match(
+    readFileSync("docs/STAGING.md", "utf8"),
+    /node node_modules\/tsx\/dist\/cli\.mjs scripts\/staging-create-admin\.ts/,
+  );
+  const securityScan = readFileSync("scripts/scan-release-images.mjs", "utf8");
+  assert.match(securityScan, /registry:\$\{reference\}/);
+  assert.match(securityScan, /docker", \["cp", `\$\{container\}:\//);
+  assert.doesNotMatch(securityScan, /docker", \["export"/);
 });
