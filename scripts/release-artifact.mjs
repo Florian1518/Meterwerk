@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { resolve, relative, dirname, isAbsolute } from "node:path";
 import { buildWorkerBundles } from "./build-worker-bundles.mjs";
 import { copyArgon2Runtime } from "./copy-argon2-runtime.mjs";
+import { readSourceState } from "./source-state.mjs";
 const version = process.env.RELEASE_VERSION ?? "0.1.0";
 if (!/^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version))
   throw new Error("Invalid release version");
@@ -21,13 +22,14 @@ const commit = execFileSync("git", ["rev-parse", "HEAD"], {
   encoding: "utf8",
 }).trim();
 const output = resolve("release-artifacts", version);
+const sourceState = readSourceState(commit);
 const sbom = JSON.parse(
   readFileSync(`release-artifacts/sbom-${version}.cdx.json`, "utf8"),
 );
 const lockfileSha256 = createHash("sha256")
   .update(readFileSync("pnpm-lock.yaml"))
   .digest("hex");
-const auditPath = resolve("docs/acceptance/DEPENDENCY-AUDIT-4932F00.json");
+const auditPath = resolve("release-artifacts/dependency-audit.json");
 const audit = JSON.parse(readFileSync(auditPath, "utf8"));
 if (
   sbom.metadata.component.version !== version ||
@@ -149,11 +151,8 @@ writeFileSync(
       commit,
       builtAt: new Date().toISOString(),
       environment: process.env.NODE_ENV ?? "production",
-      workingTree: execFileSync("git", ["status", "--porcelain"], {
-        encoding: "utf8",
-      }).trim()
-        ? "dirty"
-        : "clean",
+      workingTree: sourceState.workingTree,
+      sourceState,
       packageVersion: JSON.parse(readFileSync("package.json", "utf8")).version,
       targetVersion: "1.0.0",
       buildId,

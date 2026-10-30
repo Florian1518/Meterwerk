@@ -1,5 +1,14 @@
 # Architektur und Anforderungen
 
+## Release Supply Chain (Phase 2)
+
+Build/Test/Publish liegen in einem wiederverwendbaren Workflow. Releaseidentität
+ist das signierte Manifest mit drei Registry-Digests, Source-SHA und Evidence-
+Hashes. Promotion prüft OIDC-Issuer, Repository, Workflow und Source-SHA und baut
+nichts neu. Source-State wird vor generierten Dateien erfasst. Syft/Grype/ClamAV
+bilden verpflichtende Security-Gates; GitHub Attestations signieren die Subjects.
+[Vertrag, Policy und Grenzen](SUPPLY-CHAIN-PHASE-2.md).
+
 ## RC7-Migrationslinie
 
 Release Candidate `1.0.0-rc.7` baut auf dem tatsächlichen RC5/Staging-Commit `305580eb2f214bd867030545f0180bc8dbcb224f` auf. Die 49 historischen Migrationen einschließlich Gateway-Provisioning und Modbus-Commissioning-Evidence bleiben unverändert; `202610260001_saas_pricing` wird ausschließlich additiv ergänzt. Der divergierende RC6-Commit ist keine Upgrade-Basis. `scripts/acceptance-rc7-lineage.mjs` rekonstruiert RC5 aus Git-Blobs in einer leeren lokalen Testdatenbank, prüft vor und nach dem Upgrade Schema-Drift, historische Prüfsummen und unveränderte Gateway-/Modbus-Strukturen. Details: [RC7-Nachweis](RELEASE-RC7.md).

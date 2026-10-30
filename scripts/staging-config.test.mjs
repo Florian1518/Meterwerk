@@ -497,16 +497,17 @@ test("publish policy permits exactly three SHA-tagged images and requires all ga
       ).with.ref = "main";
     },
     (w) => {
-      w.jobs.publish.steps.at(-1).run +=
+      w.jobs.publish.steps.find((s) => s.run?.includes("docker push")).run +=
         '\ndocker push "ghcr.io/other/image:$GITHUB_SHA"\n';
     },
     (w) => {
-      w.jobs.publish.steps.at(-1).run = w.jobs.publish.steps
-        .at(-1)
-        .run.replace(
-          'docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"',
-          'docker push "ghcr.io/florian1518/meterwerk-migrations:latest"',
-        );
+      w.jobs.publish.steps.find((s) => s.run?.includes("docker push")).run =
+        w.jobs.publish.steps
+          .find((s) => s.run?.includes("docker push"))
+          .run.replace(
+            'docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"',
+            'docker push "ghcr.io/florian1518/meterwerk-migrations:latest"',
+          );
     },
     (w) => {
       w.jobs.publish.steps = w.jobs.publish.steps.filter(
@@ -541,7 +542,7 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   const dockerfile = readFileSync("Dockerfile", "utf8");
   const builder = dockerfile
     .split("AS builder")[1]
-    .split("FROM node:22-alpine AS runner")[0];
+    .split(/FROM node:22-alpine@sha256:[a-f0-9]{64} AS runner/)[0];
   assert.match(builder, /ARG NEXT_PUBLIC_METERWERK_ENV/);
   assert.match(
     builder,

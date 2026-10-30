@@ -1,5 +1,17 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## Phase 2 ? laufende Abnahme (30.10.2026)
+
+Supply-Chain-Inventur und Implementierung: [SUPPLY-CHAIN-PHASE-2.md](SUPPLY-CHAIN-PHASE-2.md).
+Immutable Digest Promotion, drei Image-SBOMs, Image-CVE-/Release-Malware-Gates,
+OIDC-Provenance und Signaturpr?fung sind implementiert, aber bis zur gr?nen
+autoritativen CI-/Release-Evidence weiterhin **PARTIAL**. Source-State-Negativtests
+sind lokal bestanden. Der laufende Vulnerability-Workflow ist implementiert;
+Cron-Aktivierung erfordert ?bernahme auf den Defaultbranch.
+P0 Production-Runtime-Parit?t bleibt offen. Release-Malwarepr?fung ersetzt nicht
+den separaten P0-Malwareschutz f?r Benutzer-Uploads. Kein P0 wird pauschal DONE.
+RC7, Phase-1-Branch, Production und Hardware unver?ndert.
+
 - **Stichtag:** 29.10.2026
 - **Gegenstand:** ausschließlich Software- und Plattformreife; keine Hardwareprüfung
 - **Referenz:** `1.0.0-rc.7`, Tag `v1.0.0-rc.7`, Commit `15fb7c070f3671cce6d19faca1286f6fd2ee1851`

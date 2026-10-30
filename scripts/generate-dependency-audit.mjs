@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const lockfileSha256 = sha256(readFileSync("pnpm-lock.yaml"));
@@ -36,8 +36,9 @@ if (
 if (sha256(readFileSync("pnpm-lock.yaml")) !== lockfileSha256)
   throw new Error("Lockfile changed during dependency audit");
 
+mkdirSync("release-artifacts", { recursive: true });
 writeFileSync(
-  "docs/acceptance/DEPENDENCY-AUDIT-4932F00.json",
+  "release-artifacts/dependency-audit.json",
   JSON.stringify(
     {
       recordedAt: new Date().toISOString(),

@@ -6,9 +6,13 @@ on:
         description: "SemVer or RC version"
         required: true
         type: string
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 permissions:
   contents: read
-  packages: write
 jobs:
   quality:
     permissions:
@@ -16,7 +20,12 @@ jobs:
     uses: ./.github/workflows/ci.yml
   publish:
     needs: quality
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     services:
       postgres:
         image: postgres:17
@@ -49,6 +58,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { ref: "${{ github.sha }}", persist-credentials: false }
+      - name: Capture source before generated evidence
+        run: |
+          node scripts/source-state.mjs "$RUNNER_TEMP/source-state.json"
+          echo "SOURCE_STATE_FILE=$RUNNER_TEMP/source-state.json" >> "$GITHUB_ENV"
+          echo "GIT_WORKING_TREE=$(node -p "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/source-state.json')).workingTree")" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with: { version: 12.5.1 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -64,9 +78,10 @@ jobs:
       - run: pnpm run sbom
       - run: node scripts/generate-dependency-audit.mjs
       - run: node scripts/release-artifact.mjs
-      - run: node scripts/verify-release-artifact.mjs
+      - run: node scripts/verify-release-artifact.mjs --pre-image
       - run: node scripts/verify-worker-image-static.mjs
       - run: pnpm exec playwright install --with-deps chromium
+      - run: node scripts/standalone-runtime-smoke.mjs
       - name: Verify Docker daemon
         run: docker version && docker info
       - name: Build staging Web, Worker and migration images
@@ -79,7 +94,7 @@ jobs:
             --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
             -t "meterwerk-web:$GITHUB_SHA" .
           docker build -f Dockerfile.worker \
-            --build-arg GIT_WORKING_TREE=clean \
+            --build-arg GIT_WORKING_TREE="$GIT_WORKING_TREE" \
             --build-arg VERSION="$RELEASE_VERSION" \
             --build-arg GIT_SHA="$GITHUB_SHA" \
             --build-arg BUILD_TIMESTAMP="$BUILD_TIMESTAMP" \
@@ -121,3 +136,118 @@ jobs:
           docker push "ghcr.io/florian1518/meterwerk-web:$GITHUB_SHA"
           docker push "ghcr.io/florian1518/meterwerk-worker:$GITHUB_SHA"
           docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"
+      - name: Install pinned image security tools
+        run: bash scripts/install-supply-chain-tools.sh
+      - name: Scan final immutable digests and release files
+        id: security
+        run: node scripts/scan-release-images.mjs
+      - name: Attest web build provenance
+        id: provenance_web
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-web
+          subject-digest: ${{ steps.security.outputs.web_digest }}
+          push-to-registry: true
+      - name: Attest web SBOM
+        id: sbom_web
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-web
+          subject-digest: ${{ steps.security.outputs.web_digest }}
+          sbom-path: release-artifacts/security/web.cdx.json
+          push-to-registry: true
+      - name: Preserve web attestation bundles
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance_web.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom_web.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" "release-artifacts/security/web.provenance.sigstore.json"
+          cp "$SBOM_BUNDLE" "release-artifacts/security/web.sbom.sigstore.json"
+      - name: Attest worker build provenance
+        id: provenance_worker
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-worker
+          subject-digest: ${{ steps.security.outputs.worker_digest }}
+          push-to-registry: true
+      - name: Attest worker SBOM
+        id: sbom_worker
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-worker
+          subject-digest: ${{ steps.security.outputs.worker_digest }}
+          sbom-path: release-artifacts/security/worker.cdx.json
+          push-to-registry: true
+      - name: Preserve worker attestation bundles
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance_worker.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom_worker.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" "release-artifacts/security/worker.provenance.sigstore.json"
+          cp "$SBOM_BUNDLE" "release-artifacts/security/worker.sbom.sigstore.json"
+      - name: Attest migrations build provenance
+        id: provenance_migrations
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-migrations
+          subject-digest: ${{ steps.security.outputs.migrations_digest }}
+          push-to-registry: true
+      - name: Attest migrations SBOM
+        id: sbom_migrations
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ghcr.io/florian1518/meterwerk-migrations
+          subject-digest: ${{ steps.security.outputs.migrations_digest }}
+          sbom-path: release-artifacts/security/migrations.cdx.json
+          push-to-registry: true
+      - name: Preserve migrations attestation bundles
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance_migrations.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom_migrations.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" "release-artifacts/security/migrations.provenance.sigstore.json"
+          cp "$SBOM_BUNDLE" "release-artifacts/security/migrations.sbom.sigstore.json"
+      - name: Attest release archive provenance
+        id: archive_provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-artifacts/*/web-build.tar
+      - name: Preserve archive provenance
+        env:
+          BUNDLE: ${{ steps.archive_provenance.outputs.bundle-path }}
+        run: cp "$BUNDLE" release-artifacts/security/archive.provenance.sigstore.json
+      - name: Finalize immutable release manifest
+        run: node scripts/finalize-release-manifest.mjs
+      - name: Sign accepted release manifest
+        id: manifest_provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-artifacts/release-manifest.json
+      - name: Verify signed immutable promotion without deploying
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.manifest_provenance.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" release-artifacts/release-manifest.sigstore.json
+          node scripts/verify-release-artifact.mjs
+          node scripts/verify-promotion.mjs release-artifacts "$GITHUB_SHA" "$RELEASE_VERSION" "$RUNNER_TEMP/promotion.env"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifact
+          path: release-artifacts
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: container-runtime-evidence
+          path: .local/acceptance/*image*
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: image-security-evidence
+          path: release-artifacts/security
+          if-no-files-found: error
+          retention-days: 90

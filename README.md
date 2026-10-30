@@ -1,5 +1,15 @@
 # Meterwerk
 
+## Phase 2: Release Supply Chain
+
+Der manuelle Releaseworkflow verwendet einen gemeinsamen Build-/Publishpfad mit
+Digest-Manifest, verpflichtenden Image-SBOM-/CVE-/Malware-Gates und GitHub
+OIDC-Attestations. Die spätere Promotion prüft `scripts/verify-promotion.mjs`
+gegen einen explizit akzeptierten SHA und erzeugt ausschließlich Digest-Referenzen.
+Startschritte, Policy und noch offene Remote-Abnahme:
+[Supply Chain Phase 2](docs/SUPPLY-CHAIN-PHASE-2.md).
+Kein Production-Deployment; der Schedule wird erst auf dem Defaultbranch aktiv.
+
 ## Release Candidate 1.0.0-rc.7
 
 RC7 basiert auf der tatsächlichen RC5/Staging-Linie mit 49 historischen Migrationen und ergänzt ausschließlich SaaS Pricing als Migration 50. RC6 bleibt wegen seiner divergierenden Migrationslinie historisch und wird nicht bereitgestellt. Git-Herkunft, Prüfablauf und lokale Abnahme: [RC7-Release-Nachweis](docs/RELEASE-RC7.md).

@@ -121,14 +121,58 @@ export function assertWorkflowSecurity(file, text) {
   assert(!/pull_request_target|write-all/.test(text));
   assert.equal(workflow.permissions?.contents, "read");
   if (publish) {
-    assert.deepEqual(Object.keys(workflow.on ?? {}), ["workflow_dispatch"]);
-    assert.deepEqual(workflow.permissions, {
-      contents: "read",
-      packages: "write",
-    });
+    assert.deepEqual(Object.keys(workflow.on ?? {}), [
+      "workflow_dispatch",
+      "workflow_call",
+    ]);
+    assert.deepEqual(workflow.permissions, { contents: "read" });
     assert.equal(workflow.jobs.quality.uses, "./.github/workflows/ci.yml");
     assert.equal(workflow.jobs.publish.needs, "quality");
     assertThreeImagePublish(workflow);
+    const steps = workflow.jobs.publish.steps;
+    for (const command of [
+      "node scripts/source-state.mjs",
+      "bash scripts/install-supply-chain-tools.sh",
+      "node scripts/scan-release-images.mjs",
+      "node scripts/finalize-release-manifest.mjs",
+      "node scripts/verify-promotion.mjs",
+    ]) {
+      const step = steps.find((item) => item.run?.includes(command));
+      assert(
+        step && !step.if && !step["continue-on-error"],
+        `Mandatory security gate: ${command}`,
+      );
+      assert.doesNotMatch(step.run, /\|\|\s*(?:true|:)|\bset\s+\+e\b/);
+    }
+    assert(
+      steps.findIndex((step) => step.run?.includes("source-state.mjs")) <
+        steps.findIndex((step) => step.run?.includes("pnpm install")),
+    );
+    for (const role of ["web", "worker", "migrations"]) {
+      for (const type of ["provenance", "sbom"]) {
+        const step = steps.find((item) => item.id === `${type}_${role}`);
+        assert(step && !step.if && !step["continue-on-error"]);
+        assert.equal(
+          step.with["subject-name"],
+          `ghcr.io/florian1518/meterwerk-${role}`,
+        );
+        assert.equal(
+          step.with["subject-digest"],
+          `\${{ steps.security.outputs.${role}_digest }}`,
+        );
+        assert.equal(step.with["push-to-registry"], true);
+      }
+    }
+  }
+  if (file === "release.yml") {
+    assert.deepEqual(Object.keys(workflow.on), ["workflow_dispatch"]);
+    assert.deepEqual(Object.keys(workflow.jobs), ["artifact"]);
+    assert.equal(
+      workflow.jobs.artifact.uses,
+      "./.github/workflows/publish-images.yml",
+    );
+    assert(!workflow.jobs.artifact.steps);
+    assert.deepEqual(workflow.permissions, { contents: "read" });
   }
   for (const permissions of [
     workflow.permissions,
@@ -141,7 +185,9 @@ export function assertWorkflowSecurity(file, text) {
       assert(
         level === "read" ||
           level === "none" ||
-          (publish && scope === "packages" && level === "write"),
+          ((publish || file === "release.yml") &&
+            ["packages", "id-token", "attestations"].includes(scope) &&
+            level === "write"),
         `${file}: forbidden permission ${scope}: ${level}`,
       );
   }
@@ -154,12 +200,22 @@ export function assertWorkflowSecurity(file, text) {
           run,
         ),
       );
-      if (!publish) assert(!/\bdocker\s+(?:login|push)\b/i.test(run));
+      if (!publish) {
+        assert(!/\bdocker\s+push\b/i.test(run));
+        if (/\bdocker\s+login\b/i.test(run)) {
+          assert.equal(file, "image-vulnerabilities.yml");
+          assert.equal(
+            run,
+            'printf \'%s\' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin',
+          );
+        }
+      }
     }
   }
   for (const action of text.matchAll(/uses:\s+([^\s#]+)/g)) {
     assert(!/deploy|kubectl/i.test(action[1]));
     if (!action[1].startsWith("./")) assert.match(action[1], /@[a-f0-9]{40}$/);
   }
-  assert(text.includes("persist-credentials: false"));
+  if (file !== "release.yml")
+    assert(text.includes("persist-credentials: false"));
 }

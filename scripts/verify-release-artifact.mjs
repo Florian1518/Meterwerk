@@ -9,10 +9,24 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, relative } from "node:path";
+import { verifySourceState } from "./source-state.mjs";
 
 const version = process.env.RELEASE_VERSION ?? "0.1.0";
 assert.match(version, /^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/);
 const root = resolve("release-artifacts", version);
+// The default verifier is the complete release gate. The explicitly named
+// preparation mode cannot approve a release and runs before images exist.
+if (!process.argv.includes("--pre-image")) {
+  const expectedSha =
+    process.env.GITHUB_SHA ??
+    execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  execFileSync(
+    process.execPath,
+    ["scripts/verify-promotion.mjs", "release-artifacts", expectedSha, version],
+    { stdio: "inherit" },
+  );
+  process.exit(0);
+}
 const metadata = JSON.parse(
   readFileSync(resolve(root, "metadata.json"), "utf8"),
 );
@@ -23,6 +37,12 @@ const workerManifest = JSON.parse(
 assert.equal(metadata.version, version);
 assert.equal(sbom.metadata.component.version, version);
 assert.match(metadata.commit, /^[a-f0-9]{40}$/);
+assert.equal(
+  metadata.commit,
+  execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+);
+verifySourceState(metadata.sourceState, metadata.commit);
+assert.equal(metadata.workingTree, metadata.sourceState.workingTree);
 assert.equal(workerManifest.commit, metadata.commit);
 assert.equal(
   workerManifest.lockfileSha256,
@@ -141,6 +161,22 @@ for (const path of entries)
       path,
     ),
     "no private/runtime files in archive",
+  );
+const archiveBytes = readFileSync(resolve(root, "web-build.tar"));
+for (const secret of [
+  ...[
+    "SESSION_SECRET",
+    "MFA_ENCRYPTION_KEY",
+    "WEBHOOK_SECRET_ENCRYPTION_KEY",
+    "DEMO_PASSWORD",
+  ].map((name) => process.env[name]),
+  "ci-only-synthetic-session-secret",
+  "ci-only-synthetic-mfa-key-32-bytes",
+  "ci-only-synthetic-demo-password",
+].filter((value) => value && value.length >= 8))
+  assert(
+    !archiveBytes.includes(Buffer.from(secret)),
+    "Test credential found in release archive",
   );
 for (const worker of ["rules-worker", "mqtt-worker", "rollout-worker"]) {
   const file = resolve(root, "worker", `${worker}.js`);

@@ -1,0 +1,18 @@
+# Render only after scripts/verify-promotion.mjs creates the approved env file.
+# Environment, networks, volumes and credentials remain an operator-owned layer.
+# No build section, mutable default, automatic migration, or deployment command.
+services:
+  web:
+    image: ${METERWERK_WEB_IMAGE:?Verified immutable Web reference required}
+  rules-worker:
+    image: ${METERWERK_WORKER_IMAGE:?Verified immutable Worker reference required}
+    command: ["dist/rules-worker.js"]
+  mqtt-worker:
+    image: ${METERWERK_WORKER_IMAGE:?Verified immutable Worker reference required}
+    command: ["dist/mqtt-worker.js"]
+  rollout-worker:
+    image: ${METERWERK_WORKER_IMAGE:?Verified immutable Worker reference required}
+    command: ["dist/rollout-worker.js"]
+  migrations:
+    image: ${METERWERK_MIGRATIONS_IMAGE:?Verified immutable Migration reference required}
+    profiles: ["migration-tooling"]

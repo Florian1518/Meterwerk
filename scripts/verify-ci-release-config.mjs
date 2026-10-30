@@ -27,7 +27,10 @@ assert.equal(
 );
 for (const name of ["unit", "integration", "browser", "build"])
   assert(ci.jobs[name], `CI includes ${name} job`);
-for (const text of [ciText, releaseText]) {
+for (const text of [
+  ciText,
+  readFileSync(".github/workflows/publish-images.yml", "utf8"),
+]) {
   assert.match(text, /pnpm\/action-setup@[a-f0-9]{40}/);
   assert.match(
     text,
@@ -42,8 +45,13 @@ for (const text of [ciText, releaseText]) {
       );
 }
 assert.equal(release.permissions.contents, "read");
-assert.equal(release.jobs.quality.uses, "./.github/workflows/ci.yml");
-const artifactJob = release.jobs.artifact;
+assert.equal(
+  release.jobs.artifact.uses,
+  "./.github/workflows/publish-images.yml",
+);
+const artifactJob = yaml.load(
+  readFileSync(".github/workflows/publish-images.yml", "utf8"),
+).jobs.publish;
 assert(
   artifactJob.steps.some(
     (step) => step.run === "pnpm install --frozen-lockfile --prod=false",
@@ -61,7 +69,9 @@ for (const gate of [
   "docker build -f Dockerfile.worker",
   "scripts/verify-web-image-runtime.mjs",
   "scripts/verify-worker-image-runtime.mjs",
-  "scripts/verify-image-sbom.mjs",
+  "scripts/scan-release-images.mjs",
+  "scripts/finalize-release-manifest.mjs",
+  "scripts/verify-promotion.mjs",
 ])
   assert(runs.includes(gate), `Release workflow includes ${gate}`);
 assert(!/docker push|docker login|kubectl apply/i.test(releaseText));
@@ -73,5 +83,5 @@ assert.match(
   "Worker runtime gate enforces physical image content inspection",
 );
 console.log(
-  "Workflow security passed: package write only in manual publish-images.yml; CI/release read-only, no registry writes/deployments; docs/artifact/runtime/worker/SBOM gates present",
+  "Workflow security passed: package write only in explicit publish or delegated release; CI read-only, no registry writes/deployments; docs/artifact/runtime/worker/SBOM gates present",
 );
