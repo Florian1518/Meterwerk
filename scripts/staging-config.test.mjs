@@ -566,7 +566,19 @@ test("build wiring supplies staging at build time and keeps migration tooling se
       .length,
     1,
   );
-  assert.match(migrations, /pnpm install --frozen-lockfile --prod/);
+  assert.match(
+    migrations,
+    /pnpm install --frozen-lockfile --prod --filter @meterwerk\/migration-runtime/,
+  );
+  assert.match(
+    migrations,
+    /ln -s \/app\/packages\/migration-runtime\/node_modules \/app\/node_modules/,
+  );
+  const migrationPackage = JSON.parse(
+    readFileSync("packages/migration-runtime/package.json", "utf8"),
+  );
+  assert(migrationPackage.dependencies.prisma);
+  assert(migrationPackage.dependencies.tsx);
   assert.match(migrations, /COPY scripts\/verify-migration-baseline.mjs/);
   assert.match(migrations, /node_modules\/prisma\/build\/index.js/);
   assert.match(migrations, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
@@ -578,9 +590,14 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   );
   assert.match(migrations, /USER node/);
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  assert.equal(packageJson.dependencies?.tsx, undefined);
+  assert.equal(packageJson.devDependencies?.tsx, "^4.21.0");
+  assert(migrationPackage.dependencies.tsx, "migration runtime includes tsx");
+  assert.equal(packageJson.dependencies?.prisma, undefined);
+  assert.equal(packageJson.devDependencies?.prisma, "^7.2.0");
   assert(
-    packageJson.dependencies.tsx,
-    "manual migration-image admin bootstrap requires tsx",
+    migrationPackage.dependencies.prisma,
+    "migration runtime includes Prisma CLI",
   );
   assert.match(
     readFileSync("docs/STAGING.md", "utf8"),

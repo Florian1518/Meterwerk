@@ -86,7 +86,7 @@ jobs:
         run: docker version && docker info
       - name: Build staging Web, Worker and migration images
         run: |
-          git diff --exit-code -- src apps scripts prisma package.json pnpm-lock.yaml pnpm-workspace.yaml Dockerfile Dockerfile.worker Dockerfile.migrations
+          git diff --exit-code -- src apps scripts prisma packages package.json pnpm-lock.yaml pnpm-workspace.yaml Dockerfile Dockerfile.worker Dockerfile.migrations
           docker build -f Dockerfile \
             --build-arg NEXT_PUBLIC_METERWERK_ENV=staging \
             --build-arg VERSION="$RELEASE_VERSION" \

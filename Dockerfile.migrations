@@ -12,7 +12,10 @@ LABEL org.opencontainers.image.source=https://github.com/Florian1518/Meterwerk \
 ENV COREPACK_HOME=/opt/corepack
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+COPY packages/migration-runtime/package.json ./packages/migration-runtime/package.json
+RUN pnpm install --frozen-lockfile --prod --filter @meterwerk/migration-runtime \
+  && rm -rf /app/node_modules \
+  && ln -s /app/packages/migration-runtime/node_modules /app/node_modules
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 COPY scripts/verify-migration-baseline.mjs ./scripts/verify-migration-baseline.mjs
