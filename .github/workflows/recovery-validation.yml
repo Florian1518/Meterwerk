@@ -66,7 +66,22 @@ jobs:
         with: { version: 12.5.1 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 22, cache: pnpm }
-      - run: sudo apt-get update && sudo apt-get install --yes age postgresql-client
+      - name: Install PostgreSQL 16 client and age
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes age ca-certificates curl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --location \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-16
+          test "$(pg_dump --version | awk '{print $3}' | cut -d. -f1)" = "16"
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm exec prisma migrate deploy
