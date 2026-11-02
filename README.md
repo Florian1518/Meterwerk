@@ -6,9 +6,9 @@ Der manuelle Releaseworkflow verwendet einen gemeinsamen Build-/Publishpfad mit
 Digest-Manifest, verpflichtenden Image-SBOM-/CVE-/Malware-Gates und GitHub
 OIDC-Attestations. Die spätere Promotion prüft `scripts/verify-promotion.mjs`
 gegen einen explizit akzeptierten SHA und erzeugt ausschließlich Digest-Referenzen.
-Startschritte, Policy und noch offene Remote-Abnahme:
+Startschritte, Policy und erfolgreiche Remote-Abnahme:
 [Supply Chain Phase 2](docs/SUPPLY-CHAIN-PHASE-2.md).
-Kein Production-Deployment; der Schedule wird erst auf dem Defaultbranch aktiv.
+Kein Production-Deployment. Der tägliche Vulnerability-Workflow ist auf `master` aktiv; manueller Run 41406700801 bestanden. Evidence: [Readiness-Abschluss](docs/SOFTWARE-READINESS-RC7.md).
 
 ## Release Candidate 1.0.0-rc.7
 
