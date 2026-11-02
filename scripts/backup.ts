@@ -483,8 +483,10 @@ export async function restoreBackup(file: string, target: string) {
       ["--no-owner", "--no-acl", "--exit-on-error", "--single-transaction"],
       { input: plain, env: restoreEnv },
     );
-    restore.child.stdout?.resume();
-    await restore.done;
+    await Promise.all([
+      pipeline(createReadStream(plain), restore.child.stdin!),
+      restore.done,
+    ]);
     return {
       database: target,
       sourceSha: manifest.sourceSha,
