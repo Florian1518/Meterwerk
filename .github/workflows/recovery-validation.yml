@@ -106,6 +106,72 @@ jobs:
           echo "METERWERK_BACKUP_MANIFEST=$backup.manifest.json" >> "$GITHUB_ENV"
       - name: Restore into a new isolated database
         run: pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_phase3_ci
+      - name: Verify recovery failures fail closed
+        shell: bash
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: meterwerk
+          PGPASSWORD: ci-only-recovery-password
+        run: |
+          set -euo pipefail
+          corrupt="$RUNNER_TEMP/meterwerk-corrupt.age"
+          cp "$METERWERK_BACKUP_FILE" "$corrupt"
+          cp "$METERWERK_BACKUP_MANIFEST" "$corrupt.manifest.json"
+          printf X | dd of="$corrupt" bs=1 seek=0 conv=notrunc status=none
+          if pnpm db:backup verify "$corrupt" >/dev/null 2>&1; then
+            echo "Corrupt backup unexpectedly passed verification" >&2
+            exit 1
+          fi
+
+          age-keygen -o "$RUNNER_TEMP/wrong-age-identity" 2>/dev/null
+          chmod 600 "$RUNNER_TEMP/wrong-age-identity"
+          if METERWERK_BACKUP_AGE_IDENTITY_FILE="$RUNNER_TEMP/wrong-age-identity" \
+            pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_wrong_key \
+            >"$RUNNER_TEMP/wrong-key.log" 2>&1; then
+            echo "Backup encrypted for a different age identity unexpectedly restored" >&2
+            exit 1
+          fi
+          missing_db="$(psql -d postgres -Atqc \
+            "SELECT count(*) FROM pg_database WHERE datname = 'meterwerk_restore_wrong_key'")"
+          test "$missing_db" = "0"
+
+          mock_kms="$RUNNER_TEMP/mock-aws-kms-denied"
+          mkdir -p "$mock_kms"
+          cat > "$mock_kms/aws" <<'MOCK'
+          #!/bin/sh
+          exit 42
+          MOCK
+          chmod 700 "$mock_kms/aws"
+          if PATH="$mock_kms:$PATH" METERWERK_BACKUP_S3_URI="s3://meterwerk-ci-test/meterwerk-backups/kms-denied" \
+            METERWERK_BACKUP_S3_KMS_KEY_ID="alias/meterwerk-test" \
+            pnpm db:backup backup "$RUNNER_TEMP/meterwerk-kms-denied.age" \
+            >"$RUNNER_TEMP/kms-denied.log" 2>&1; then
+            echo "KMS denial unexpectedly passed backup publication" >&2
+            exit 1
+          fi
+          pnpm db:backup verify "$RUNNER_TEMP/meterwerk-kms-denied.age" >/dev/null
+
+          mock_s3="$RUNNER_TEMP/mock-aws-s3-unavailable"
+          mkdir -p "$mock_s3"
+          cat > "$mock_s3/aws" <<'MOCK'
+          #!/bin/sh
+          if [ "$1" = "kms" ] && [ "$2" = "describe-key" ]; then
+            printf '%s\n' 'arn:aws:kms:us-east-1:000000000000:key/00000000-0000-0000-0000-000000000000'
+            exit 0
+          fi
+          exit 44
+          MOCK
+          chmod 700 "$mock_s3/aws"
+          if PATH="$mock_s3:$PATH" METERWERK_BACKUP_S3_URI="s3://meterwerk-ci-test/meterwerk-backups/unavailable" \
+            METERWERK_BACKUP_S3_KMS_KEY_ID="alias/meterwerk-test" \
+            pnpm db:backup backup "$RUNNER_TEMP/meterwerk-offsite-unavailable.age" \
+            >"$RUNNER_TEMP/offsite-unavailable.log" 2>&1; then
+            echo "Unavailable offsite target unexpectedly passed publication" >&2
+            exit 1
+          fi
+          pnpm db:backup verify "$RUNNER_TEMP/meterwerk-offsite-unavailable.age" >/dev/null
+          echo "Recovery negative tests PASSED: checksum, wrong key, KMS denial, unavailable offsite"
       - run: pnpm build
         env: { NODE_ENV: production }
       - name: Start application against restored database
@@ -190,6 +256,8 @@ jobs:
           if [[ -f "$RUNNER_TEMP/recovery-worker.pid" ]]; then kill "$(cat "$RUNNER_TEMP/recovery-worker.pid")" 2>/dev/null || true; fi
           docker rm -f meterwerk-recovery-mqtt >/dev/null 2>&1 || true
           rm -f "$RUNNER_TEMP/meterwerk-age-identity"
+          rm -f "$RUNNER_TEMP/wrong-age-identity"
           rm -f "$RUNNER_TEMP/mqtt-receipt-private.pem"
+          rm -rf "$RUNNER_TEMP/mock-aws-kms-denied" "$RUNNER_TEMP/mock-aws-s3-unavailable"
           rm -f "$RUNNER_TEMP"/meterwerk-*.age
           rm -f "$RUNNER_TEMP"/meterwerk-*.age.manifest.json

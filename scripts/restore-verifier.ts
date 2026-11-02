@@ -63,6 +63,13 @@ export async function verifyRestoredDatabase(
   const client = new Client({ connectionString });
   try {
     await client.connect();
+    const recovery = await client.query<{ in_recovery: boolean }>(
+      "SELECT pg_is_in_recovery() AS in_recovery",
+    );
+    if (recovery.rows[0]?.in_recovery)
+      throw new Error(
+        "Restore verification failed: PostgreSQL recovery has not completed",
+      );
     const tables = await client.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
     );
