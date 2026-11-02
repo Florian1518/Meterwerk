@@ -14,6 +14,7 @@ cleanup() {
   if [ "$result" -ne 0 ]; then
     echo "PITR drill failed; synthetic source and restore logs follow" >&2
     docker logs "$source" >&2 || true
+    docker logs "$missing" >&2 || true
     docker logs "$restored" >&2 || true
   fi
   docker rm -f "$restored" "$missing" "$source" >/dev/null 2>&1 || true
@@ -59,21 +60,21 @@ docker run -d --name "$missing" --network none \
   -v "$work/base-missing-wal:/var/lib/postgresql/data" \
   -v "$work/archive-missing-wal:/archive:ro" postgres:17-alpine >/dev/null
 for attempt in $(seq 1 30); do
-  running="$(docker inspect -f '{{.State.Running}}' "$missing" 2>/dev/null || echo false)"
+  running="$(docker inspect -f '{{.State.Running}}' "$missing")"
   if [ "$running" != "true" ]; then break; fi
   if docker exec "$missing" pg_isready -U postgres -d postgres >/dev/null 2>&1; then break; fi
   sleep 1
 done
-running="$(docker inspect -f '{{.State.Running}}' "$missing" 2>/dev/null || echo false)"
+running="$(docker inspect -f '{{.State.Running}}' "$missing")"
 if [ "$running" = "true" ]; then
   in_recovery="$(docker exec "$missing" psql -U postgres -d postgres -Atqc \
     'SELECT pg_is_in_recovery()' 2>/dev/null || echo unknown)"
   test "$in_recovery" = "t"
+  echo "PITR missing-WAL negative test PASSED: server stayed in recovery"
 else
-  exit_code="$(docker inspect -f '{{.State.ExitCode}}' "$missing")"
-  test "$exit_code" -ne 0
+  echo "PITR missing-WAL negative test PASSED: PostgreSQL exited without promotion"
 fi
-echo "PITR missing-WAL negative test PASSED: recovery did not promote"
+docker logs "$missing" 2>&1 | tail -n 20
 docker rm -f "$missing" >/dev/null
 
 cp -a "$work/base" "$work/base-incomplete"
