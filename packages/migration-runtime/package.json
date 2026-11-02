@@ -1,0 +1,16 @@
+{
+  "name": "@meterwerk/migration-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "dependencies": {
+    "@node-rs/argon2": "2.2.1",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "17.4.2",
+    "pg": "8.23.0",
+    "prisma": "7.10.0",
+    "tsx": "4.23.13",
+    "zod": "4.6.6"
+  }
+}

@@ -73,7 +73,11 @@ export async function replaceMeterInTransaction(
   });
   await tx.meter.update({
     where: { id: oldMeter.id },
-    data: { status: "MAINTENANCE" },
+    data: { status: "MAINTENANCE", billable: false },
+  });
+  await tx.meter.update({
+    where: { id: newMeter.id },
+    data: { billable: true },
   });
   await tx.auditEvent.create({
     data: {

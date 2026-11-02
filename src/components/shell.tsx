@@ -138,14 +138,15 @@ const navigation: { group: string; items: NavItem[] }[] = [
 export function Shell({
   actor,
   preferences,
+  environment,
   children,
 }: {
   actor: Actor;
   preferences: { theme: string; timeZone: string };
+  environment: "demo" | "staging" | "production";
   children: React.ReactNode;
 }) {
   const path = usePathname();
-  const environment = process.env.NEXT_PUBLIC_METERWERK_ENV ?? "production";
   const environmentLabel =
     environment === "demo"
       ? "DEMO"

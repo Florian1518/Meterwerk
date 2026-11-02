@@ -9,7 +9,17 @@ export default async function PlatformLayout({
 }) {
   const actor = await requirePageActor();
   return (
-    <Shell actor={actor} preferences={await presentation()}>
+    <Shell
+      actor={actor}
+      preferences={await presentation()}
+      environment={
+        process.env.METERWERK_ENV === "demo"
+          ? "demo"
+          : process.env.METERWERK_ENV === "staging"
+            ? "staging"
+            : "production"
+      }
+    >
       {children}
     </Shell>
   );

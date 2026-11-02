@@ -394,6 +394,7 @@ export async function updateDevice(
     await lockGatewayTenant(tx, tenantId);
     const current = await tx.device.findFirstOrThrow({
       where: { id, tenantId },
+      include: { modbusConfig: true },
     });
     const gatewayId = value.gatewayId ?? current.gatewayId;
     if (
@@ -419,6 +420,17 @@ export async function updateDevice(
       throw new AccessError(
         409,
         "Stillgelegtes Gerät kann nicht umgeordnet werden.",
+      );
+    if (
+      current.modbusConfig &&
+      ["gatewayId", "meterId", "protocol", "profileId"].some((key) => {
+        const field = key as "gatewayId" | "meterId" | "protocol" | "profileId";
+        return value[field] !== undefined && value[field] !== current[field];
+      })
+    )
+      throw new AccessError(
+        409,
+        "Konfigurierte Modbus-Geräte nur über den Inbetriebnahme-Assistenten neu zuordnen oder konfigurieren; technische Verifikation muss erneuert werden.",
       );
     const updated = await tx.device.update({ where: { id }, data });
     await tx.auditEvent.create({

@@ -1,5 +1,18 @@
 # Architektur und Anforderungen
 
+## Release Supply Chain (Phase 2)
+
+Build/Test/Publish liegen in einem wiederverwendbaren Workflow. Releaseidentität
+ist das signierte Manifest mit drei Registry-Digests, Source-SHA und Evidence-
+Hashes. Promotion prüft OIDC-Issuer, Repository, Workflow und Source-SHA und baut
+nichts neu. Source-State wird vor generierten Dateien erfasst. Syft/Grype/ClamAV
+bilden verpflichtende Security-Gates; GitHub Attestations signieren die Subjects.
+[Vertrag, Policy und Grenzen](SUPPLY-CHAIN-PHASE-2.md).
+
+## RC7-Migrationslinie
+
+Release Candidate `1.0.0-rc.7` baut auf dem tatsächlichen RC5/Staging-Commit `305580eb2f214bd867030545f0180bc8dbcb224f` auf. Die 49 historischen Migrationen einschließlich Gateway-Provisioning und Modbus-Commissioning-Evidence bleiben unverändert; `202610260001_saas_pricing` wird ausschließlich additiv ergänzt. Der divergierende RC6-Commit ist keine Upgrade-Basis. `scripts/acceptance-rc7-lineage.mjs` rekonstruiert RC5 aus Git-Blobs in einer leeren lokalen Testdatenbank, prüft vor und nach dem Upgrade Schema-Drift, historische Prüfsummen und unveränderte Gateway-/Modbus-Strukturen. Details: [RC7-Nachweis](RELEASE-RC7.md).
+
 ## Ziel und Umfang des Grundsystems
 
 Meterwerk ist eine zentral betriebene B2B-Smart-Metering-Plattform. Ein Betreiber verwaltet Kunden; Kunden verwalten ihre eigenen Immobilien, Benutzer und Zähler. Die erste Ausbaustufe stellt ein funktionierendes, datenbankgestütztes Grundsystem mit Demo-Daten bereit. Sie ist noch keine freigegebene Produktionsinstallation.
@@ -318,6 +331,14 @@ Runbook und offene externe Abnahmen: [STAGING.md](STAGING.md).
 
 Eine PostgreSQL-Tabellensperre (`LOCK TABLE "User" IN EXCLUSIVE MODE`) schützt unter explizitem READ COMMITTED die globale Leerprüfung und den Insert auch vor konkurrierenden normalen Schreibzugriffen. Nach wartender Sperrübernahme sieht die nächste Abfrage den aktuellen Commitstand. User und AuditEvent werden atomar geschrieben; die Sperre wird bei Commit/Rollback freigegeben. Es gibt keine Schemaänderung, keinen Seed und keine Änderung am Login-/MFA-Verhalten. Operationsimage und manueller Ablauf: [STAGING.md](STAGING.md#einmaliger-erster-plattformadministrator).
 
+## SaaS-Preisberechnung
+
+`src/server/billing/pricing.ts` berechnet Preise ausschließlich mit Decimal (40 Stellen Präzision) und liefert Geldwerte als Dezimalstrings. `tenantBilling` und `tenantSubscription` verwenden dieselbe Berechnung und lesen Subscription und abrechenbare Meter in einer RepeatableRead-Transaktion. Der Count filtert ausschließlich auf den autorisierten `tenantId` und `billable=true`, unabhängig vom technischen Status. Die Kundenabfrage bleibt auf TENANT_ADMIN/SUPER_ADMIN beschränkt; SUPER_ADMIN muss einen Mandanten auswählen. Interne Provider-IDs werden nicht in die Kundenprojektion aufgenommen.
+
+`FIXED` verwendet unverändert `priceAmount`, auch `null` bei nicht vereinbarten Preisen. `BASE_PLUS_METER` verwendet Grundpreis plus Count mal Messpunktpreis; die Preise gelten direkt für `billingInterval`. Es gibt keine Intervallumrechnung, zeitanteilige Abrechnung oder Verbindung zu Energietarifen. Zod begrenzt Eingabepreise auf nichtnegative Decimal(12,2)-Werte. Nur SUPER_ADMIN ändert Metadaten, mit Tenant-Lock und atomarem AuditEvent. Fehlendes `pricingMode` erhält bei älteren Clients das aktuelle Modell; für automatische Preise sind beide Teilbeträge erforderlich. Clientseitige Gesamtsummen werden nicht übernommen.
+
+Die additive Migration `202610260001_saas_pricing` setzt Bestandsverträge auf `FIXED` und Meter auf `billable=true`, mit Ausnahme aller tenantgesichert referenzierten Altzähler. Ein Zwischenzähler einer Wechselkette bleibt damit nicht abrechenbar. `replaceMeterInTransaction` setzt Alt-/Neuzähler-Abrechenbarkeit in derselben Transaktion wie Wechsel und Audit; technische Statusmutationen verändern sie nicht. Die gemeinsame UI-Komponente formatiert Backend-Strings ohne Float-Konvertierung und bietet keine Preisbearbeitung im Kundenbereich.
+
 ## Kundenbenutzerverwaltung
 
 Die bestehenden Kundenübersichten verlinken auf /users?tenantId=… in der vorhandenen dynamischen Verwaltungsseite. CreateForm und EntryActions verwenden unverändert createAction → mutate → writeResource einschließlich hashPassword, Zod, tenantScope, Rollenprüfung, Tenant-Lock und atomarem AuditEvent. Es gibt keine zusätzliche Benutzeranlage und keine Schemaänderung. Sichere Selects schließen Passwort- und MFA-Geheimnisse aus; SUPER_ADMIN gehört nicht zu den erlaubten Kundenrollen. Erfolgreiche Mutationen revalidieren über die bestehende Server Action die Listen.
@@ -479,3 +500,13 @@ historischen Erstkontakt und letzten Kontakt, konkrete Provisionierungsschritte
 und serverseitig zulässige Transitionen. Stilllegung unterscheidet Anwendungs-
 sperre, Signaturwiderruf und externen Brokerwiderruf. Terminalität betrifft den
 Gateway-Lifecycle, nicht automatisch Devices oder offline laufende Edge-Agenten.
+
+## Nachweise der Modbus-Inbetriebnahme
+
+`src/server/modbus-commissioning.ts` leitet den fachlichen Fortschritt aus gespeicherten Nachweisen ab: `DRAFT → CONFIGURED → CONNECTION_VERIFIED → READ_VERIFIED → ASSIGNMENT_CONFIRMED → COMMISSIONED`. Die vorhandenen Betriebszustände `NOT_CONFIGURED / COMMISSIONING / ACTIVE / FAULT / DISABLED` bleiben erhalten; `step` allein ist keine Freigabe. `COMMISSIONED` entspricht einem technisch und fachlich bestätigten Abschluss (`ACTIVE`, `completedAt`). Die angezeigte aktuelle Bereitschaft berücksichtigt weiterhin das bestehende Fünf-Minuten-Fenster; historische Abschlüsse und Auditnachweise bleiben gespeichert, auch wenn aktuelle Messdaten später fehlen.
+
+Die Prüfung verlangt das neueste erfolgreiche TEST-Ergebnis für Mandant, Gerät, Gateway und Revision, mindestens einen durch die Ingestion validierten Messdatensatz und einen erfolgreichen Diagnosezähler samt Zeitstempel/Antwortzeit. Ein vorhandener neuer READ-Auftrag muss ebenfalls erfolgreich bestätigt sein. Die Ingestion validiert den vollständigen Registersatz gegen den gespeicherten Profilsnapshot; leere oder fehlerhafte Daten und widersprüchliche `ok/error`-Ergebnisse sind kein Erfolg. PENDING/EXPIRED werden nicht hochgestuft. Abgelaufene PENDING-Aufträge erscheinen auch ohne Gateway-Verbindung als EXPIRED; beim nächsten Gateway-Control-Aufruf wird der Ablauf persistiert.
+
+REVIEW, ASSIGN und COMPLETE prüfen diese Nachweise unter den vorhandenen Gateway-/Geräte-/Zählersperren erneut und schreiben Bestätigung und AuditEvent atomar. Benutzer und Zeitpunkt der drei Bestätigungen werden gespeichert. Der Auditnachweis referenziert TEST-Command, Messdatensatz, Gateway und Konfigurationsrevision einschließlich Profil- und Kommunikationssnapshot; die strikt validierten Modbus-Parameter enthalten keine Zugangsdaten. Das Gateway bestätigt Ergebnisse ausschließlich über den vorhandenen authentifizierten Gerätekanal.
+
+Jedes CONFIGURE erhöht die Revision, stoppt Polling, verwirft die aktuelle Diagnose und Bestätigungen und storniert alte PENDING-Aufträge. Historische Konfigurationen und Messdaten bleiben erhalten. Änderungen von Gateway, Zähler, Protokoll oder Profil eines bereits konfigurierten Geräts über den allgemeinen Geräteeditor werden abgelehnt und auf den Assistenten verwiesen. Dadurch kann ein Gateway-Wechsel außerhalb des Assistenten alte Nachweise nicht wiederverwenden. Die Reparaturmigration prüft ausschließlich TEST-EL-001 und protokolliert jede tatsächliche Rücksetzung; sie setzt keine anderen produktiven Inbetriebnahmen zurück.

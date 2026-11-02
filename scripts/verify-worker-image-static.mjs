@@ -23,10 +23,19 @@ const lock = yaml
   );
 assert(lock, "pnpm lockfile contains its application dependency graph");
 
-assert.match(workerDockerfile, /^FROM node:22-alpine AS build-deps$/m);
-assert.match(workerDockerfile, /^FROM node:22-alpine AS worker-build$/m);
+assert.match(
+  workerDockerfile,
+  /^FROM node:22-alpine@sha256:[a-f0-9]{64} AS build-deps$/m,
+);
+assert.match(
+  workerDockerfile,
+  /^FROM node:22-alpine@sha256:[a-f0-9]{64} AS worker-build$/m,
+);
 assert.match(workerDockerfile, /^FROM worker-build AS runtime-deps$/m);
-assert.match(workerDockerfile, /^FROM node:22-alpine AS runtime$/m);
+assert.match(
+  workerDockerfile,
+  /^FROM node:22-alpine@sha256:[a-f0-9]{64} AS runtime$/m,
+);
 assert.match(workerDockerfile, /pnpm install --frozen-lockfile/);
 assert.match(
   workerDockerfile,
@@ -34,7 +43,7 @@ assert.match(
 );
 assert.match(workerDockerfile, /node scripts\/build-worker-bundles\.mjs/);
 const runtimeStage = workerDockerfile.split(/^FROM /m).at(-1);
-assert.match(runtimeStage, /^node:22-alpine AS runtime/m);
+assert.match(runtimeStage, /^node:22-alpine@sha256:[a-f0-9]{64} AS runtime/m);
 assert.doesNotMatch(
   runtimeStage,
   /tsx|pnpm|npm install|COPY.+(?:tests|\.env|\.pem|\.key)/i,

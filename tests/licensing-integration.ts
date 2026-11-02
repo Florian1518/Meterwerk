@@ -13,8 +13,15 @@ import {
   tenantBilling,
 } from "../src/server/licensing";
 import type { Actor } from "../src/server/policy";
+import { testSaasPricing } from "./saas-pricing-integration";
 
-if (process.env.SEED_DEMO !== "true" || process.env.NODE_ENV === "production")
+if (
+  process.env.SEED_DEMO !== "true" ||
+  process.env.NODE_ENV === "production" ||
+  !["localhost", "127.0.0.1"].includes(
+    new URL(process.env.DATABASE_URL!).hostname,
+  )
+)
   throw new Error("Lokale Demo-Datenbank erforderlich.");
 const admin: Actor = {
   id: "platform-admin",
@@ -43,6 +50,7 @@ async function check(name: string, fn: () => Promise<void>) {
 }
 
 try {
+  await testSaasPricing(admin);
   await changePlan(admin, { tenantId: "demo-tenant-0", plan: "BASIC" });
   await check("BASIC disables analytics and advanced exports", async () => {
     const entitlements = await getEntitlements(tenantAdmin);

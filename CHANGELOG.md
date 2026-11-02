@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0-rc.7
+
+- Basiert direkt auf der realen RC5/Staging-Linie `305580eb2f214bd867030545f0180bc8dbcb224f` mit 49 historischen Migrationen.
+- Gateway-Provisioning (`202610190001_gateway_provisioning_foundation`) und Modbus-Commissioning-Evidence (`202610220001_modbus_commissioning_evidence`) bleiben unver?ndert erhalten.
+- SaaS Pricing (`202610260001_saas_pricing`) erg?nzt die Historie additiv auf 50 Migrationen.
+- Allgemeine RC6-Security- und Release-H?rtungen ?bernommen; keine Bereitstellung durch diese Vorbereitung.
+
+## 1.0.0-rc.6 (historisch, nicht deployed)
+
+- SHA: `331009a92fa06173133d8db28273355c648a7889`.
+- Lokal bestanden, aber wegen divergierender Staging-Migrationshistorie nicht deploybar. RC6 bleibt unver?ndert.
+
 ## Unreleased
 
 ### Added

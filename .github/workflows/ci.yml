@@ -39,7 +39,7 @@ jobs:
       - run: pnpm docs:validate
       - run: node scripts/verify-ci-release-config.mjs
       - run: node --test scripts/staging-config.test.mjs
-      - run: node --test scripts/image-gates.test.mjs scripts/worker-runtime-policy.test.mjs scripts/image-sbom-policy.test.mjs
+      - run: node --test scripts/image-gates.test.mjs scripts/worker-runtime-policy.test.mjs scripts/image-sbom-policy.test.mjs scripts/release-manifest.test.mjs
       - run: git diff --check
       - run: pnpm audit --audit-level high
       - run: pnpm security:secrets

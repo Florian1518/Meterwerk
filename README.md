@@ -1,5 +1,21 @@
 # Meterwerk
 
+## Phase 2: Release Supply Chain
+
+Der manuelle Releaseworkflow verwendet einen gemeinsamen Build-/Publishpfad mit
+Digest-Manifest, verpflichtenden Image-SBOM-/CVE-/Malware-Gates und GitHub
+OIDC-Attestations. Die spätere Promotion prüft `scripts/verify-promotion.mjs`
+gegen einen explizit akzeptierten SHA und erzeugt ausschließlich Digest-Referenzen.
+Startschritte, Policy und noch offene Remote-Abnahme:
+[Supply Chain Phase 2](docs/SUPPLY-CHAIN-PHASE-2.md).
+Kein Production-Deployment; der Schedule wird erst auf dem Defaultbranch aktiv.
+
+## Release Candidate 1.0.0-rc.7
+
+RC7 basiert auf der tatsächlichen RC5/Staging-Linie mit 49 historischen Migrationen und ergänzt ausschließlich SaaS Pricing als Migration 50. RC6 bleibt wegen seiner divergierenden Migrationslinie historisch und wird nicht bereitgestellt. Git-Herkunft, Prüfablauf und lokale Abnahme: [RC7-Release-Nachweis](docs/RELEASE-RC7.md).
+
+Der reproduzierbare Upgrade-Test benötigt eine neue, leere lokale Acceptance-Datenbank: zunächst `node scripts/acceptance-local.mjs db`, dann `node scripts/acceptance-local.mjs upgrade rc7-upgrade scripts/acceptance-rc7-lineage.mjs`. Er setzt keine vorhandene Datenbank zurück. Die zusätzlich aktivierte Gateway-Browser-Suite benötigt nach dem synthetischen Seed einmalig `node scripts/acceptance-local.mjs test gateway-browser-fixture node_modules/tsx/dist/cli.mjs tests/helpers/gateway-browser-fixtures.ts`; anschließend `GATEWAY_PROVISIONING_E2E=true` in der Browser-Testumgebung setzen. User-Management verwendet weiterhin seinen eigenen isolierten Release-Runner.
+
 Meterwerk ist eine mandantenfähige Webanwendung zur Verwaltung und Auswertung von Zählern für Strom, Wasser, Gas und Wärme. Sie umfasst Benutzer- und Tenantverwaltung, Messwerte, Dashboards und Analytics, Regeln/Alarme, Reports, Geräte/Gateways, WorkOrders, Support, Public API, Webhooks und Operations.
 
 Die Anwendung basiert auf Next.js App Router, TypeScript, PostgreSQL und Prisma. Ein MQTT-Ingestion-Prozess und ein optionales Edge Gateway ergänzen den Webprozess. Die fachliche Wahrheit liegt in PostgreSQL; produktive Integrationen benötigen getrennte, sicher konfigurierte Infrastruktur.
@@ -203,3 +219,19 @@ Private Keys werden weder durch die Plattform-API noch im Admin-Browser erzeugt.
 Der lokale Demo-Seed `seed-edge.ts` ist separat auf `SEED_DEMO=true`, Nicht-
 Produktion und Loopback-Datenbank beschränkt. Keine Hardware, MQTT-Verbindung,
 Zertifikatsausstellung oder Broker-ACL-Änderung wird ausgelöst.
+
+## Technisch bestätigte Modbus-Inbetriebnahme
+
+Der 9-Schritte-Assistent gibt Messwertprüfung, Nutzungseinheitsbestätigung und Abschluss erst nach serverseitiger Verifikation frei. Ein angelegter oder abgelaufener Gateway-Auftrag ist kein Erfolg. TEST-Ergebnis, validierte Messdaten und Bestätigungen müssen zur aktuellen Konfigurationsrevision gehören; jede Speicherung der Konfiguration startet die Verifikation erneut. Für Messwertprüfung und Abschluss gilt weiterhin das Fünf-Minuten-Fenster der Diagnose. Das Dreiphasen-Simulatorprofil ist ausschließlich ein Software-/Workflow-Test.
+
+Vor dem Webstart `pnpm db:migrate` mit erfolgreichem Baseline-Check ausführen. Die Migration `202610220001_modbus_commissioning_evidence` ergänzt Bestätigungszeitpunkte/Benutzer und repariert ausschließlich bereits abgeschlossene `TEST-EL-001`-Datensätze ohne technische Nachweise. Gültige Inbetriebnahmen bleiben gespeichert. In den hier geprüften lokalen Entwicklungs- und Acceptance-Datenbanken war dieser Zähler nicht vorhanden; ein externes Ziel wurde nicht verändert. Die lokale Entwicklungsdatenbank hatte eine abweichende Prüfsumme für `202609240008_dashboards`; ohne unterstützten Migrationspfad dort kein Upgrade erzwingen.
+
+Zusätzliche Prüfungen: `pnpm exec vitest run tests/modbus-commissioning.test.ts`. Der PostgreSQL-Test läuft ausschließlich auf der isolierten Acceptance-Datenbank: nach deren Start und Migration `node scripts/acceptance-local.mjs test commissioning-db node_modules/vitest/vitest.mjs run --config vitest.commissioning.config.ts` (entspricht `pnpm test:commissioning:integration` mit der Acceptance-Umgebung). Er verwendet synthetische Daten und bereinigt seinen eigenen Testmandanten.
+
+## Automatische SaaS-Preise
+
+Unter Vertragsverwaltung kann SUPER_ADMIN zwischen Festpreis (`FIXED`) und Grundpreis plus abrechenbaren Messpunkten (`BASE_PLUS_METER`) wählen. Alle Beträge gelten für das ausgewählte Monats- oder Jahresintervall; es gibt keine automatische Umrechnung. Die Übersicht zeigt nach dem Speichern den serverseitig berechneten Gesamtpreis. `/billing` ist für TENANT_ADMIN ausschließlich lesbar und enthält keine externe Billing-ID. Energie- und Verbrauchstarife bleiben getrennt; diese Berechnung löst keine Rechnung oder Zahlung aus.
+
+Die additive Migration `202610260001_saas_pricing` erhält bestehende Subscriptions als `FIXED`, einschließlich noch nicht festgelegter Preise. Meter werden standardmäßig abrechenbar; historische Altzähler aus `MeterReplacement` werden davon ausgenommen, auch innerhalb einer Wechselkette. Messwerte bleiben unverändert. Beim erfolgreichen Zählerwechsel wird der alte Zähler nicht abrechenbar und der neue abrechenbar, atomar mit Wechsel und Audit. `OFFLINE` und `MAINTENANCE` beeinflussen die Abrechenbarkeit nicht. Der aktuelle Bestand wird gezählt, ohne historische Stichtagsabrechnung oder zeitanteilige Berechnung.
+
+Für lokale Entwicklung: Datenbank mit `pnpm db:local` starten, Migrationen nach dem Baseline-Check mit `pnpm db:migrate` anwenden und `pnpm db:generate` ausführen. Tests: `pnpm test:licensing` (nur lokale Demo-Datenbank mit `SEED_DEMO=true`) und `pnpm exec vitest run tests/saas-pricing.test.ts tests/billing-provider.test.ts`. Die neuen Integrationstests erzeugen und entfernen eigene Preis-/Zählerfixtures und prüfen die Migration in einem zurückgerollten Testschema.

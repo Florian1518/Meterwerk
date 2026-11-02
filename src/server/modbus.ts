@@ -21,6 +21,7 @@ import {
   profiles,
 } from "../lib/modbus/contracts";
 import { csvDocument } from "../lib/modbus/csv";
+import { commissioningEvidence } from "./modbus-commissioning";
 
 async function access(
   meterId: string,
@@ -77,6 +78,11 @@ export async function readModbus(
           reviewedRevision: true,
           confirmedUnitId: true,
           completedAt: true,
+          reviewedAt: true,
+          reviewedBy: true,
+          assignedAt: true,
+          assignedBy: true,
+          completedBy: true,
         },
       },
       diagnostic: {
@@ -121,16 +127,31 @@ export async function readModbus(
     meter,
     tenantId,
     canManage: admin,
-    devices: devices.map((d) => ({
-      ...d,
-      telemetry: d.telemetry.map((s) => ({
-        ...s,
-        measurements: s.measurements.map((m) => ({
-          ...m,
-          value: m.value.toString(),
+    devices: await Promise.all(
+      devices.map(async (d) => ({
+        ...d,
+        commissioning: await commissioningEvidence(
+          db,
+          tenantId,
+          d.id,
+          meter.unitId,
+        ),
+        commands: d.commands.map((c) => ({
+          ...c,
+          status:
+            c.status === "PENDING" && c.expiresAt <= new Date()
+              ? "EXPIRED"
+              : c.status,
+        })),
+        telemetry: d.telemetry.map((s) => ({
+          ...s,
+          measurements: s.measurements.map((m) => ({
+            ...m,
+            value: m.value.toString(),
+          })),
         })),
       })),
-    })),
+    ),
     gateways: admin
       ? await db.gateway.findMany({
           where: { tenantId, status: { not: "DISABLED" } },
@@ -288,6 +309,7 @@ export async function writeModbus(
             ...(Array.isArray(old.history) ? old.history : []),
             {
               revision: old.revision,
+              gatewayId: device.gatewayId,
               configuration: old.configuration,
               profile: old.profile,
             },
@@ -312,9 +334,17 @@ export async function writeModbus(
           step: 6,
           pollingEnabled: false,
           reviewedRevision: null,
+          reviewedAt: null,
+          reviewedBy: null,
           confirmedUnitId: null,
+          assignedAt: null,
+          assignedBy: null,
           completedAt: null,
+          completedBy: null,
         },
+      });
+      await tx.modbusDiagnostic.deleteMany({
+        where: { tenantId, deviceId: device.id },
       });
       await tx.gatewayCommand.updateMany({
         where: { deviceId: device.id, tenantId, status: "PENDING" },
@@ -327,6 +357,16 @@ export async function writeModbus(
           "Zuerst ein Gateway und eine Modbus-Konfiguration speichern.",
         );
       const config = device.modbusConfig;
+      const currentMeter = await tx.meter.findFirstOrThrow({
+        where: { id: meterId, tenantId },
+        select: { unitId: true },
+      });
+      const evidence = await commissioningEvidence(
+        tx,
+        tenantId,
+        device.id,
+        currentMeter.unitId,
+      );
       if (value.operation === "COMMAND") {
         if (
           value.action === "START" &&
@@ -394,26 +434,25 @@ export async function writeModbus(
         };
       }
       if (value.operation === "REVIEW") {
-        if (
-          value.revision !== config.revision ||
-          device.diagnostic?.revision !== config.revision ||
-          device.diagnostic.lastError ||
-          !device.diagnostic.lastSuccessAt ||
-          Date.now() - device.diagnostic.lastSuccessAt.getTime() > 300000
-        )
+        if (value.revision !== config.revision || !evidence.canReview)
           throw new AccessError(
             409,
             "Aktuelle erfolgreiche Messung dieser Konfiguration erforderlich.",
           );
         await tx.modbusConfiguration.update({
           where: { deviceId: device.id },
-          data: { reviewedRevision: config.revision, step: 8 },
+          data: {
+            reviewedRevision: config.revision,
+            reviewedAt: new Date(),
+            reviewedBy: actor.id,
+            step: 8,
+          },
         });
       }
       if (value.operation === "ASSIGN") {
         if (value.unitId !== meter.unitId)
           await assertNoGatewayHierarchyMove(tx, tenantId, { id: meterId });
-        if (config.reviewedRevision !== config.revision)
+        if (!evidence.canAssign)
           throw new AccessError(409, "Zuerst Messwerte prüfen und bestätigen.");
         const unit = await tx.unit.findFirst({
           where: { id: value.unitId, tenantId },
@@ -422,7 +461,7 @@ export async function writeModbus(
         if (!unit)
           throw new AccessError(404, "Nutzungseinheit nicht gefunden.");
         if (
-          unit.id !== meter.unitId &&
+          unit.id !== currentMeter.unitId &&
           ((await tx.reading.count({ where: { tenantId, meterId } })) > 0 ||
             (await tx.telemetrySample.count({
               where: { tenantId, device: { tenantId, meterId } },
@@ -438,25 +477,46 @@ export async function writeModbus(
         });
         await tx.modbusConfiguration.update({
           where: { deviceId: device.id },
-          data: { confirmedUnitId: unit.id, step: 9 },
+          data: {
+            confirmedUnitId: unit.id,
+            assignedAt: new Date(),
+            assignedBy: actor.id,
+            step: 9,
+          },
         });
       }
       if (value.operation === "COMPLETE") {
-        if (
-          config.reviewedRevision !== config.revision ||
-          config.confirmedUnitId !== meter.unitId ||
-          device.diagnostic?.lastError ||
-          device.diagnostic?.revision !== config.revision ||
-          !device.diagnostic?.lastSuccessAt ||
-          Date.now() - device.diagnostic.lastSuccessAt.getTime() > 300000
-        )
+        if (!evidence.canComplete)
           throw new AccessError(
             409,
-            "Aktuelle Messung und bestätigte Nutzungseinheit erforderlich.",
+            evidence.reason ??
+              "Technische Verifikation und Bestätigungen erforderlich.",
           );
         await tx.modbusConfiguration.update({
           where: { deviceId: device.id },
-          data: { state: "ACTIVE", completedAt: new Date() },
+          data: {
+            state: "ACTIVE",
+            completedAt: new Date(),
+            completedBy: actor.id,
+          },
+        });
+      }
+      if (["REVIEW", "ASSIGN", "COMPLETE"].includes(value.operation)) {
+        await tx.auditEvent.create({
+          data: {
+            tenantId,
+            actorId: actor.id,
+            action: `modbus.${value.operation.toLowerCase()}.evidence`,
+            entityId: device.id,
+            details: {
+              revision: config.revision,
+              gatewayId: device.gatewayId,
+              configuration: config.configuration,
+              profile: config.profile,
+              testCommandId: evidence.testCommandId,
+              sampleId: evidence.sampleId,
+            },
+          },
         });
       }
       if (value.operation === "DISABLE") {

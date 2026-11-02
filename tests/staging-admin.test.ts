@@ -117,10 +117,14 @@ describe("staging admin guards", () => {
       "src/server/staging-database.mjs",
     ])
       expect(docker).toContain(file);
-    expect(docker).toContain("pnpm exec prisma generate");
-    expect(docker).toContain('CMD ["pnpm", "exec", "prisma", "--version"]');
+    expect(docker).toContain(
+      "node node_modules/prisma/build/index.js generate",
+    );
+    expect(docker).toContain(
+      'CMD ["node", "node_modules/prisma/build/index.js", "--version"]',
+    );
     expect(readFileSync("compose.staging.external.yaml", "utf8")).toContain(
-      "command: [pnpm, exec, prisma, migrate, status]",
+      "command: [node, node_modules/prisma/build/index.js, migrate, status]",
     );
     const cli = readFileSync("scripts/staging-create-admin.ts", "utf8");
     expect(cli).toContain("$disconnect()");

@@ -84,12 +84,12 @@ Vorgeschlagene spätere GitHub-Namen, noch nicht implementiert: Environment stag
 
 ## Migration und synthetische Daten
 
-Der neue isolierte DB-Zielbestand muss leer sein. Anzahl und Namen der Migrationen aus dem tatsächlich gewählten Commit prüfen, keine historische feste Anzahl als Sollwert verwenden. Der kurzlebige Service `migrations` liegt ausschließlich im Profil `operations` und im privaten Netz. Er verwendet `METERWERK_MIGRATIONS_IMAGE` per Digest. Corepack/pnpm und Prisma werden beim Image-Build bereitgestellt; Registry-Zugriff ist für die Runtime nicht nötig. `DATABASE_URL` wird sicher injiziert; keine DB-Portfreigabe als Abkürzung. Der Standardbefehl ist nur `prisma migrate status`, niemals eine automatische Schemaänderung.
+Der neue isolierte DB-Zielbestand muss leer sein. Anzahl und Namen der Migrationen aus dem tatsächlich gewählten Commit prüfen, keine historische feste Anzahl als Sollwert verwenden. Der kurzlebige Service `migrations` liegt ausschließlich im Profil `operations` und im privaten Netz. Er verwendet `METERWERK_MIGRATIONS_IMAGE` per Digest. Prisma und der explizit für den manuellen Admin-Bootstrap benötigte `tsx` Runner werden beim Image-Build installiert; das Runtime-Image enthält keinen Paketmanager und benötigt keinen Registry-Zugriff. `DATABASE_URL` wird sicher injiziert; keine DB-Portfreigabe als Abkürzung. Der Standardbefehl ist nur `prisma migrate status`, niemals eine automatische Schemaänderung.
 
 Sequenziell, jeder Fehler stoppt den Rollout:
 
 ```sh
-dc run --rm --no-deps migrations sh -ec 'pnpm db:generate && pnpm db:migrate && pnpm exec prisma migrate status'
+dc run --rm --no-deps migrations sh -ec 'node node_modules/prisma/build/index.js generate && node scripts/verify-migration-baseline.mjs && node node_modules/prisma/build/index.js migrate deploy && node node_modules/prisma/build/index.js migrate status'
 ```
 
 Erst nach DB-Health und erfolgreichem Image-Preflight manuell ausführen. Alle drei Befehle laufen sequenziell im selben kurzlebigen Container; jeder Fehler beendet ihn erfolglos. Der db:migrate-Befehl prüft read-only Historie/Checksummen und führt prisma migrate deploy aus. Alle Migrationen des gewählten Commits müssen abgeschlossen sein. Kein migrate dev, db push, reset oder Kaschieren von Checksummen. Web/Worker bleiben bis Erfolg gestoppt. Der Runner wird anschließend entfernt; keine Migration beim normalen App-/Workerstart.
@@ -238,7 +238,7 @@ Die statischen Repository-Konfigurationslücken sind damit abgedeckt. Echte Imag
 
 ## Einmaliger erster Plattformadministrator
 
-Nach vollständig abgeschlossenen Migrationen und geprüftem Staging-Preflight führt der Operator im Migrationsimage explizit `pnpm staging:create-admin --name NAME --email EMAIL --password-stdin` aus. Der Default des Images bleibt `prisma --version`, der externe Compose-Default bleibt `prisma migrate status`; keiner startet den Bootstrap automatisch. Ein neues geprüftes Migrationsimage aus dieser Revision ist erforderlich.
+Nach vollständig abgeschlossenen Migrationen und geprüftem Staging-Preflight führt der Operator im Migrationsimage explizit `node node_modules/tsx/dist/cli.mjs scripts/staging-create-admin.ts --name NAME --email EMAIL --password-stdin` aus. Der Default des Images bleibt `prisma --version`, der externe Compose-Default bleibt `prisma migrate status`; keiner startet den Bootstrap automatisch. Ein neues geprüftes Migrationsimage aus dieser Revision ist erforderlich.
 
 Der Befehl verlangt exakt `METERWERK_ENV=staging` und `DATABASE_URL` mit `postgresql:`, Host `db`, Port `5432`, Datenbank und Benutzer `meterwerk_staging`, ohne Queryparameter oder Fragment. Das ist dieselbe Zielprüfung wie im Compose-Preflight, keine Erkennung anhand eines Namensbestandteils. Die Netzwerk-/DNS-Isolation und Bereitstellung der richtigen Zugangsdaten bleiben Voraussetzung des geprüften Staging-Stacks. Es gibt keinen Override für andere Ziele.
 
@@ -263,7 +263,7 @@ Später auf dem Linux-Operatorhost in **Bash**, nach Definition von `dc` aus dem
   fi
   printf '%s' "$admin_password" |
     dc --profile operations run --rm --no-deps -T migrations \
-      pnpm staging:create-admin --name "$admin_name" --email "$admin_email" --password-stdin
+      node node_modules/tsx/dist/cli.mjs scripts/staging-create-admin.ts --name "$admin_name" --email "$admin_email" --password-stdin
 )
 ```
 

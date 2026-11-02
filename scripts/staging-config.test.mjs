@@ -178,27 +178,30 @@ test("read-only host mount policy is source-verified across Compose serializers"
       }
   assertStagingConfig(normalizedWithoutFalse);
 
-  const composeSource = readFileSync("compose.staging.external.yaml", "utf8");
-  assert.throws(
-    () =>
-      assertStagingConfig(config, {
-        composeSource: composeSource.replace(
-          "create_host_path: false",
-          "create_host_path: true",
-        ),
-      }),
-    /create_host_path: false/,
-  );
-  assert.throws(
-    () =>
-      assertStagingConfig(config, {
-        composeSource: composeSource.replace(
-          "    create_host_path: false\n",
-          "",
-        ),
-      }),
-    /create_host_path: false/,
-  );
+  const source = readFileSync("compose.staging.external.yaml", "utf8");
+  for (const newline of ["\n", "\r\n"]) {
+    const composeSource = source.replace(/\r?\n/g, newline);
+    assert.throws(
+      () =>
+        assertStagingConfig(config, {
+          composeSource: composeSource.replace(
+            "create_host_path: false",
+            "create_host_path: true",
+          ),
+        }),
+      /create_host_path: false/,
+    );
+    assert.throws(
+      () =>
+        assertStagingConfig(config, {
+          composeSource: composeSource.replace(
+            /^[ \t]*create_host_path: false\r?\n/m,
+            "",
+          ),
+        }),
+      /create_host_path: false/,
+    );
+  }
 
   const writable = structuredClone(config);
   writable.services["mqtt-worker"].volumes[0].read_only = false;
@@ -494,20 +497,21 @@ test("publish policy permits exactly three SHA-tagged images and requires all ga
       ).with.ref = "main";
     },
     (w) => {
-      w.jobs.publish.steps.at(-1).run +=
+      w.jobs.publish.steps.find((s) => s.run?.includes("docker push")).run +=
         '\ndocker push "ghcr.io/other/image:$GITHUB_SHA"\n';
     },
     (w) => {
-      w.jobs.publish.steps.at(-1).run = w.jobs.publish.steps
-        .at(-1)
-        .run.replace(
-          'docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"',
-          'docker push "ghcr.io/florian1518/meterwerk-migrations:latest"',
-        );
+      w.jobs.publish.steps.find((s) => s.run?.includes("docker push")).run =
+        w.jobs.publish.steps
+          .find((s) => s.run?.includes("docker push"))
+          .run.replace(
+            'docker push "ghcr.io/florian1518/meterwerk-migrations:$GITHUB_SHA"',
+            'docker push "ghcr.io/florian1518/meterwerk-migrations:latest"',
+          );
     },
     (w) => {
       w.jobs.publish.steps = w.jobs.publish.steps.filter(
-        (s) => !s.run?.includes("pnpm exec prisma --version"),
+        (s) => !s.run?.includes("node_modules/prisma/build/index.js --version"),
       );
     },
     (w) => {
@@ -538,7 +542,7 @@ test("build wiring supplies staging at build time and keeps migration tooling se
   const dockerfile = readFileSync("Dockerfile", "utf8");
   const builder = dockerfile
     .split("AS builder")[1]
-    .split("FROM node:22-alpine AS runner")[0];
+    .split(/FROM node:22-alpine@sha256:[a-f0-9]{64} AS runner/)[0];
   assert.match(builder, /ARG NEXT_PUBLIC_METERWERK_ENV/);
   assert.match(
     builder,
@@ -553,12 +557,71 @@ test("build wiring supplies staging at build time and keeps migration tooling se
       ),
     );
   const migrations = readFileSync("Dockerfile.migrations", "utf8");
-  assert.match(migrations, /pnpm install --frozen-lockfile --prod=false/);
+  const webRunner = dockerfile.split(
+    /FROM node:22-alpine@sha256:[a-f0-9]{64} AS runner/,
+  )[1];
+  assert.match(webRunner, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
+  assert.equal(
+    (webRunner.match(/rm -rf \/usr\/local\/lib\/node_modules\/npm/g) ?? [])
+      .length,
+    1,
+  );
+  assert.match(
+    migrations,
+    /COPY packages\/migration-runtime\/package\.json \.\/package\.json/,
+  );
+  assert.match(
+    migrations,
+    /COPY packages\/migration-runtime\/pnpm-lock\.yaml packages\/migration-runtime\/pnpm-workspace\.yaml \.\//,
+  );
+  assert.match(migrations, /pnpm install --frozen-lockfile --prod/);
+  const migrationPackage = JSON.parse(
+    readFileSync("packages/migration-runtime/package.json", "utf8"),
+  );
+  const migrationLock = readFileSync(
+    "packages/migration-runtime/pnpm-lock.yaml",
+    "utf8",
+  );
+  assert(migrationPackage.dependencies.prisma);
+  assert(migrationPackage.dependencies.tsx);
+  assert.doesNotMatch(migrationLock, /embedded-postgres/);
+  const migrationWorkspace = readFileSync(
+    "packages/migration-runtime/pnpm-workspace.yaml",
+    "utf8",
+  );
+  assert.match(migrationWorkspace, /deepmerge-ts:\s*8\.0\.2/);
+  assert.match(migrationWorkspace, /mysql2:\s*3\.23\.1/);
+  assert.match(migrationLock, /deepmerge-ts@8\.0\.2/);
+  assert.match(migrationLock, /mysql2@3\.23\.1/);
+  assert.doesNotMatch(migrationLock, /deepmerge-ts@7\.1\.5|mysql2@3\.15\.3/);
+  assert.doesNotMatch(migrations, /COPY package\.json pnpm-lock\.yaml/);
   assert.match(migrations, /COPY scripts\/verify-migration-baseline.mjs/);
-  assert.match(migrations, /COREPACK_ENABLE_NETWORK=0/);
+  assert.match(migrations, /node_modules\/prisma\/build\/index.js/);
+  assert.match(migrations, /rm -rf \/usr\/local\/lib\/node_modules\/npm/);
+  assert.match(migrations, /\/opt\/corepack/);
+  assert.match(migrations, /\/usr\/local\/bin\/pnpm/);
   assert.doesNotMatch(
     migrations,
     /CMD.*(?:db:migrate|migrate.*deploy)|ENTRYPOINT.*migrate/,
   );
   assert.match(migrations, /USER node/);
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  assert.equal(packageJson.dependencies?.tsx, undefined);
+  assert.equal(packageJson.devDependencies?.tsx, "^4.21.0");
+  assert(migrationPackage.dependencies.tsx, "migration runtime includes tsx");
+  assert.equal(packageJson.dependencies?.prisma, undefined);
+  assert.equal(packageJson.devDependencies?.prisma, "^7.2.0");
+  assert.equal(migrationPackage.packageManager, "pnpm@12.5.1");
+  assert(
+    migrationPackage.dependencies.prisma,
+    "migration runtime includes Prisma CLI",
+  );
+  assert.match(
+    readFileSync("docs/STAGING.md", "utf8"),
+    /node node_modules\/tsx\/dist\/cli\.mjs scripts\/staging-create-admin\.ts/,
+  );
+  const securityScan = readFileSync("scripts/scan-release-images.mjs", "utf8");
+  assert.match(securityScan, /registry:\$\{reference\}/);
+  assert.match(securityScan, /docker", \["cp", `\$\{container\}:\//);
+  assert.doesNotMatch(securityScan, /docker", \["export"/);
 });

@@ -290,6 +290,11 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+enum BillingPricingMode {
+  FIXED
+  BASE_PLUS_METER
+}
+
 enum BillingInterval {
   MONTHLY
   YEARLY
@@ -611,6 +616,9 @@ model Subscription {
   endsAt                DateTime?
   trialEndsAt           DateTime?
   billingInterval       BillingInterval    @default(MONTHLY)
+  pricingMode           BillingPricingMode @default(FIXED)
+  basePriceAmount       Decimal?           @db.Decimal(12, 2)
+  pricePerMeterAmount   Decimal?           @db.Decimal(12, 2)
   priceAmount           Decimal?           @db.Decimal(12, 2)
   priceCurrency         String?            @db.VarChar(3)
   billingContactName    String?
@@ -917,6 +925,7 @@ model Meter {
   model              String
   measurementUnit    String
   location           String
+  billable           Boolean              @default(true)
   status             MeterStatus          @default(ACTIVE)
   lastContact        DateTime?
   installedAt        DateTime
@@ -1870,8 +1879,13 @@ model ModbusConfiguration {
   step             Int                 @default(1)
   pollingEnabled   Boolean             @default(false)
   reviewedRevision Int?
+  reviewedAt       DateTime?
+  reviewedBy       String?
   confirmedUnitId  String?
+  assignedAt       DateTime?
+  assignedBy       String?
   completedAt      DateTime?
+  completedBy      String?
   updatedAt        DateTime            @updatedAt
 
   @@unique([deviceId, tenantId])

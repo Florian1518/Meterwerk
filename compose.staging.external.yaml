@@ -142,7 +142,7 @@ services:
       RELEASE_VERSION: ${RELEASE_VERSION:?Set the published release version}
       GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?Set the full published commit SHA}
     # Default is read-only. Applying migrations requires an explicit operator command.
-    command: [pnpm, exec, prisma, migrate, status]
+    command: [node, node_modules/prisma/build/index.js, migrate, status]
     depends_on:
       db: { condition: service_healthy }
     networks: [staging]
