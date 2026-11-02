@@ -1,108 +1,191 @@
 # Disaster Recovery
 
-## Datenklassen
+## Scope and current evidence
 
-| Klasse            | Daten                                                                                                 | Wiederherstellung                              |
-| ----------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Kritisch          | PostgreSQL-Tenantdaten, User/Rollen, Meter/Devices, Readings, AuditEvents, API-/Webhook-Konfiguration | PostgreSQL Base Backup + WAL/PITR              |
-| Wiederherstellbar | Reports, WorkOrder-Metadaten, Queue-/Worker-Zustände                                                  | DB-Backup; laufende Jobs werden neu eingeplant |
-| Rekonstruierbar   | Aggregationen, Health-Metriken, Cache, abgeleitete Exporte                                            | aus Primärdaten/erneuter Berechnung            |
-| Temporär          | Sessions, Locks, lokale Queues, Scanner-Leases                                                        | verfallen lassen und sicher neu erzeugen       |
+This runbook covers PostgreSQL, application release/configuration, workers,
+MQTT configuration, private object storage, and credential recovery. It is a
+software procedure, not authorization to access Production or physical meters.
+Production data and credentials are not used by CI recovery tests.
 
-Attachments, Fotos, Signaturen, Reports und Diagnostic Files liegen in privaten
-Object-Storage-Objekten. Ihre Tenant-Zuordnung und Hashes liegen in PostgreSQL;
-Restore muss Datenbank und Objekte konsistent abgleichen. Quarantäneobjekte
-werden nach definierter Retention separat behandelt.
+The repository provides an encrypted logical-backup command, a digest/manifest
+verifier, an isolated restore command, an application/schema restore verifier,
+and synthetic full-restore/PITR drills. The weekly GitHub workflow exercises
+synthetic CI data only. It does not read a live Staging or Production backup.
+No Production provider, bucket, KMS key, WAL archive, or credential is configured
+by this phase. Production recovery remains blocked until the external operator
+provisions and accepts those resources.
 
-## Technische RPO/RTO-Ziele
+## Recovery targets
 
-Diese Werte sind Engineering-Ziele, keine SLA- oder Garantieversprechen:
+These are proposed engineering objectives, not an SLA or measured guarantee.
+The applicable target must be reviewed against host capacity, database size,
+legal retention, and provider limits before use.
 
-| Szenario                    |                         RPO-Ziel |            RTO-Ziel |
-| --------------------------- | -------------------------------: | ------------------: |
-| Datenbankausfall            |                       15 Minuten |          60 Minuten |
-| Verlust einer Web-Instanz   |                      0–5 Minuten |          15 Minuten |
-| Worker-Ausfall              |          5 Minuten Queue-Zustand |          30 Minuten |
-| Storage-Ausfall             |    15 Minuten Objekt-Replikation |         120 Minuten |
-| Vollständiger Serververlust |                       24 Stunden |         240 Minuten |
-| Fehlerhaftes Deployment     |           0 Minuten Datenverlust | 30 Minuten Rollback |
-| Beschädigte Datenbank       | letzter geprüfter WAL/Base-Stand |         240 Minuten |
+| Scenario                         |                    Objective RPO | Objective RTO | Conditions / current limit                                                                                                                      |
+| -------------------------------- | -------------------------------: | ------------: | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accidental row/data deletion     |                            5 min |           4 h | Requires a current base backup and WAL archive with no more than 5 min lag; not configured for Production.                                      |
+| Failed/incompatible migration    |                            5 min |           4 h | Fix forward first when safe; otherwise restore/PITR to a new isolated DB, validate, then operator-approved cutover.                             |
+| Database corruption              |                            5 min |           4 h | Requires verified base backup, archived WAL, independent storage and a tested clean PostgreSQL host.                                            |
+| Complete host loss               | 24 h without WAL; 5 min with WAL |           4 h | Daily offsite full backup is the fallback. Reprovisioning, external secrets, DNS/TLS, and object storage affect RTO.                            |
+| Compromised instance             |                Incident-specific |    8 h target | Isolate and rotate credentials first; select a backup predating compromise. Attacker dwell time may make the data-loss window much larger.      |
+| Defective application deployment |       0 min if schema compatible |        30 min | Redeploy previously verified immutable image digests. Database rollback is never implicit; incompatible migrations use the migration procedure. |
 
-## PostgreSQL, Registry und Verification
+The five-minute PITR target requires WAL archival at least every five minutes,
+continuous monitoring of archive lag, and retention covering the incident
+detection window. Without a verified archive, the honest fallback is the last
+verified full backup: up to 24 hours of data loss for a daily schedule. RTO is
+measured from incident declaration through all restore checks; estimates alone
+do not count as a passed drill.
 
-`pnpm db:backup` verwendet PostgreSQL `pg_dump -Fc`, schreibt die Dump-Datei
-nicht in die Datenbank und erzeugt eine SHA-256-Datei. Die Registry in
-`BackupRecord` speichert Typ, Umgebung, Zeitpunkte, Status, App-/Git-/Migration-
-Stand, Größe, Hash, Storage-Referenz, Retention und Fehlergrund. Binärdaten und
-Credentials gehören nicht in die Registry.
+## Backup model and ownership
 
-Ein Backup gilt erst nach Datei-/Formatprüfung, erwarteter Größe, Prüfsumme,
-lesbaren Metadaten und `pg_restore --list` als verifiziert. Ein beendeter
-Backup-Prozess allein reicht nicht.
+| Control         | Required setting                                                                                                                                                                                                                        | Owner / evidence                                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Logical backup  | PostgreSQL custom-format `pg_dump`, daily at 02:00 UTC; additionally before schema-changing operations                                                                                                                                  | Platform operator; timestamped encrypted file and manifest                                                                              |
+| PITR source     | PostgreSQL physical base backup plus continuous WAL archive, target archive lag <= 5 min                                                                                                                                                | Database operator; provider metrics and successful PITR evidence                                                                        |
+| Offsite         | Dedicated private, versioned S3 bucket in a separate account/region; prefix `meterwerk-backups/`; independent credentials/role                                                                                                          | Storage operator; object version and server-side encryption check                                                                       |
+| Encryption      | Client-side `age` X25519 recipient encryption before upload; S3 SSE-KMS in transit/offsite                                                                                                                                              | Security owner; public recipient in deployment config, private identity escrowed in external secret manager and offline recovery escrow |
+| Retention       | 35 daily copies and 12 month-end copies as a starting policy; apply legal/contractual limits and holds before enabling deletion                                                                                                         | Data owner; bucket lifecycle configuration reviewed; newest verified backup protected                                                   |
+| Integrity       | SHA-256 of encrypted bytes, size and format; manifest contains DB name, PostgreSQL server/tool versions, migration version, source SHA, UTC timestamp and backup type; verify before restore and compare remote object size/version/KMS | Backup job and restore verifier; secret-free JSON evidence                                                                              |
+| Restore testing | Weekly isolated synthetic DB restore and PITR in CI; monthly restore of the newest offsite copy into isolated TEST after a provider is configured                                                                                       | Platform operator; evidence report and run ID                                                                                           |
 
-## Sicherer Restore-Test
+Use `pnpm db:backup backup <unique-file.age>` with `DATABASE_URL`, the full
+40-character `GIT_COMMIT_SHA`, `METERWERK_BACKUP_AGE_RECIPIENT`, and installed
+`pg_dump`, `age`, and (for offsite) `aws` CLI. `METERWERK_BACKUP_AGE_RECIPIENT`
+is public key material; the matching private identity is supplied only by a
+secret manager as `METERWERK_BACKUP_AGE_IDENTITY_FILE`. Do not put private
+identities, database URLs, cloud credentials, or plaintext dumps in the
+repository, a workflow artifact, or logs. The tool streams dump/encryption,
+uses restrictive file permissions and temporary files, writes the manifest
+atomically, and removes plaintext on completion.
 
-`Backup auswählen → meterwerk_restore_*-Datenbank → pg_restore → Migration/
-Schema prüfen → Stichproben und Foreign Keys → Readiness → RestoreTestRun und
-AuditEvent`. Die Zielprüfung lehnt beliebige Datenbanknamen ab. Es gibt keinen
-Reset und keinen Restore auf Development-/Production-Datenbanken.
+For an independent offsite copy, set `METERWERK_BACKUP_S3_URI` to a dedicated
+private bucket prefix and `METERWERK_BACKUP_S3_KMS_KEY_ID` to an approved
+customer-managed KMS key/alias. The CLI uses the AWS external credential provider
+(instance role/OIDC; never a credential argument), requests SSE-KMS, uploads
+the encrypted object and manifest, then requires a version ID, matching size,
+and `aws:kms` with the same KMS key reference from `head-object`. Configure bucket versioning, deny public
+access, cross-account/region replication, KMS key policy, retention/lifecycle,
+and object lock where approved. The application intentionally has no
+Production credentials or bucket defaults. Missing offsite configuration does
+not silently claim an offsite backup.
 
-## PITR
+## Isolated full restore and verification
 
-Produktiv wird ein PostgreSQL-Base-Backup mit archivierten WAL-Dateien benötigt.
-Für PITR: isolierte Zielinstanz bereitstellen, Base Backup einspielen, WAL bis
-zum dokumentierten Zeitpunkt anwenden, Migrationstand prüfen, Object Storage
-und Datenbank referenziell validieren, Readiness testen. In Phase 5s wird keine
-echte PITR auf produktiven Daten ausgeführt.
+1. Declare the incident, record UTC time, source SHA, target RPO/RTO, and
+   authorize a recovery operator.
+2. Provision a clean, isolated PostgreSQL target. In tests set
+   `METERWERK_ENV=test`, `DATABASE_URL` to that target and use only a new
+   `meterwerk_restore_*` database name.
+3. Obtain the decryption identity from the authorized secret manager; verify
+   the manifest, ciphertext size/SHA-256, age decryption, PostgreSQL custom
+   archive header, and `pg_restore --list`.
+4. Restore into the newly created empty database with `pg_restore` in a single
+   transaction. The tool rejects any target name outside the restore prefix;
+   it never drops or overwrites a database.
+5. Run `pnpm db:restore:verify` with `PGDATABASE`, `DATABASE_URL`,
+   `METERWERK_ENV=test`, `METERWERK_BACKUP_MANIFEST`, and
+   `METERWERK_RESTORE_READY_URL`. The gate requires database reachability,
+   core tables, successful Prisma migration history matching the manifest,
+   tenant data and a validated composite tenant foreign key, all foreign keys
+   validated, a clean Prisma schema diff/no pending migrations and a healthy
+   application readiness endpoint. Missing evidence is failure.
+6. Compare tenant-scoped row counts and sampled business invariants against
+   known source evidence without exporting customer data. Reconcile referenced
+   object-storage versions and hashes. A database-only success is not a
+   full-service recovery.
+7. Save only secret-free manifest, check results, UTC timings, tool versions,
+   source/image digests and the run URL as recovery evidence. Never upload the
+   database dump, decrypted data or identity file as a CI artifact.
 
-## Object Storage und Konfiguration
+The application should be started from the verified immutable Web and Worker
+image digests belonging to the accepted release. The migration image digest
+must be from the same release. Do not rebuild or substitute a mutable tag as a
+recovery image. Keep Compose/deployment definitions, reverse-proxy routing,
+MQTT config/ACL/CA references, and recovery scripts versioned. CI exercises
+the Web readiness check against the restored synthetic database; external
+Worker/MQTT/TLS/DNS restoration remains an operator acceptance step.
 
-Private Buckets/Objekte, Versionierung sofern der Provider sie unterstützt,
-Hash-/Tenant-Metadaten, Retention und getrennte Quarantäne werden vorausgesetzt.
-Benötigte Wiederanlaufreferenzen sind nur Secret-Namen, keine Werte:
-`DATABASE_URL`, `SESSION_SECRET`, `WEBHOOK_SECRET_ENCRYPTION_KEY`, Storage-
-Endpoint/Bucket/Token, MQTT-CA/Cert/Key, Mail-/Push-Provider, Domains,
-Reverse-Proxy/TLS, Worker- und Migration-Konfiguration.
+## Point-in-time recovery
 
-## Monitoring und Einschränkungen
+Production PITR requires a PostgreSQL base backup, continuous WAL archiving to
+independent encrypted storage, a monitored archive command, restore command,
+retention, and a trusted UTC target. None is configured for Production by this
+phase. The automated `scripts/pitr-drill.sh` creates an isolated PostgreSQL 17
+instance with a synthetic baseline, enables WAL archiving, takes a physical
+base backup, writes a synthetic error after a recorded recovery timestamp,
+restores to the target, and asserts that baseline data is present and the
+post-target error is absent. This proves the PostgreSQL mechanism in CI, not
+Production archive availability or an achieved RPO.
 
-Überwacht werden fehlgeschlagene/zu alte Backups, fehlende gültige Backups,
-Checksum-Fehler, Restore-Testfehler und Storage-Unerreichbarkeit. Events werden
-dedupliziert und enthalten keine Backup-Inhalte oder Secrets. Providerabhängige
-WAL-, Object-Versionierungs-, Retention- und Restore-Automatisierung muss in der
-Produktionsumgebung noch eingerichtet und regelmäßig getestet werden.
+For an incident, restore the base backup into a clean host, configure
+`restore_command`, `recovery.signal`, and `recovery_target_time` (or a reviewed
+LSN), start recovery without public traffic, wait for promotion, validate
+schema/data/object references, and only then request operator approval for
+endpoint cutover. Preserve source/WAL evidence read-only.
 
-## Scheduler und Retention
+## Migration failure: fix forward or restore
 
-`BackupSchedule` hält Zeitplan, nächste Ausführung, letzte erfolgreiche
-Ausführung, Retry-/Backoff-Zustand und Fehlergrund persistent. Ein Worker darf
-fällige Jobs nur per Lease claimen; abgelaufene Leases werden reclaimt und
-erfolgreiche Jobs über eindeutige Backup-Metadaten idempotent behandelt. Die
-Retention unterscheidet tägliche, wöchentliche und monatliche Aufbewahrung.
-Das jüngste gültige Backup wird niemals allein durch einen Retention-Lauf
-gelöscht. Kandidaten werden zuerst als `EXPIRED` markiert, auditiert und erst
-danach providerabhängig gelöscht.
+First stop retries and preserve logs/backup/WAL. Check whether the migration
+transaction rolled back, inspect `_prisma_migrations`, and determine whether
+the running application and new schema are backward compatible. Prefer a
+tested forward fix when data changes are valid and repairable. Restore/PITR is
+required if integrity is uncertain, the migration is destructive, or the
+application cannot safely run against the resulting schema. Restore to a new
+isolated database and verify there; never attempt an in-place database
+rollback or edit a historical migration. The CI drill injects a failure in a
+disposable database, verifies transaction rollback, and restores the known
+good synthetic backup into another new DB.
 
-## Storage-Versionen und Konsistenz
+## Host loss, configuration and credentials
 
-`BackupObjectVersion` speichert Objekt-Key, Tenant, Version-ID/ETag, Hash,
-Größe, Status und Backup-Zuordnung. DB-/Storage-Konsistenz ist `CONSISTENT`,
-`WARNING`, `INCONSISTENT` oder `UNKNOWN`. Fehlende Objekte werden nicht ersetzt
-oder gelöscht; sie erzeugen einen Recovery-Event.
+1. Isolate/revoke the lost host and its workload roles. Do not reconnect an
+   untrusted host to live services.
+2. Provision a clean host/cluster from the versioned Compose and operational
+   configuration. Restore DB and private objects from independently stored,
+   verified versions.
+3. Pull only accepted immutable Web/Worker/Migration image digests and verify
+   release signatures/provenance from Phase 2 evidence.
+4. Reissue secrets from their authorized external source: database role,
+   session/MFA encryption, webhook encryption, object-storage role, MQTT CA
+   and client/server certificates/keys, mail/push provider, signing/deploy
+   identity. Rotate credentials after compromise; invalidate sessions,
+   tokens and certificates. The backup manifest contains references/metadata
+   only, never secret values.
+5. Restore reverse proxy/DNS/TLS from managed configuration; verify hostnames,
+   issuer/expiry, forwarding headers and firewall rules before enabling traffic.
+6. Start PostgreSQL, migrations only as an explicit reviewed operation,
+   object storage, MQTT, Web and Workers. Wait for database and application
+   readiness; verify tenant isolation, queues, MQTT health, object hashes,
+   audit trail and a synthetic transaction. Keep device connections disabled;
+   no physical hardware is required for software recovery.
+7. Record incident timeline, selected backup/WAL point, measured data loss,
+   elapsed recovery time, evidence links, deviations and follow-up actions.
 
-## Vollständiger Restore-Drill
+Required but not backed up as secret values: Compose and proxy configuration,
+DNS zone/registrar references, certificate issuance configuration, MQTT
+configuration/ACL and certificate identifiers, immutable release digests,
+DB schema/migration history, object-storage bucket/version references,
+retention and alert routes. Secrets must be re-provisioned from the designated
+secret manager / cloud IAM, with separately escrowed age identity. If that
+source is unavailable, stop recovery and escalate; do not use a local `.env`
+or a copied credential archive.
 
-Der Drill simuliert Incident und isoliert die Testumgebung, stellt DB und
-private Objektversionen wieder her, prüft Migrationen, startet Web und Worker
-und validiert Login, Tenantzugriff, Dashboard, Meter/Readings, Reports, Rules,
-Attachments und AuditEvents. MQTT wird nur per Konfigurations-/Healthcheck
-geprüft; keine reale Hardware wird verbunden. Stichproben werden als solche
-gekennzeichnet.
+## Scenarios, escalation and evidence
 
-# Teil 3 – Failover und Übungen
+| Event                  | Response                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accidental deletion    | Preserve audit/time evidence; PITR to a separate target immediately before the change; selectively validate before any approved cutover.    |
+| Failed migration       | Stop rollout and migration retries; inspect migration record and transaction state; fix forward or restore per the procedure above.         |
+| Corrupt DB / lost host | Isolate source; restore latest verified base+WAL to a clean host; validate the full service before traffic.                                 |
+| Compromised instance   | Isolate, revoke role/session/certificates, rotate keys from clean systems, select a pre-compromise backup and inspect audit history.        |
+| Failed deployment      | Roll back to prior verified image digests only if schema compatibility is proven; otherwise keep traffic stopped and recover DB separately. |
 
-Web-Instanzen bleiben zustandslos und werden über Readiness/Health hinter einem beliebigen Load Balancer betrieben. Graceful Shutdown beendet keine laufenden kritischen Mutationen; gemeinsame Datenbank-, Queue- und Lease-Zustände ermöglichen die Übernahme durch eine andere Instanz. PostgreSQL-Failover verwendet Primary/Replica, reconnectende Pools und einen wechselbaren Endpoint; Multi-Master ist ausgeschlossen.
-
-Worker-Ausfälle werden über Heartbeats erkannt. Abgelaufene Leases werden reclaimed, Retries begrenzt und Dead-Letter/Failed Jobs erhalten. MQTT nutzt Store-and-forward, Message-ID/Idempotenz, Offline-Status und Backoff. Storage- und Datenbankfehler markieren Uploads/Referenzen als nicht erfolgreich und werden nach Wiederkehr über Versionen, Prüfsummen und Konsistenzstatus geprüft.
-
-RPO/RTO werden in Drills aus gemessenen Zeitpunkten berechnet. Fehlende Messungen bleiben `UNKNOWN`; Zielwerte sind technische Engineering-Ziele, keine SLA. Drills, Findings, nächste Termine und Status sind persistiert und nur in TEST/STAGING ausführbar. Alerts verwenden die vorhandene deduplizierte Recovery-Event-Struktur für alte/fehlgeschlagene Backups, Restore/PITR, RPO/RTO-Verletzungen, Inkonsistenzen und überfällige Drills.
+Escalate any missing/offline backup, hash or decryption failure, WAL gap,
+unexplained migration, tenant/FK inconsistency, secret-store outage, or missed
+RPO/RTO to the platform/security owner and incident lead. Two-person review is
+required before external endpoint cutover or restoring customer data. Evidence
+must include manifest hash, object version/KMS state, release digest and
+signature verification, migration state, restore checks, sanitized timing,
+operator approvals and incident reference. Retain evidence under the approved
+security/audit retention policy; do not put customer data or secrets in CI.

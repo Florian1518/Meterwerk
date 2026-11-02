@@ -1,5 +1,29 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## Software Completion Phase 3 – Backup / Restore / PITR / Disaster Recovery
+
+Arbeitsbranch `software-completion/phase-3` wurde vom unveränderten
+`master`-SHA `ff7575e63114e651f8e32e0733f5e299b8d7c0bc` erstellt. Diese Phase
+ergänzt die vorhandenen Restore-Modelle um einen verschlüsselten
+Dump-/Manifestpfad, Offsite-Verifikation, Restore-Verifier, synthetische
+PITR-/Migrationsfehler-Drills, einen wöchentlichen Recovery-Workflow und das
+Runbook. Das ist keine Production-Konfiguration oder Production-Abnahme.
+
+| Recovery-Baustein                         | Phase-3-Status | Evidence / Grenze                                                                                                       |
+| ----------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL-Konfiguration / logischer Dump | PARTIAL        | `pg_dump -Fc` wird verschlüsselt und manifestiert; Production-Job nicht provisioniert.                                  |
+| WAL / PITR                                | PARTIAL        | Isolierter synthetischer PostgreSQL-Drill; kein echtes Staging-/Production-WAL-Archiv.                                  |
+| Offsite / Verschlüsselung                 | PARTIAL        | Age + versioniertes SSE-KMS-S3-Verfahren implementiert; externer Bucket, KMS und IAM nicht konfiguriert.                |
+| Full Restore / Restore-Verifier           | PARTIAL        | Isolierter CI-Workflow prüft Schema, Migrationen, Tenant-Daten, FK, Drift und App-Readiness; Remote-CI-Lauf ausstehend. |
+| RPO / RTO                                 | PARTIAL        | Ziele in `DISASTER-RECOVERY.md`; echte Betriebswerte noch nicht gemessen.                                               |
+| Migration-Failure / Host-Loss             | PARTIAL        | Synthetische DB-/App-Recovery im CI; vollständige Worker/MQTT/Proxy-/Secret-Wiederherstellung nicht akzeptiert.         |
+| Wöchentlicher Restore-Test                | PARTIAL        | Schedule/Dispatch implementiert; wird erst nach Aufnahme in `master` registriert und manuell validiert.                 |
+| Staging-Recovery-Acceptance               | BLOCKED        | In dieser Phase kein Zugriff auf bestehende Staging-Daten oder deren Backup.                                            |
+
+Keine Phase-3-Evidence verwendet echte Hardware oder echte Kundendaten. Der
+vorhandene lokale Arbeitsbaum außerhalb dieses isolierten Worktrees blieb
+unverändert. RC7 und Production sind nicht verändert.
+
 ## Phase 2 – Abschluss auf dem Default-Branch (02.11.2026)
 
 **Scheduled Vulnerability Process / laufender Image Vulnerability Process: DONE.**

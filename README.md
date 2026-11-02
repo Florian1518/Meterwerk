@@ -96,7 +96,7 @@ Softwareseitige Treiber, Simulatoren und Protokollverträge sind nicht gleich re
 
 - [Dokumentationsübersicht](docs/README.md)
 - [Entwicklung](docs/DEVELOPMENT.md) · [Architektur](docs/ARCHITECTURE.md) · [Umgebungsvariablen](docs/ENVIRONMENT.md)
-- [Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md) · [Monitoring](docs/MONITORING.md)
+- [Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md) · [Monitoring](docs/MONITORING.md) · [Backup/Restore](docs/BACKUP-RESTORE.md) · [Disaster Recovery](docs/DISASTER-RECOVERY.md)
 - [Testing](docs/TESTING.md) · [Security](docs/SECURITY.md) · [Disaster Recovery](docs/DISASTER-RECOVERY.md)
 - [Staging und Demo](docs/STAGING-DEMO.md) · [Capabilities](docs/CAPABILITIES.md) · [Known Limitations](docs/KNOWN-LIMITATIONS.md)
 - [Software Acceptance](docs/SOFTWARE-ACCEPTANCE.md) · [RC Checklist](docs/checklists/RC-ACCEPTANCE-CHECKLIST.md) · [Acceptance Report](docs/acceptance/SOFTWARE-ACCEPTANCE-RESULT.md)
