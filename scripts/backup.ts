@@ -369,7 +369,7 @@ async function createBackup(file: string) {
           "--tuples-only",
           "--no-align",
           "--command",
-          "SELECT current_setting('server_version')",
+          "SELECT (current_setting('server_version_num')::integer / 10000)::text || '.' || (current_setting('server_version_num')::integer % 10000)::text",
         ],
         dbEnv,
       ),
