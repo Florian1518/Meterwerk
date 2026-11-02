@@ -74,23 +74,29 @@ export function validateManifest(
   ]);
   if (Object.keys(m).some((key) => !fields.has(key)))
     throw new Error("Backup manifest contains unsupported fields");
+  const invalid: string[] = [];
+  if (m.format !== 1) invalid.push("format");
+  if (!/^[a-z0-9_]{1,63}$/.test(m.database ?? "")) invalid.push("database");
+  if (!/^\d+\.\d+(?:\.\d+)?$/.test(m.postgresVersion ?? ""))
+    invalid.push("postgresVersion");
   if (
-    m.format !== 1 ||
-    !/^[a-z0-9_]{1,63}$/.test(m.database ?? "") ||
-    !/^\d+\.\d+(?:\.\d+)?$/.test(m.postgresVersion ?? "") ||
     !/^pg_dump \(PostgreSQL\) \d+\.\d+(?:\.\d+)?/.test(
       m.backupToolVersion ?? "",
-    ) ||
-    !/^[a-zA-Z0-9_-]{1,128}$/.test(m.migrationVersion ?? "") ||
-    !/^[a-f0-9]{40}$/.test(m.sourceSha ?? "") ||
-    !Number.isFinite(Date.parse(m.createdAt ?? "")) ||
-    m.type !== "logical-custom-encrypted" ||
-    !Number.isSafeInteger(m.sizeBytes) ||
-    (m.sizeBytes ?? 0) <= 0 ||
-    !/^[a-f0-9]{64}$/.test(m.sha256 ?? "") ||
-    m.encrypted !== true
+    )
   )
-    throw new Error("Backup manifest invalid");
+    invalid.push("backupToolVersion");
+  if (!/^[\w.-]{1,128}$/.test(m.migrationVersion ?? ""))
+    invalid.push("migrationVersion");
+  if (!/^[a-f0-9]{40}$/.test(m.sourceSha ?? "")) invalid.push("sourceSha");
+  if (!Number.isFinite(Date.parse(m.createdAt ?? "")))
+    invalid.push("createdAt");
+  if (m.type !== "logical-custom-encrypted") invalid.push("type");
+  if (!Number.isSafeInteger(m.sizeBytes) || (m.sizeBytes ?? 0) <= 0)
+    invalid.push("sizeBytes");
+  if (!/^[a-f0-9]{64}$/.test(m.sha256 ?? "")) invalid.push("sha256");
+  if (m.encrypted !== true) invalid.push("encrypted");
+  if (invalid.length)
+    throw new Error(`Backup manifest invalid: ${invalid.join(",")}`);
   const serialized = JSON.stringify(value);
   if (
     /password|secret|token|credential|postgres(?:ql)?:\/\/[^\s]*@/i.test(
