@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 # Disposable synthetic-only PostgreSQL PITR drill. No external DB/credentials.
 command -v docker >/dev/null || { echo "docker unavailable" >&2; exit 1; }
