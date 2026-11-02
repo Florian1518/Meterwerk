@@ -480,13 +480,18 @@ export async function restoreBackup(file: string, target: string) {
     await create.done;
     const restore = run(
       "pg_restore",
-      ["--no-owner", "--no-acl", "--exit-on-error", "--single-transaction"],
-      { input: plain, env: restoreEnv },
+      [
+        "--dbname",
+        target,
+        "--no-owner",
+        "--no-acl",
+        "--exit-on-error",
+        "--single-transaction",
+        plain,
+      ],
+      { env: restoreEnv },
     );
-    await Promise.all([
-      pipeline(createReadStream(plain), restore.child.stdin!),
-      restore.done,
-    ]);
+    await restore.done;
     return {
       database: target,
       sourceSha: manifest.sourceSha,
