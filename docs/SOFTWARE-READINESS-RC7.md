@@ -26,10 +26,12 @@ vorhandene lokale Arbeitsbaum außerhalb dieses isolierten Worktrees blieb
 unverändert. RC7 und Production sind nicht verändert.
 
 Phase-3-Evidence: Branch `software-completion/phase-3`, Commit
-`c70e9e010453a6b2eb1a1abb33315840fe2284ad`; vollständiger Remote-CI-Lauf
+`c70e9e010453a6b2eb1a1abb33315840fe2284ad`; Remote-CI-Lauf
 [41457820750](https://github.com/Florian1518/Meterwerk/actions/runs/41457820750)
-mit Fast Checks, Unit-, Integration-/Migration-, Browser-/Mobile-, Production-Build-
-und synthetischem Full-Restore/PITR-Job erfolgreich. Der Recovery-Job erzeugte
+mit Fast Checks, Unit-, Integration-/Migration-, Browser-/Mobile- und
+Production-Build-Jobs erfolgreich. Der separate synthetische Full-Restore/PITR-
+Recovery-Lauf [41457820797](https://github.com/Florian1518/Meterwerk/actions/runs/41457820797)
+war ebenfalls erfolgreich und erzeugte
 synthetische Recovery-/Host-Loss-Evidence als CI-Artefakt (30 Tage); Backup-Dump
 und private Schlüssel wurden nicht als Artefakte hochgeladen. Der wöchentliche
 Schedule `23 7 * * 1` ist im Branch definiert, auf `master` aber noch nicht
