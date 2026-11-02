@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Disposable synthetic-only PostgreSQL PITR drill. No external DB/credentials.
 command -v docker >/dev/null || { echo "docker unavailable" >&2; exit 1; }
-work="$(mktemp -d)"
+work="$(mktemp -d /tmp/meterwerk-pitr.XXXXXX)"
 source="meterwerk-pitr-source-$$"
 restored="meterwerk-pitr-restored-$$"
 mkdir -p "$work/archive" "$work/base"
@@ -16,7 +16,10 @@ cleanup() {
     docker logs "$restored" >&2 || true
   fi
   docker rm -f "$restored" "$source" >/dev/null 2>&1 || true
-  rm -rf "$work"
+  case "$work" in
+    /tmp/meterwerk-pitr.*) sudo rm -rf -- "$work" ;;
+    *) echo "Refusing to remove unexpected PITR temp path" >&2; return 1 ;;
+  esac
   return "$result"
 }
 trap cleanup EXIT
