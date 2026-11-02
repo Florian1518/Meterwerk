@@ -89,9 +89,9 @@ Der GitHub-Status wurde am Stichtag live read-only geprüft. Der normale CI-Work
 
 | Status         |  Anzahl |
 | -------------- | ------: |
-| DONE           |      57 |
+| DONE           |      58 |
 | PARTIAL        |      72 |
-| OPEN           |      31 |
+| OPEN           |      30 |
 | BLOCKED        |       0 |
 | NOT APPLICABLE |       0 |
 | **Gesamt**     | **160** |
