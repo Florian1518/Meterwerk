@@ -52,7 +52,7 @@ Syft 1.55.0 produced CycloneDX 1.7 JSON SBOMs for all three final digests; GitHu
 
 Earlier failed runs remain documented: 41020984252 blocked on migration image scan (0 files and High findings), 41056676032 on worker policy, 41060019959 on migration image build, and 41063237419 on two High CVEs in Prisma transitive dependencies. The accepted digests prove the fixes. No production deployment.
 
-Lokale Prüfung am 30.10.2026: 45 Node-Tests für Manifest, Image-Policy, Source-State und Staging sowie 52 Supply-Chain-Vitest-Tests bestanden (davon 10 Staging-Konfigurationstests); zusätzlich 11 Staging-Admin-Tests. Der Root-Worker-Graph besteht die statische Prüfung mit 317 Paketen und drei Bundles. Der unabhängige Migration-Runtime-Install wurde mit fixiertem Lockfile lokal erfolgreich installiert (163 Pakete, kein embedded-postgres; Prisma CLI 7.10.0 startet). Typecheck, Lint, Format, Production Build, 77 Security-Regressionstests, Secret Scan (0 Review-Funde), Dokuchecks und Diff-Check bestanden. Integration auf isolierter Demo-DB: 18 Zugriffstests, 8 CSV-Import-, 6 Datenqualitätstests und 7 Rules-Checks bestanden. Alle 560 Unit-Testfälle bestanden; der Gesamtlauf endete dennoch mit Fehler beim Windows-EPERM-Cleanup einer Embedded-Postgres-Testsuite. No local Docker daemon. Authoritative CI 41067550884 and Release Candidate 41068729605 are green; all three final images passed SBOM, CVE, malware, provenance, signature and verifier gates. The daily vulnerability workflow is implemented; GitHub activates its cron only after default-branch adoption. Notification subscription and a security owner/SLA remain operational follow-ups.
+Lokale Prüfung am 30.10.2026: 45 Node-Tests für Manifest, Image-Policy, Source-State und Staging sowie 52 Supply-Chain-Vitest-Tests bestanden (davon 10 Staging-Konfigurationstests); zusätzlich 11 Staging-Admin-Tests. Der Root-Worker-Graph besteht die statische Prüfung mit 317 Paketen und drei Bundles. Der unabhängige Migration-Runtime-Install wurde mit fixiertem Lockfile lokal erfolgreich installiert (163 Pakete, kein embedded-postgres; Prisma CLI 7.10.0 startet). Typecheck, Lint, Format, Production Build, 77 Security-Regressionstests, Secret Scan (0 Review-Funde), Dokuchecks und Diff-Check bestanden. Integration auf isolierter Demo-DB: 18 Zugriffstests, 8 CSV-Import-, 6 Datenqualitätstests und 7 Rules-Checks bestanden. Alle 560 Unit-Testfälle bestanden; der Gesamtlauf endete dennoch mit Fehler beim Windows-EPERM-Cleanup einer Embedded-Postgres-Testsuite. No local Docker daemon. Authoritative CI 41067550884 and Release Candidate 41068729605 are green; all three final images passed SBOM, CVE, malware, provenance, signature and verifier gates. The daily vulnerability workflow is active on master after PR #1; manual run 41406700801 passed on 02.11.2026. Notification subscription and a security owner/SLA remain operational follow-ups.
 
 ## Releasevertrag
 
@@ -140,8 +140,11 @@ betroffene CVEs/Digests im vorhandenen Incidentprozess erfassen, Fix bewerten un
 neuen getesteten Kandidaten erzeugen. Medium/Low kommen in den nächsten Review.
 Keine automatischen externen Nachrichten, keine Production-Änderungen.
 
-GitHub aktiviert Schedules nur auf dem Defaultbranch. Auf dem Phase-2-Branch
-ist Cron noch nicht aktiv. Defaultbranch-Übernahme und Notification-Abonnement
-sind explizite Betriebsaktivierungsschritte. Vor Ablauf der Retention müssen
+GitHub-Workflow 404237428 ist seit der Übernahme durch PR #1 auf `master` aktiv.
+Manueller Run [41406700801](https://github.com/Florian1518/Meterwerk/actions/runs/41406700801)
+bestand mit je 0 Critical/High/Low/Unknown und 3 Medium; keine Ausnahme.
+Nächster vorgesehener Cron nach Aktivierung: 03.11.2026 um 06:23 UTC.
+[Integration, Digests und Security-Evidence](SOFTWARE-READINESS-RC7.md) dokumentieren den Abschluss.
+Notification-Abonnement bleibt eine organisatorische Betriebsaufgabe. Vor Ablauf der Retention müssen
 unterstützte Release-Evidence und Sigstore-Bundles dauerhaft archiviert werden;
 fehlende Evidence blockiert die nächste Prüfung.
