@@ -9,8 +9,15 @@ restored="meterwerk-pitr-restored-$$"
 mkdir -p "$work/archive" "$work/base"
 chmod 777 "$work/archive"
 cleanup() {
+  result=$?
+  if [ "$result" -ne 0 ]; then
+    echo "PITR drill failed; synthetic source and restore logs follow" >&2
+    docker logs "$source" >&2 || true
+    docker logs "$restored" >&2 || true
+  fi
   docker rm -f "$restored" "$source" >/dev/null 2>&1 || true
   rm -rf "$work"
+  return "$result"
 }
 trap cleanup EXIT
 
