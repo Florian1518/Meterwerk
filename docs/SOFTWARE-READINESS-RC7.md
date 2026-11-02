@@ -9,20 +9,33 @@ Dump-/Manifestpfad, Offsite-Verifikation, Restore-Verifier, synthetische
 PITR-/Migrationsfehler-Drills, einen wöchentlichen Recovery-Workflow und das
 Runbook. Das ist keine Production-Konfiguration oder Production-Abnahme.
 
-| Recovery-Baustein                         | Phase-3-Status | Evidence / Grenze                                                                                                       |
-| ----------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| PostgreSQL-Konfiguration / logischer Dump | PARTIAL        | `pg_dump -Fc` wird verschlüsselt und manifestiert; Production-Job nicht provisioniert.                                  |
-| WAL / PITR                                | PARTIAL        | Isolierter synthetischer PostgreSQL-Drill; kein echtes Staging-/Production-WAL-Archiv.                                  |
-| Offsite / Verschlüsselung                 | PARTIAL        | Age + versioniertes SSE-KMS-S3-Verfahren implementiert; externer Bucket, KMS und IAM nicht konfiguriert.                |
-| Full Restore / Restore-Verifier           | PARTIAL        | Isolierter CI-Workflow prüft Schema, Migrationen, Tenant-Daten, FK, Drift und App-Readiness; Remote-CI-Lauf ausstehend. |
-| RPO / RTO                                 | PARTIAL        | Ziele in `DISASTER-RECOVERY.md`; echte Betriebswerte noch nicht gemessen.                                               |
-| Migration-Failure / Host-Loss             | PARTIAL        | Synthetische DB-/App-Recovery im CI; vollständige Worker/MQTT/Proxy-/Secret-Wiederherstellung nicht akzeptiert.         |
-| Wöchentlicher Restore-Test                | PARTIAL        | Schedule/Dispatch implementiert; wird erst nach Aufnahme in `master` registriert und manuell validiert.                 |
-| Staging-Recovery-Acceptance               | BLOCKED        | In dieser Phase kein Zugriff auf bestehende Staging-Daten oder deren Backup.                                            |
+| Recovery-Baustein                         | Phase-3-Status     | Evidence / Grenze                                                                                                                                                           |
+| ----------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL-Konfiguration / logischer Dump | DONE (CI)          | Synthetischer PostgreSQL-16 `pg_dump -Fc`, verschlüsseltes age-Backup, SHA-256 und Secret-freies Manifest erfolgreich erzeugt/verifiziert.                                  |
+| Backup-Verschlüsselung                    | DONE (CI)          | Ephemerer age-Schlüssel; verschlüsseltes Backup erfolgreich entschlüsselt und wiederhergestellt. Externe Schlüsselbereitstellung bleibt offen.                              |
+| PITR-Drill                                | DONE (CI)          | Synthetischer PostgreSQL-17-WAL/Base-Backup-Drill: Baseline vorhanden, nach Zielzeitpunkt geschriebener Fehlerdatensatz fehlt. Kein echtes Staging-/Production-WAL-Archiv.  |
+| Offsite / externe Retention               | PARTIAL            | Versioniertes SSE-KMS-S3-Verfahren implementiert; Bucket, KMS, IAM und realer Offsite-Upload nicht konfiguriert oder getestet.                                              |
+| Full Restore / Restore-Verifier           | DONE (CI)          | Neue isolierte DB; Schema, Migrationen, Tenant-Daten, FK, Drift und App-Readiness erfolgreich verifiziert.                                                                  |
+| RPO / RTO                                 | PARTIAL            | Ziele in `DISASTER-RECOVERY.md`; echte Betriebswerte und Provider-WAL-Latenz noch nicht gemessen.                                                                           |
+| Migration-Failure / Host-Loss             | DONE (synthetisch) | Fehlerhafte Transaktion zurückgerollt und aus Backup wiederhergestellt; synthetische App-/Worker-/MQTT-Rekonstruktion im CI. Proxy, echte Secrets und DNS nicht akzeptiert. |
+| Wöchentlicher Restore-Test                | PARTIAL            | Schedule/Dispatch implementiert; der Schedule wird erst nach Aufnahme in `master` registriert. Noch kein Workflow-Run auf `master`.                                         |
+| Staging-Recovery-Acceptance               | BLOCKED            | Kein Zugriff auf bestehende Staging-Daten oder deren Backup; ausschließlich synthetische Recovery-Daten verwendet.                                                          |
 
 Keine Phase-3-Evidence verwendet echte Hardware oder echte Kundendaten. Der
 vorhandene lokale Arbeitsbaum außerhalb dieses isolierten Worktrees blieb
 unverändert. RC7 und Production sind nicht verändert.
+
+Phase-3-Evidence: Branch `software-completion/phase-3`, Commit
+`c70e9e010453a6b2eb1a1abb33315840fe2284ad`; vollständiger Remote-CI-Lauf
+[41457820750](https://github.com/Florian1518/Meterwerk/actions/runs/41457820750)
+mit Fast Checks, Unit-, Integration-/Migration-, Browser-/Mobile-, Production-Build-
+und synthetischem Full-Restore/PITR-Job erfolgreich. Der Recovery-Job erzeugte
+synthetische Recovery-/Host-Loss-Evidence als CI-Artefakt (30 Tage); Backup-Dump
+und private Schlüssel wurden nicht als Artefakte hochgeladen. Der wöchentliche
+Schedule `23 7 * * 1` ist im Branch definiert, auf `master` aber noch nicht
+registriert; nach Integration ist der nächste planmäßige Lauf Montag, 09.11.2026,
+07:23 UTC. Ein Dispatch oder eine Staging-Abnahme auf `master` wurde noch nicht
+ausgeführt.
 
 ## Phase 2 – Abschluss auf dem Default-Branch (02.11.2026)
 
