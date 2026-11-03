@@ -39,7 +39,7 @@ running the command. No actual Staging or Production database is a test target.
 has the required core tables, a tenant row, a matching successful migration
 history, validated foreign keys, no pending Prisma migrations and an
 application readiness endpoint. Its machine-readable evidence must pass
-`node scripts/verify-recovery-evidence.mjs <evidence.json>`; missing evidence
+`node scripts/verify-recovery-evidence.mjs <evidence.json> <host-loss.json> <negative-evidence-directory>`; missing evidence
 is not success.
 
 Use `bash scripts/pitr-drill.sh` for the disposable synthetic PostgreSQL WAL

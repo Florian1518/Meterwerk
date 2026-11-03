@@ -105,10 +105,17 @@ docker run --rm --user 0 --network none \
   -v "$work/base-missing-wal:/data" --entrypoint chown postgres:17-alpine \
   -R 999:999 /data
 mkdir "$work/archive-missing-wal"
-cp -a "$work/archive/." "$work/archive-missing-wal/"
-rm "$work/archive-missing-wal/$expected_segment"
+# WAL is owned by the container's PostgreSQL UID with mode 0600. Copy within
+# an isolated root helper, preserving ownership; never relax archive permissions.
+docker run --rm --user 0 --network none \
+  -v "$work/archive:/archive:ro" -v "$work/archive-missing-wal:/copy" \
+  --entrypoint sh "$image" -c 'cp -a /archive/. /copy/ && rm "/copy/$1"' sh "$expected_segment" || {
+    echo "INFRASTRUCTURE_FAILURE: isolated WAL fixture preparation failed" >&2; exit 3;
+  }
 mkdir "$work/restore-evidence"
 chmod 777 "$work/restore-evidence"
+touch "$work/restore-evidence/restore.log"
+chmod 666 "$work/restore-evidence/restore.log"
 cat > "$work/restore-wal.sh" <<'RESTORE'
 #!/bin/sh
 segment="$1"
