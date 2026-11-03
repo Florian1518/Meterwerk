@@ -44,11 +44,14 @@ docker run -d --name "$source" --network none \
   -c "archive_command=test ! -f /archive/%f && cp %p /archive/%f" >/dev/null || {
     echo "INFRASTRUCTURE_FAILURE: source container did not start" >&2; exit 3;
   }
+# The image starts a temporary socket-only server during initdb and stops it
+# before launching the final server. Only container-local TCP proves that
+# initialization has finished; socket readiness can race that shutdown.
 for attempt in $(seq 1 60); do
-  if docker exec "$source" pg_isready -U postgres -d postgres >/dev/null 2>&1; then break; fi
+  if docker exec "$source" pg_isready -h 127.0.0.1 -U postgres -d postgres >/dev/null 2>&1; then break; fi
   sleep 1
 done
-docker exec "$source" pg_isready -U postgres -d postgres >/dev/null
+docker exec "$source" pg_isready -h 127.0.0.1 -U postgres -d postgres >/dev/null
 docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
   "CREATE TABLE phase3_pitr_probe (marker text PRIMARY KEY); INSERT INTO phase3_pitr_probe VALUES ('baseline');" >/dev/null
 docker exec "$source" psql -U postgres -d postgres -Atqc "SELECT pg_switch_wal()" >/dev/null
