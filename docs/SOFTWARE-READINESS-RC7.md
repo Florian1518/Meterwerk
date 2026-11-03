@@ -1,5 +1,44 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## Software Completion Phase 3 – Backup / Restore / PITR / Disaster Recovery
+
+Arbeitsbranch `software-completion/phase-3` wurde vom unveränderten
+`master`-SHA `ff7575e63114e651f8e32e0733f5e299b8d7c0bc` erstellt. Diese Phase
+ergänzt die vorhandenen Restore-Modelle um einen verschlüsselten
+Dump-/Manifestpfad, Offsite-Verifikation, Restore-Verifier, synthetische
+PITR-/Migrationsfehler-Drills, einen wöchentlichen Recovery-Workflow und das
+Runbook. Das ist keine Production-Konfiguration oder Production-Abnahme.
+
+| Recovery-Baustein                         | Phase-3-Status     | Evidence / Grenze                                                                                                                                                           |
+| ----------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL-Konfiguration / logischer Dump | DONE (CI)          | Synthetischer PostgreSQL-16 `pg_dump -Fc`, verschlüsseltes age-Backup, SHA-256 und Secret-freies Manifest erfolgreich erzeugt/verifiziert.                                  |
+| Backup-Verschlüsselung                    | DONE (CI)          | Ephemerer age-Schlüssel; verschlüsseltes Backup erfolgreich entschlüsselt und wiederhergestellt. Externe Schlüsselbereitstellung bleibt offen.                              |
+| PITR-Drill                                | DONE (CI)          | Synthetischer PostgreSQL-17-WAL/Base-Backup-Drill: Baseline vorhanden, nach Zielzeitpunkt geschriebener Fehlerdatensatz fehlt. Kein echtes Staging-/Production-WAL-Archiv.  |
+| Offsite / externe Retention               | PARTIAL            | Versioniertes SSE-KMS-S3-Verfahren implementiert; Bucket, KMS, IAM und realer Offsite-Upload nicht konfiguriert oder getestet.                                              |
+| Full Restore / Restore-Verifier           | DONE (CI)          | Neue isolierte DB; Schema, Migrationen, Tenant-Daten, FK, Drift und App-Readiness erfolgreich verifiziert.                                                                  |
+| RPO / RTO                                 | PARTIAL            | Ziele in `DISASTER-RECOVERY.md`; echte Betriebswerte und Provider-WAL-Latenz noch nicht gemessen.                                                                           |
+| Migration-Failure / Host-Loss             | DONE (synthetisch) | Fehlerhafte Transaktion zurückgerollt und aus Backup wiederhergestellt; synthetische App-/Worker-/MQTT-Rekonstruktion im CI. Proxy, echte Secrets und DNS nicht akzeptiert. |
+| Wöchentlicher Restore-Test                | PARTIAL            | Schedule/Dispatch implementiert; der Schedule wird erst nach Aufnahme in `master` registriert. Noch kein Workflow-Run auf `master`.                                         |
+| Staging-Recovery-Acceptance               | BLOCKED            | Kein Zugriff auf bestehende Staging-Daten oder deren Backup; ausschließlich synthetische Recovery-Daten verwendet.                                                          |
+
+Keine Phase-3-Evidence verwendet echte Hardware oder echte Kundendaten. Der
+vorhandene lokale Arbeitsbaum außerhalb dieses isolierten Worktrees blieb
+unverändert. RC7 und Production sind nicht verändert.
+
+Phase-3-Evidence: Branch `software-completion/phase-3`, Commit
+`c70e9e010453a6b2eb1a1abb33315840fe2284ad`; Remote-CI-Lauf
+[41457820750](https://github.com/Florian1518/Meterwerk/actions/runs/41457820750)
+mit Fast Checks, Unit-, Integration-/Migration-, Browser-/Mobile- und
+Production-Build-Jobs erfolgreich. Der separate synthetische Full-Restore/PITR-
+Recovery-Lauf [41457820797](https://github.com/Florian1518/Meterwerk/actions/runs/41457820797)
+war ebenfalls erfolgreich und erzeugte
+synthetische Recovery-/Host-Loss-Evidence als CI-Artefakt (30 Tage); Backup-Dump
+und private Schlüssel wurden nicht als Artefakte hochgeladen. Der wöchentliche
+Schedule `23 7 * * 1` ist im Branch definiert, auf `master` aber noch nicht
+registriert; nach Integration ist der nächste planmäßige Lauf Montag, 09.11.2026,
+07:23 UTC. Ein Dispatch oder eine Staging-Abnahme auf `master` wurde noch nicht
+ausgeführt.
+
 ## Phase 2 – Abschluss auf dem Default-Branch (02.11.2026)
 
 **Scheduled Vulnerability Process / laufender Image Vulnerability Process: DONE.**

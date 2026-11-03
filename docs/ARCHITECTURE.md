@@ -501,6 +501,21 @@ und serverseitig zulässige Transitionen. Stilllegung unterscheidet Anwendungs-
 sperre, Signaturwiderruf und externen Brokerwiderruf. Terminalität betrifft den
 Gateway-Lifecycle, nicht automatisch Devices oder offline laufende Edge-Agenten.
 
+## ADR 016: Verschlüsselte Sicherung und isolierte Wiederherstellung
+
+PostgreSQL-Backups werden als Custom-Dumps erstellt, clientseitig mit `age`
+verschlüsselt und mit einem secretfreien Manifest (DB, Server-/Tool-/Migrationstand,
+Source-SHA, UTC-Zeit, Größe und SHA-256 des Ciphertexts) gebunden. Wiederherstellung
+erfolgt ausschließlich in neu angelegte `meterwerk_restore_*`-Zieldatenbanken;
+CI- und Testwiederherstellungen verlangen `METERWERK_ENV=test`. Ein unabhängiges
+Offsite-Ziel verwendet einen externen AWS-Credential-Provider, SSE-KMS,
+Objektversionierung und eine bestätigte Objektgröße. WAL/PITR wird separat durch
+einen isolierten synthetischen PostgreSQL-Drill geprüft. Kein Backup-Worker,
+KMS, S3-Ziel oder WAL-Archiv wird durch Anwendungscode automatisch für Production
+konfiguriert; diese Ressourcen bleiben explizite externe Betriebsverantwortung.
+RPO/RTO sind technische Ziele bis zur Messung im autorisierten Betriebsdrill,
+keine Service-Garantie. Ablauf und Grenzen stehen in `docs/DISASTER-RECOVERY.md`.
+
 ## Nachweise der Modbus-Inbetriebnahme
 
 `src/server/modbus-commissioning.ts` leitet den fachlichen Fortschritt aus gespeicherten Nachweisen ab: `DRAFT → CONFIGURED → CONNECTION_VERIFIED → READ_VERIFIED → ASSIGNMENT_CONFIRMED → COMMISSIONED`. Die vorhandenen Betriebszustände `NOT_CONFIGURED / COMMISSIONING / ACTIVE / FAULT / DISABLED` bleiben erhalten; `step` allein ist keine Freigabe. `COMMISSIONED` entspricht einem technisch und fachlich bestätigten Abschluss (`ACTIVE`, `completedAt`). Die angezeigte aktuelle Bereitschaft berücksichtigt weiterhin das bestehende Fünf-Minuten-Fenster; historische Abschlüsse und Auditnachweise bleiben gespeichert, auch wenn aktuelle Messdaten später fehlen.

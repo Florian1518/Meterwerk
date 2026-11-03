@@ -22,6 +22,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:backup": "tsx scripts/backup.ts",
+    "db:restore:verify": "tsx scripts/restore-verifier.ts",
     "test:pilot": "tsx --conditions=react-server tests/pilot-integration.ts",
     "test:mqtt-tls": "tsx tests/mqtt-tls.ts",
     "test:integration": "tsx --conditions=react-server tests/integration.ts && tsx --conditions=react-server tests/import-integration.ts && tsx --conditions=react-server tests/data-quality-integration.ts && tsx --conditions=react-server tests/rules-integration.ts",
@@ -70,7 +71,8 @@
     "docs:check": "node scripts/docs-check.mjs",
     "docs:validate": "node scripts/docs-validation.mjs",
     "acceptance:software": "node scripts/software-acceptance.mjs",
-    "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts"
+    "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts tests/backup.test.ts",
+    "test:recovery": "node --test tests/recovery-negative-result.test.mjs tests/pitr-archive.test.mjs && pnpm dr:regression"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

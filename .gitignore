@@ -18,5 +18,7 @@ release-artifacts/
 *.log
 *.dump
 *.dump.sha256
+*.age
+*.age.*
 .meterwerk-queue.json*
 .test-edge-queue.json*
