@@ -101,9 +101,6 @@ printf "restore_command = 'cp /archive/%%f %%p'\nrecovery_target_time = '%s'\nre
   "$target" >> "$work/base/postgresql.auto.conf"
 
 cp -a "$work/base" "$work/base-missing-wal"
-docker run --rm --user 0 --network none \
-  -v "$work/base-missing-wal:/data" --entrypoint chown postgres:17-alpine \
-  -R 999:999 /data
 mkdir "$work/archive-missing-wal"
 # WAL is owned by the container's PostgreSQL UID with mode 0600. Copy within
 # an isolated root helper, preserving ownership; never relax archive permissions.
@@ -137,6 +134,10 @@ case "$segment" in
 esac
 RESTORE
 printf "restore_command = 'sh /restore-wal.sh %%f %%p'\n" >> "$work/base-missing-wal/postgresql.auto.conf"
+# Finish host-side configuration before handing ownership to PostgreSQL.
+docker run --rm --user 0 --network none \
+  -v "$work/base-missing-wal:/data" --entrypoint chown postgres:17-alpine \
+  -R 999:999 /data
 docker run -d --name "$missing" --network none \
   -e "METERWERK_DENIED_SEGMENT=$expected_segment" \
   -v "$work/base-missing-wal:/var/lib/postgresql/data" \

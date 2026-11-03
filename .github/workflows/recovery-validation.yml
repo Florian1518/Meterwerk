@@ -93,6 +93,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
       - run: pnpm test:recovery
+      - name: Run synthetic PostgreSQL PITR drill
+        run: bash scripts/pitr-drill.sh
       - run: pnpm exec prisma migrate deploy
       - run: pnpm db:seed
       - name: Create ephemeral age identity
@@ -244,8 +246,6 @@ jobs:
           pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_migration_recovered
           restored="$(PGDATABASE=meterwerk_restore_migration_recovered psql -Atqc 'SELECT count(*) FROM "Tenant"')"
           test "$restored" -gt 0
-      - name: Run synthetic PostgreSQL PITR drill
-        run: bash scripts/pitr-drill.sh
       - name: Require complete recovery evidence
         run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
