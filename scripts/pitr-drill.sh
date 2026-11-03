@@ -40,6 +40,7 @@ docker run -d --name "$source" --network none \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
   -v "$work/archive:/archive" postgres:17-alpine \
   -c wal_level=replica -c archive_mode=on -c archive_timeout=0 \
+  -c track_commit_timestamp=on \
   -c "archive_command=test ! -f /archive/%f && cp %p /archive/%f" >/dev/null || {
     echo "INFRASTRUCTURE_FAILURE: source container did not start" >&2; exit 3;
   }
@@ -54,21 +55,32 @@ docker exec "$source" psql -U postgres -d postgres -Atqc "SELECT pg_switch_wal()
 docker exec "$source" pg_basebackup -D /tmp/phase3-base -U postgres -X stream --checkpoint=fast >/dev/null
 # Select a fresh post-base segment: it cannot be satisfied from bundled base WAL.
 docker exec "$source" psql -U postgres -d postgres -Atqc "SELECT pg_switch_wal()" >/dev/null
-expected_segment="$(docker exec "$source" psql -U postgres -d postgres -Atqc 'SELECT pg_walfile_name(pg_current_wal_insert_lsn())')"
-[[ "$expected_segment" =~ ^[0-9A-F]{24}$ ]]
 docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
   "INSERT INTO phase3_pitr_probe VALUES ('target-marker');" >/dev/null
-target="$(docker exec "$source" psql -U postgres -d postgres -Atqc \
-  "SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') || '+00'")"
+# The successful psql exit above establishes COMMIT before any LSN observation.
+# PostgreSQL records the actual transaction commit timestamp; the LSN is
+# observed in the subsequent call after successful synchronous COMMIT.
+docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT json_build_object('commitTimestamp',(SELECT pg_xact_commit_timestamp(xmin) FROM phase3_pitr_probe WHERE marker='target-marker'),'commitLsn',pg_current_wal_lsn(),'commitWalSegment',pg_walfile_name(pg_current_wal_lsn()),'segmentBytes',pg_size_bytes(current_setting('wal_segment_size')),'failedCountBefore',failed_count,'archivedCountBefore',archived_count) FROM pg_stat_archiver" \
+  > "$work/commit.json"
+expected_segment="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; console.log(JSON.parse(readFileSync(process.argv[1], "utf8")).commitWalSegment)' "$work/commit.json")"
+[[ "$expected_segment" =~ ^[0-9A-F]{24}$ ]]
+# A named WAL restore point is ordered after the desired commit and before the
+# error transaction. Record its exact LSN; no wall-clock sleeps define the target.
+docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT pg_create_restore_point('meterwerk_before_error')" > "$work/target-lsn"
 docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
-  "INSERT INTO phase3_pitr_probe VALUES ('simulated-error'); SELECT pg_switch_wal();" >/dev/null
-sleep 2
+  "INSERT INTO phase3_pitr_probe VALUES ('simulated-error');" >/dev/null
+docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT json_build_object('postErrorLsn',pg_current_wal_lsn(),'postErrorWalSegment',pg_walfile_name(pg_current_wal_lsn()))" > "$work/post-error.json"
+# Separate successful COMMIT, observation, and switch calls are mandatory.
+if ! docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT pg_switch_wal()" > "$work/switch-lsn"; then
+  echo "WAL_SWITCH_FAILURE: post-commit WAL switch failed" >&2
+  exit 1
+fi
 docker cp "$source:/tmp/phase3-base/." "$work/base/" >/dev/null
-for attempt in $(seq 1 30); do
-  if [ -s "$work/archive/$expected_segment" ]; then break; fi
-  sleep 1
-done
-test -s "$work/archive/$expected_segment"
+node scripts/pitr-archive.mjs archive "$source" "$work" "$evidence"
 test ! -e "$work/base/pg_wal/$expected_segment"
 # Validate the untouched backup before recovery configuration or deliberate damage.
 docker run --rm --network none -v "$work/base:/data:ro" \
@@ -97,8 +109,8 @@ writeFileSync(output, JSON.stringify({ infrastructureOk: ![125,126,127,137].incl
 NODE
 node scripts/recovery-negative-result.mjs incomplete-base "$work/base-input.json" "$evidence/incomplete-base.json"
 touch "$work/base/recovery.signal"
-printf "restore_command = 'cp /archive/%%f %%p'\nrecovery_target_time = '%s'\nrecovery_target_action = 'promote'\n" \
-  "$target" >> "$work/base/postgresql.auto.conf"
+printf "restore_command = 'cp /archive/%%f %%p'\nrecovery_target_name = 'meterwerk_before_error'\nrecovery_target_action = 'promote'\n" \
+  >> "$work/base/postgresql.auto.conf"
 
 cp -a "$work/base" "$work/base-missing-wal"
 mkdir "$work/archive-missing-wal"
@@ -182,6 +194,9 @@ docker run -d --name "$restored" --network none \
   -v "$work/base:/var/lib/postgresql/data" -v "$work/archive:/archive:ro" \
   postgres:17-alpine >/dev/null
 for attempt in $(seq 1 60); do
+  test "$(docker inspect -f '{{.State.Running}}' "$restored")" = "true" || {
+    echo "TARGET_NOT_REACHED: positive recovery exited" >&2; exit 1;
+  }
   if docker exec "$restored" pg_isready -U postgres -d postgres >/dev/null 2>&1; then
     in_recovery="$(docker exec "$restored" psql -U postgres -d postgres -Atqc \
       'SELECT pg_is_in_recovery()' 2>/dev/null || echo unknown)"
@@ -200,4 +215,11 @@ test "$baseline" = "1"
 test "$error_rows" = "0"
 test "$(docker exec "$restored" psql -U postgres -d postgres -Atqc \
   "SELECT count(*) FROM phase3_pitr_probe WHERE marker='target-marker'")" = "1"
-echo "PITR synthetic drill PASSED: baseline restored, post-target error absent, target=$target"
+# Check relation readability and validated constraints in this synthetic probe.
+# The full application restore verifier/readiness remains a separate mandatory
+# workflow gate against the restored application database, not this probe DB.
+docker exec "$restored" pg_dump -U postgres -d postgres -Fc -f /tmp/pitr-verified.dump
+docker exec "$restored" pg_restore --list /tmp/pitr-verified.dump >/dev/null
+docker exec "$restored" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT json_build_object('inRecovery',pg_is_in_recovery(),'replayLsn',pg_last_wal_replay_lsn(),'baselineCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='baseline'),'preErrorCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='target-marker'),'postTargetErrorCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='simulated-error'),'constraintsValid',NOT EXISTS(SELECT 1 FROM pg_constraint WHERE NOT convalidated))" > "$work/positive.json"
+node scripts/pitr-archive.mjs verify "$restored" "$work" "$evidence"

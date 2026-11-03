@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { positivePitrPassed } from "./pitr-archive.mjs";
 import {
   classifyMissingWal,
   classifyIncompleteBackup,
@@ -78,4 +79,15 @@ for (const [name, classify] of [
       "Negative recovery evidence contains a forbidden secret field",
     );
 }
+const positive = JSON.parse(
+  await readFile(join(negativeDirectory, "positive-pitr.json"), "utf8"),
+);
+if (positive.result !== "PASSED" || !positivePitrPassed(positive))
+  throw new Error("Positive PITR evidence missing, incomplete or failed");
+if (
+  /password|secret|token|credential|postgres(?:ql)?:\/\/[^\s]*@/i.test(
+    JSON.stringify(positive),
+  )
+)
+  throw new Error("Positive PITR evidence contains a forbidden secret field");
 console.log("Recovery evidence complete and secret-free");

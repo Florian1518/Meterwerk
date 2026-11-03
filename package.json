@@ -72,7 +72,7 @@
     "docs:validate": "node scripts/docs-validation.mjs",
     "acceptance:software": "node scripts/software-acceptance.mjs",
     "dr:regression": "vitest run tests/disaster-recovery.test.ts tests/dr-recovery.test.ts tests/backup.test.ts",
-    "test:recovery": "node --test tests/recovery-negative-result.test.mjs && pnpm dr:regression"
+    "test:recovery": "node --test tests/recovery-negative-result.test.mjs tests/pitr-archive.test.mjs && pnpm dr:regression"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

@@ -113,8 +113,10 @@ independent encrypted storage, a monitored archive command, restore command,
 retention, and a trusted UTC target. None is configured for Production by this
 phase. The automated `scripts/pitr-drill.sh` creates an isolated PostgreSQL 17
 instance with a synthetic baseline, enables WAL archiving, takes a physical
-base backup, writes a synthetic error after a recorded recovery timestamp,
-restores to the target, and asserts that baseline data is present and the
+base backup, commits a desired record, creates a named WAL restore point with
+an exact recorded LSN, and commits a synthetic error afterwards. A separate
+post-commit WAL switch and confirmed archive precede recovery. The drill
+restores to the named target and asserts that baseline data is present and the
 post-target error is absent. This proves the PostgreSQL mechanism in CI, not
 Production archive availability or an achieved RPO.
 
@@ -217,3 +219,31 @@ Sie enthält Segment, Restore-Sentinel, Container-/Recovery-Zustand bzw.
 entfernte Datei, Verifier-Ausführung und Exit-Code. Der Evidence-Verifier
 berechnet die Klassifikation erneut. Ein grüner synthetischer Drill belegt
 weder einen externen Offsite-Pfad noch Staging-Acceptance oder Production-RPO.
+
+## Deterministische positive PITR-Kontrolle
+
+Alle INSERT-Transaktionen beenden ihren eigenen `psql`-Aufruf erfolgreich,
+bevor der nächste Schritt beginnt. `track_commit_timestamp=on` liefert den
+tatsächlichen Commit-Zeitpunkt; `pg_current_wal_lsn()` und `pg_walfile_name()`
+werden anschließend erfasst. Der benannte Restore-Punkt
+`meterwerk_before_error` liegt nach dem gewünschten Commit und vor der
+Fehlertransaktion; seine LSN wird ebenfalls gespeichert. Der WAL-Switch erfolgt
+erst nach dem separaten Commit der Fehlertransaktion.
+
+`scripts/pitr-archive.mjs` berechnet anhand des Base-Backup-Manifests und der
+PostgreSQL-Segmentgröße alle Segmente bis zur beobachteten Post-Error-Commit-LSN.
+Der Poll prüft alle 250 ms, maximal 30 Sekunden lang, Archivdateien und
+`pg_stat_archiver`. Nur vollständige Segmente, fortgeschrittener Archiver-Zähler,
+passende `last_archived_wal` und unveränderter Fehlerzähler ergeben
+`ARCHIVE_CONFIRMED`. Switch-Fehler, fehlende Segmente, Archiver-Fehler und Timeout
+sind Fehlerzustände. Ein Sleep erzeugt weder den Recovery-Zielpunkt noch Erfolg.
+
+`archive.json` und `positive-pitr.json` im PITR-Evidence-Verzeichnis dokumentieren
+Commit-Zeit/LSN/Segment, Switch-LSN, erforderliche und vorhandene Segmente,
+Archiver-Bestätigung, Restore-Punkt/LSN, Replay-LSN und Datenprüfungen. Promotion
+allein reicht nicht: Replay muss den Zielpunkt erreicht haben; Baseline und
+gewünschter Datensatz müssen vorhanden sein, der spätere Fehler muss fehlen.
+Zusätzlich werden Constraint-Status und Dump-Lesbarkeit geprüft. Der vollständige
+Anwendungs-Restore-Verifier und App-Readiness bleiben separate Pflicht-Gates im
+gleichen Workflow auf der wiederhergestellten Anwendungsdatenbank. Die kleine
+PITR-Probedatenbank enthält keine Anwendungstabellen.
