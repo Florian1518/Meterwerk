@@ -1,7 +1,12 @@
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  classifyMissingWal,
+  classifyIncompleteBackup,
+} from "./recovery-negative-result.mjs";
 
-const [file, hostLossFile] = process.argv.slice(2);
-if (!file || !hostLossFile)
+const [file, hostLossFile, negativeDirectory] = process.argv.slice(2);
+if (!file || !hostLossFile || !negativeDirectory)
   throw new Error("Recovery and host-loss evidence files are required");
 const [evidence, hostLoss] = await Promise.all([
   readFile(file, "utf8").then(JSON.parse),
@@ -52,4 +57,25 @@ if (
   )
 )
   throw new Error("Host-loss evidence contains a forbidden secret field");
+for (const [name, classify] of [
+  ["missing-wal", classifyMissingWal],
+  ["incomplete-base", classifyIncompleteBackup],
+]) {
+  const negative = JSON.parse(
+    await readFile(join(negativeDirectory, `${name}.json`), "utf8"),
+  );
+  if (
+    negative.result !== "EXPECTED_FAILURE_CONFIRMED" ||
+    classify(negative) !== "EXPECTED_FAILURE_CONFIRMED"
+  )
+    throw new Error(`Negative recovery evidence missing or failed: ${name}`);
+  if (
+    /password|secret|token|credential|postgres(?:ql)?:\/\/[^\s]*@/i.test(
+      JSON.stringify(negative),
+    )
+  )
+    throw new Error(
+      "Negative recovery evidence contains a forbidden secret field",
+    );
+}
 console.log("Recovery evidence complete and secret-free");

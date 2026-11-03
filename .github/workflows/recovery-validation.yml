@@ -11,6 +11,9 @@ on:
       - "scripts/restore-verifier.ts"
       - "scripts/recovery-evidence.ts"
       - "scripts/pitr-drill.sh"
+      - "scripts/recovery-negative-result.mjs"
+      - "scripts/verify-recovery-evidence.mjs"
+      - "tests/recovery-negative-result.test.mjs"
       - "tests/backup.test.ts"
       - "docs/DISASTER-RECOVERY.md"
       - "docs/BACKUP-RESTORE.md"
@@ -22,6 +25,9 @@ on:
       - "scripts/restore-verifier.ts"
       - "scripts/recovery-evidence.ts"
       - "scripts/pitr-drill.sh"
+      - "scripts/recovery-negative-result.mjs"
+      - "scripts/verify-recovery-evidence.mjs"
+      - "tests/recovery-negative-result.test.mjs"
       - "tests/backup.test.ts"
       - "docs/DISASTER-RECOVERY.md"
       - "docs/BACKUP-RESTORE.md"
@@ -86,6 +92,7 @@ jobs:
           test "$(pg_dump --version | awk '{print $3}' | cut -d. -f1)" = "16"
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
+      - run: pnpm test:recovery
       - run: pnpm exec prisma migrate deploy
       - run: pnpm db:seed
       - name: Create ephemeral age identity
@@ -240,15 +247,22 @@ jobs:
       - name: Run synthetic PostgreSQL PITR drill
         run: bash scripts/pitr-drill.sh
       - name: Require complete recovery evidence
-        run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json"
+        run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: synthetic-recovery-evidence
           path: |
             ${{ runner.temp }}/recovery-evidence.json
             ${{ runner.temp }}/host-loss-evidence.json
+            ${{ runner.temp }}/meterwerk-pitr-evidence/*.json
             ${{ env.METERWERK_BACKUP_MANIFEST }}
           retention-days: 30
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: failed-negative-recovery-evidence
+          path: ${{ runner.temp }}/meterwerk-pitr-evidence/*.json
+          retention-days: 7
       - if: always()
         shell: bash
         run: |

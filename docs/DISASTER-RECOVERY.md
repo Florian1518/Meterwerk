@@ -189,3 +189,31 @@ must include manifest hash, object version/KMS state, release digest and
 signature verification, migration state, restore checks, sanitized timing,
 operator approvals and incident reference. Retain evidence under the approved
 security/audit retention policy; do not put customer data or secrets in CI.
+
+## Fail-closed PITR-Negativtests
+
+Der synthetische Drill in `scripts/pitr-drill.sh` verweigert gezielt ein nach dem
+Base Backup erzeugtes WAL-Segment. Das Segment liegt nicht im mitgelieferten
+Base-WAL. Ein positiver Kontroll-Restore muss den vor dem Recovery-Ziel
+geschriebenen `target-marker` enthalten und den späteren Fehler ausschließen.
+Der Negativtest benötigt die konkrete Segment-Anforderung, den eigenen
+`METERWERK_EXPECTED_MISSING_WAL`-Sentinel und einen nicht erfolgreich beendeten
+Recovery-Zustand. Containerstopp oder Timeout allein reichen nicht.
+
+Das unveränderte Base Backup muss zuerst `pg_verifybackup` bestehen. Nur in
+einer Kopie wird die im Manifest nachgewiesene Datei `global/pg_control`
+entfernt. Der Negativtest akzeptiert ausschließlich den zugehörigen
+Manifest-Fehler von `pg_verifybackup`, keinen beliebigen Prozessfehler.
+
+Die Ergebniszustände sind `EXPECTED_FAILURE_CONFIRMED` (Exit 0),
+`UNEXPECTED_FAILURE` (Exit 1), `UNEXPECTED_SUCCESS` (Exit 2) und
+`INFRASTRUCTURE_FAILURE` (Exit 3). Nur der erste Zustand besteht den Negativtest.
+`node --test tests/recovery-negative-result.test.mjs` prüft die Klassifikation;
+der reale Docker-/PostgreSQL-Drill bleibt ein zusätzliches erforderliches Gate.
+
+Die begrenzte synthetische Evidence liegt unter
+`$RUNNER_TEMP/meterwerk-pitr-evidence/{missing-wal,incomplete-base}.json`.
+Sie enthält Segment, Restore-Sentinel, Container-/Recovery-Zustand bzw.
+entfernte Datei, Verifier-Ausführung und Exit-Code. Der Evidence-Verifier
+berechnet die Klassifikation erneut. Ein grüner synthetischer Drill belegt
+weder einen externen Offsite-Pfad noch Staging-Acceptance oder Production-RPO.
