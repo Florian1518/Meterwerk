@@ -15,6 +15,46 @@ No Production provider, bucket, KMS key, WAL archive, or credential is configure
 by this phase. Production recovery remains blocked until the external operator
 provisions and accepts those resources.
 
+## Operative Evidence vom 03.11.2026
+
+Code-Kandidat `21e196762c18bc8ad7b3425a2b49652a0de43acc` wurde mit
+[PR #4](https://github.com/Florian1518/Meterwerk/pull/4) integriert;
+Integrations-master ist `43cee3416778f172fbfd2f05c88bbd491ac5a070`.
+[Master-CI 41638394904](https://github.com/Florian1518/Meterwerk/actions/runs/41638394904)
+und der manuelle
+[Recovery-Dispatch 41638539926](https://github.com/Florian1518/Meterwerk/actions/runs/41638539926)
+sind vollständig PASSED. Der Workflow ist auf dem Default-Branch master aktiv.
+Schedule: `23 7 * * 1`; nächster Solltermin nach dieser Prüfung:
+09.11.2026 07:23 UTC / 08:23 Europe/Berlin. Der erste tatsächliche Cron-Lauf
+liegt noch in der Zukunft.
+
+Artefakt `synthetic-recovery-evidence` (ID `13231319316`, 30 Tage Retention):
+`recovery-evidence.json`, `host-loss-evidence.json`, verschlüsseltes
+Backup-Manifest und `meterwerk-pitr-evidence/{archive,positive-pitr,missing-wal,incomplete-base}.json`.
+Backup und private Schlüssel sind nicht enthalten. Nach Download wurde die
+Evidence erneut geprüft:
+
+```sh
+node scripts/verify-recovery-evidence.mjs \
+  <artifact>/recovery-evidence.json \
+  <artifact>/host-loss-evidence.json \
+  <artifact>/meterwerk-pitr-evidence
+```
+
+Der positive PITR-Lauf dokumentiert den Commit am
+`2026-11-03T12:48:49.581701Z`, Commit-LSN `0/4000190`, Switch-LSN `0/40002C8`,
+benötigte Segmente `000000010000000000000003` und `000000010000000000000004`,
+Target-/Replay-LSN `0/40001F8` sowie Baseline 1 / gewünschter Datensatz 1 /
+späterer Fehler 0. Archive-Wait: tatsächlich gemessene **78 ms**,
+`ARCHIVE_CONFIRMED`; **keine Full-Restore-, PITR- oder Host-Loss-RTO-Messung**.
+Beide Negativtests ergeben `EXPECTED_FAILURE_CONFIRMED`. Der separate vollständige
+Anwendungs-Restore-Verifier bestätigt unter anderem Migration
+`202610260001_saas_pricing`, Drift NONE, Tenant-/FK-Prüfung und App-Readiness.
+
+Offsite, Staging-Recovery-Acceptance und betriebliche RPO/RTO bleiben offen.
+Es wurden weder eine echte Staging-DB verändert noch Production oder Hardware
+verwendet. Details und Statusgrenzen stehen in `SOFTWARE-READINESS-RC7.md`.
+
 ## Recovery targets
 
 These are proposed engineering objectives, not an SLA or measured guarantee.
@@ -247,3 +287,47 @@ Zusätzlich werden Constraint-Status und Dump-Lesbarkeit geprüft. Der vollstän
 Anwendungs-Restore-Verifier und App-Readiness bleiben separate Pflicht-Gates im
 gleichen Workflow auf der wiederhergestellten Anwendungsdatenbank. Die kleine
 PITR-Probedatenbank enthält keine Anwendungstabellen.
+
+## Externer Test-Offsite-Pfad: erforderliche Freigabe
+
+Am 03.11.2026 wurde kein autorisierter nicht-produktiver Offsite-Pfad
+nachgewiesen. GitHub meldete keine Environments und keine Repository-Variablen;
+`METERWERK_BACKUP_S3_URI`, `METERWERK_BACKUP_S3_KMS_KEY_ID`, `AWS_REGION` und
+`AWS_DEFAULT_REGION` waren in der verfügbaren lokalen Prozessumgebung nicht
+gesetzt. Das ist keine Aussage über unbekannte Cloud-Ressourcen. Es wurden
+keine Production-Credentials gesucht und keine Cloud-Ressourcen angelegt.
+
+Für den nächsten Acceptance-Drill muss der verantwortliche Betreiber bereitstellen:
+
+| Konfiguration   | Minimal erforderlich                                                                                                                                                                                                                |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bucket / Prefix | Explizit als TEST/STAGING freigegebener privater Bucket mit dediziertem `s3://<bucket>/meterwerk-backups/<test-prefix>`; Eigentümer und erlaubte Testobjekte benennen.                                                              |
+| Region          | Tatsächliche Bucket-Region als `AWS_REGION`; regionale KMS-Key-Zuordnung bestätigen.                                                                                                                                                |
+| Versioning      | Bucket-Versioning `Enabled`; sowohl Ciphertext als auch Manifest müssen eine echte Version-ID erhalten.                                                                                                                             |
+| KMS             | Aktivierter symmetrischer SSE-KMS-Key im autorisierten Testkontext; ARN oder Alias über `METERWERK_BACKUP_S3_KMS_KEY_ID`; Key-Policy erlaubt nur die freigegebene Rolle.                                                            |
+| IAM Principal   | Explizit freigegebene Test-/Staging-Rolle, vorzugsweise kurzlebige OIDC-/STS-Sitzung, mit dokumentierter Trust-Policy und unabhängig vom ursprünglichen Backup-Host nutzbar. Keine persönlichen oder Production-Zugangsdaten.       |
+| Bucket-Rechte   | `s3:GetBucketVersioning`; für prefixbeschränkte Inventur und Versionsbereinigung `s3:ListBucket` und `s3:ListBucketVersions`.                                                                                                       |
+| Objekt-Rechte   | Auf den Testprefix beschränkt: `s3:PutObject`, `s3:GetObject`, `s3:GetObjectVersion`; bei Multipart-Uploads zusätzlich `s3:AbortMultipartUpload` und `s3:ListMultipartUploadParts`.                                                 |
+| KMS-Rechte      | Auf den konkreten Key beschränkt: `kms:DescribeKey`, `kms:GenerateDataKey`, `kms:Decrypt`. S3-Zugriff auf den vorgesehenen Bucket/Region-Kontext einschränken; keine KMS-Administration erforderlich.                               |
+| Testbereinigung | Explizite Retention-/Cleanup-Policy. `s3:DeleteObjectVersion` nur für synthetische Testobjekte und deren Manifest-Versionen; `s3:DeleteObject` nur, falls die genehmigte Policy dies zusätzlich benötigt. Keine Bucket-Löschrechte. |
+| age / Staging   | Freigegebener öffentlicher age-Empfänger und separat zugängliche private Identität für den Restore. Erst anschließend freigegebene read-only Staging-Backup-Quelle bereitstellen; Restore ausschließlich lokal isoliert.            |
+
+Ohne diese konkrete Zuordnung endet die operative Arbeit nach Master-Integration,
+CI und Schedule-/Dispatch-Nachweis. Kein improvisiertes S3-Ziel und keine
+kostenpflichtige Provisionierung. Der nächste Drill muss Upload, Version-ID,
+SSE-KMS-Key, Entfernung der lokalen Ausgangskopie, ausschließlich externen
+Download, Hash, Entschlüsselung und vollständigen Restore nachweisen.
+
+## WAL-Betriebsfähigkeit und Messgrenzen
+
+| Bestandteil                                 | Nachgewiesene Softwarefähigkeit / offene Betriebsabhängigkeit                                                                                                                                                                                       |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `archive_mode`, WAL-Switch, Target-Recovery | PostgreSQL-17-Drill mit `archive_mode=on`, getrenntem Commit/Switch und benanntem Restore-Punkt samt LSN.                                                                                                                                           |
+| WAL-Shipping                                | Der Drill kopiert WAL in ein isoliertes lokales Archiv. Ein kontinuierlicher externer Uploader ist damit nicht abgenommen.                                                                                                                          |
+| WAL-Verschlüsselung / Offsite               | age und SSE-KMS sind für den logischen Backup-Pfad implementiert. Kontinuierliche verschlüsselte WAL-Offsite-Übertragung bleibt extern zu implementieren und abzunehmen.                                                                            |
+| Retention                                   | Zielwerte sind dokumentiert; ein realer WAL-/Base-Backup-Lifecycle ist nicht konfiguriert oder nachgewiesen.                                                                                                                                        |
+| Monitoring / Gap Detection                  | Der Drill prüft `pg_stat_archiver` und die vollständige benötigte Segmentmenge. Das ersetzt keine kontinuierliche Upload-/Lag-Überwachung, Alarmierung oder betriebliche Gap Detection.                                                             |
+| RPO / RTO                                   | Synthetische PITR-Korrektheit ist belegt. End-to-End-Retrieval-, Entschlüsselungs-, Restore-, App-/Worker-Start- und Readiness-Zeiten sind noch nicht als Betriebsdrill gemessen. Die Ziele 24 h / 5 min RPO und 4 h / 8 h RTO bleiben unvalidiert. |
+
+Ein gemessener Archive-Wait oder die Dauer eines CI-Jobs ist keine vollständige
+RTO-Messung. Kein synthetischer Run belegt eine reale Production-RPO.
