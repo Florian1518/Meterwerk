@@ -78,45 +78,58 @@ class Store:
         self.env.update(credentials)
 
     def call(self, operation, *args, allowed=(), anonymous=False):
-        command = ["aws", "--endpoint-url", self.endpoint, "--region", self.region,
-                   "--cli-connect-timeout", "10", "--cli-read-timeout", "30",
-                   "--output", "json"]
-        if anonymous:
-            command += ["--no-sign-request"]
-        command += ["s3api", operation, "--bucket", self.bucket, *map(str, args)]
+        # Standard SDK gives structured service codes without parsing CLI text.
+        import boto3
+        from botocore.config import Config
+        from botocore import UNSIGNED
+        from botocore.exceptions import ClientError, BotoCoreError
+        from contextlib import ExitStack
+        config = Config(signature_version=UNSIGNED if anonymous else "s3v4",
+                        connect_timeout=10, read_timeout=30, retries={"max_attempts": 1},
+                        s3={"addressing_style": "path"},
+                        request_checksum_calculation="when_required",
+                        response_checksum_validation="when_required")
+        client = boto3.client("s3", endpoint_url=self.endpoint, region_name=self.region,
+                              aws_access_key_id=self.env.get("AWS_ACCESS_KEY_ID", ""),
+                              aws_secret_access_key=self.env.get("AWS_SECRET_ACCESS_KEY", ""), config=config)
+        names = {"--key": "Key", "--version-id": "VersionId", "--body": "Body",
+                 "--server-side-encryption": "ServerSideEncryption",
+                 "--public-access-block-configuration": "PublicAccessBlockConfiguration"}
+        params = {"Bucket": self.bucket}
+        destination = None
+        index = 0
+        while index < len(args):
+            option = args[index]
+            if option in names:
+                value = args[index + 1]
+                params[names[option]] = json.loads(value) if option == "--public-access-block-configuration" else str(value)
+                index += 2
+            else:
+                require(operation == "get-object" and index == len(args) - 1, "INVALID_STORAGE_ARGUMENT")
+                destination = str(option)
+                index += 1
         try:
-            result = subprocess.run(command, env=self.env, capture_output=True, timeout=90)
-        except (OSError, subprocess.TimeoutExpired):
-            raise StorageFailure(operation + ":INFRASTRUCTURE_FAILURE") from None
-        if result.returncode:
-            # CLI versions differ in punctuation/ANSI around service error codes.
-            message_bytes = re.sub(rb"\x1b\[[0-9;]*m", b"", result.stderr)
-            match = re.search(rb"\(\s*([A-Za-z0-9]+)\s*\)\s+when calling", message_bytes)
-            code = match.group(1).decode() if match else "TRANSPORT_FAILURE"
-            service_codes = ("NoSuchWebsiteConfiguration", "NoSuchBucketPolicy",
-                             "NoSuchPublicAccessBlockConfiguration", "NotImplemented",
-                             "AccessDenied", "NoSuchKey", "NoSuchVersion", "InvalidArgument")
-            if not match:
-                code = next((candidate for candidate in service_codes
-                             if re.search(rb"\b" + candidate.encode() + rb"\b", message_bytes)), code)
-            if code == "TRANSPORT_FAILURE":
-                # Fixed diagnostic categories only; never print provider payloads.
-                message = result.stderr.lower()
-                categories = {
-                    "INVALID_HEADER": (b"invalid header", b"invalidheader"),
-                    "CREDENTIAL_UNAVAILABLE": (b"unable to locate credentials", b"partial credentials"),
-                    "TLS_FAILURE": (b"ssl validation", b"certificate verify"),
-                    "ENDPOINT_UNREACHABLE": (b"could not connect", b"name resolution", b"timed out"),
-                    "CLI_ARGUMENT_ERROR": (b"unknown options", b"usage:", b"invalid choice"),
-                    "ACCESS_DENIED": (b"accessdenied", b"forbidden", b"access denied"),
-                    "SIGNATURE_ERROR": (b"signaturedoesnotmatch", b"invalidaccesskeyid"),
-                    "CONFIGURATION_ERROR": (b"config profile", b"unable to parse config", b"invalid endpoint"),
-                }
-                code = next((name for name, words in categories.items() if any(word in message for word in words)), code)
+            with ExitStack() as stack:
+                if "Body" in params:
+                    params["Body"] = stack.enter_context(open(params["Body"], "rb"))
+                result = getattr(client, operation.replace("-", "_"))(**params)
+                if destination is not None:
+                    body = result.pop("Body")
+                    stack.callback(body.close)
+                    with open(destination, "xb") as output:
+                        for chunk in body.iter_chunks(chunk_size=1024 * 1024):
+                            output.write(chunk)
+                return result
+        except ClientError as error:
+            code = str(error.response.get("Error", {}).get("Code", "UNKNOWN_SERVICE_ERROR"))
+            require(bool(re.fullmatch(r"[A-Za-z0-9]+", code)), "UNRECOGNIZED_SERVICE_ERROR")
             if code in allowed:
                 return {"expectedError": code}
-            raise StorageFailure(operation + ":" + code)
-        return json.loads(result.stdout or b"{}")
+            raise StorageFailure(operation + ":" + code) from None
+        except (BotoCoreError, OSError):
+            raise StorageFailure(operation + ":INFRASTRUCTURE_FAILURE") from None
+        finally:
+            client.close()
 
     def preflight(self):
         self.call("head-bucket")

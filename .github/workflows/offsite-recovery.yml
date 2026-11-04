@@ -45,6 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { persist-credentials: false }
+      - name: Install isolated standard S3 SDK
+        run: |
+          python3 -m venv "$RUNNER_TEMP/offsite-sdk"
+          "$RUNNER_TEMP/offsite-sdk/bin/pip" install 'boto3==1.40.0'
+          echo "$RUNNER_TEMP/offsite-sdk/bin" >> "$GITHUB_PATH"
       - name: Validate private offsite bucket before any upload
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}

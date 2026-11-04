@@ -61,7 +61,8 @@ class OffsiteSafety(unittest.TestCase):
     def test_infrastructure_not_expected_missing(self):
         store = object.__new__(storage.Store)
         store.endpoint, store.region, store.bucket, store.env = "https://example.invalid", "test", "test", {}
-        with patch.object(storage.subprocess, "run", side_effect=OSError()):
+        store.env = {"AWS_ACCESS_KEY_ID": "synthetic", "AWS_SECRET_ACCESS_KEY": "synthetic"}
+        with patch("botocore.client.BaseClient._make_api_call", side_effect=OSError()):
             with self.assertRaisesRegex(storage.StorageFailure, "INFRASTRUCTURE_FAILURE"):
                 store.call("get-object", allowed=("NoSuchKey",))
 
