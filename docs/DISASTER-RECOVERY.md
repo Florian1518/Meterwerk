@@ -1,5 +1,20 @@
 # Disaster Recovery
 
+## Host-Loss-Status vom 04.11.2026
+
+Der aktuelle Host-Loss-Kandidat `60352da8f3f27432b6a56a54180ee705c81d3f55`
+ist **BLOCKED**. Der isolierte Drill stoppt beim Mosquitto-Config-Preflight
+unter der Runtime-Identität: `Unable to open config file
+'/mosquitto/config/mosquitto.conf'`. Die Datei wurde aus dem gestoppten
+Container gelesen; Modus `0644`, Eigentümer `0:0`, Größe und SHA-256 stimmten
+mit der Repository-Quelle überein. Das grenzt den Fehler ein, belegt aber nicht
+die Ursache; Verzeichnisrechte wurden in diesem Lauf nicht erfasst. Der lokale
+Docker-Daemon ist nicht verfügbar und für private GitHub-Logs stand keine
+autorisierte Session bereit. Deshalb keine Ursachenvermutung als Fix und keine
+Host-Loss-PASS-Evidence. Dauer: nicht gemessen. Die übrige synthetische IONOS-
+Offsite-/PITR-Evidence unten bleibt bestehen; der Host-Loss-Fehler entwertet
+sie nicht.
+
 ## IONOS-Offsite-Acceptance: Ergebnis vom 04.11.2026
 
 Der synthetische Acceptance-Run [41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425) auf Code-SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494` bestand. Evidence-Artefakt `offsite-recovery-evidence`, ID `13308157780`, SHA-256 `a34432cfda6e3a2b1dc271fd4191a7c7e24402f3f988f1f092fb11fda2c1dd1c`, Ablauf 04.12.2026. Es enthält nur synthetische Prüfnachweise, keine Dumps, Ciphertexte oder privaten Schlüssel.
