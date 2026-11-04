@@ -36,8 +36,10 @@ for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptanc
   inner image inspect "$image" >/dev/null
 done
 mark imagesReady
-docker cp infra/mosquitto/mosquitto.conf "$host:/tmp/mosquitto.conf" >/dev/null
-docker cp "$RUNNER_TEMP/mqtt-receipt-private.pem" "$host:/tmp/receipt.pem" >/dev/null
+docker exec -i "$host" sh -c 'cat > /tmp/mosquitto.conf' < infra/mosquitto/mosquitto.conf
+docker exec -i "$host" sh -c 'cat > /tmp/receipt.pem' < "$RUNNER_TEMP/mqtt-receipt-private.pem"
+docker exec "$host" test -s /tmp/mosquitto.conf
+docker exec "$host" test -s /tmp/receipt.pem
 docker exec "$host" chown 1000:1000 /tmp/receipt.pem
 docker exec "$host" chmod 600 /tmp/receipt.pem
 inner network create recovery >/dev/null
