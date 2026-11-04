@@ -30,6 +30,7 @@ class OffsiteSafety(unittest.TestCase):
 
     def test_wrong_endpoint_before_credentials(self):
         with patch.dict("os.environ", {"IONOS_S3_BUCKET": "meterwerk-offsite-backup-fesch",
+                                       "AWS_ACCESS_KEY_ID": "synthetic", "AWS_SECRET_ACCESS_KEY": "synthetic",
                                        "IONOS_S3_REGION": "eu-central-3",
                                        "IONOS_S3_ENDPOINT": "https://wrong.invalid"}):
             with self.assertRaisesRegex(storage.StorageFailure, "UNAUTHORIZED"):

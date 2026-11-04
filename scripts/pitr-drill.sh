@@ -86,6 +86,7 @@ docker cp "$source:/tmp/phase3-base/." "$work/base/" >/dev/null
 node scripts/pitr-archive.mjs archive "$source" "$work" "$evidence"
 
 if [ "${METERWERK_PITR_OFFSITE:-0}" = "1" ]; then
+  docker exec "$source" rm -rf /tmp/phase3-base
   bash scripts/offsite-wal-roundtrip.sh "$work" "$evidence"
 fi
 test ! -e "$work/base/pg_wal/$expected_segment"

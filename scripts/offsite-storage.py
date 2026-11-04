@@ -53,6 +53,10 @@ def validate_policy(policy):
 
 class Store:
     def __init__(self):
+        for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
+            value = os.environ.get(name, "")
+            require(bool(value), "CREDENTIAL_NOT_CONFIGURED")
+            require(not any(character.isspace() for character in value), "CREDENTIAL_FORMAT_INVALID")
         self.bucket = os.environ["IONOS_S3_BUCKET"]
         self.region = os.environ["IONOS_S3_REGION"]
         self.endpoint = os.environ["IONOS_S3_ENDPOINT"]
@@ -84,6 +88,20 @@ class Store:
         if result.returncode:
             match = re.search(rb"\(([A-Za-z0-9]+)\) when calling", result.stderr)
             code = match.group(1).decode() if match else "TRANSPORT_FAILURE"
+            if not match:
+                # Fixed diagnostic categories only; never print provider payloads.
+                message = result.stderr.lower()
+                categories = {
+                    "INVALID_HEADER": (b"invalid header", b"invalidheader"),
+                    "CREDENTIAL_UNAVAILABLE": (b"unable to locate credentials", b"partial credentials"),
+                    "TLS_FAILURE": (b"ssl validation", b"certificate verify"),
+                    "ENDPOINT_UNREACHABLE": (b"could not connect", b"name resolution", b"timed out"),
+                    "CLI_ARGUMENT_ERROR": (b"unknown options", b"usage:", b"invalid choice"),
+                    "ACCESS_DENIED": (b"accessdenied", b"forbidden", b"access denied"),
+                    "SIGNATURE_ERROR": (b"signaturedoesnotmatch", b"invalidaccesskeyid"),
+                    "CONFIGURATION_ERROR": (b"config profile", b"unable to parse config", b"invalid endpoint"),
+                }
+                code = next((name for name, words in categories.items() if any(word in message for word in words)), code)
             if code in allowed:
                 return {"expectedError": code}
             raise StorageFailure(operation + ":" + code)
