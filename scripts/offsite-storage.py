@@ -89,9 +89,17 @@ class Store:
         except (OSError, subprocess.TimeoutExpired):
             raise StorageFailure(operation + ":INFRASTRUCTURE_FAILURE") from None
         if result.returncode:
-            match = re.search(rb"\(([A-Za-z0-9]+)\) when calling", result.stderr)
+            # CLI versions differ in punctuation/ANSI around service error codes.
+            message_bytes = re.sub(rb"\x1b\[[0-9;]*m", b"", result.stderr)
+            match = re.search(rb"\(\s*([A-Za-z0-9]+)\s*\)\s+when calling", message_bytes)
             code = match.group(1).decode() if match else "TRANSPORT_FAILURE"
+            service_codes = ("NoSuchWebsiteConfiguration", "NoSuchBucketPolicy",
+                             "NoSuchPublicAccessBlockConfiguration", "NotImplemented",
+                             "AccessDenied", "NoSuchKey", "NoSuchVersion", "InvalidArgument")
             if not match:
+                code = next((candidate for candidate in service_codes
+                             if re.search(rb"\b" + candidate.encode() + rb"\b", message_bytes)), code)
+            if code == "TRANSPORT_FAILURE":
                 # Fixed diagnostic categories only; never print provider payloads.
                 message = result.stderr.lower()
                 categories = {
