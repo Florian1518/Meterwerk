@@ -19,7 +19,7 @@ docker build -f Dockerfile.worker --build-arg GIT_SHA="$GITHUB_SHA" -t meterwerk
 docker pull postgres:16 >/dev/null
 docker pull eclipse-mosquitto:2 >/dev/null
 docker pull docker:27-dind >/dev/null
-docker save -o "$stage/images.tar" meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance postgres:16 eclipse-mosquitto:2
+docker save meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance postgres:16 eclipse-mosquitto:2 > "$stage/images.tar"
 docker run -d --privileged --name "$host" -e DOCKER_TLS_CERTDIR= \
   -p 127.0.0.1:5544:5544 -p 127.0.0.1:3100:3100 docker:27-dind >/dev/null
 for attempt in $(seq 1 60); do
@@ -31,9 +31,10 @@ test -z "$(inner image ls -q)"
 test -z "$(inner ps -aq)"
 test -z "$(inner volume ls -q)"
 mark start
-docker cp "$stage/images.tar" "$host:/tmp/images.tar" >/dev/null
-inner load -i /tmp/images.tar >/dev/null
-docker exec "$host" rm /tmp/images.tar
+docker exec -i "$host" docker load < "$stage/images.tar" >/dev/null
+for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance postgres:16 eclipse-mosquitto:2; do
+  inner image inspect "$image" >/dev/null
+done
 mark imagesReady
 docker cp infra/mosquitto/mosquitto.conf "$host:/tmp/mosquitto.conf" >/dev/null
 docker cp "$RUNNER_TEMP/mqtt-receipt-private.pem" "$host:/tmp/receipt.pem" >/dev/null
