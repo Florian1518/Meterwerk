@@ -1,5 +1,53 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## IONOS-Fortsetzung (04.11.2026)
+
+Master-Ausgangspunkt `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.
+Recovery 41791165665 PASSED. CI 41791165623 FAILED ausschlie?lich im
+Desktop-PWA-Test: w?hrend Navigation existierten zwei h1-Elemente. Der konkrete
+Z?hler-Heading-Locator wurde semantisch pr?zisiert; Recovery-Code bleibt erhalten.
+
+IONOS-Bucket/Region/Endpoint und GitHub-Secrets sind jetzt vom Betreiber freigegeben.
+Offsite-Functionality, tats?chliches Versioning, private Bucket-Sicherheit und
+age + SSE-S3: **PENDING realer Acceptance-Run**, kein SSE-KMS f?r IONOS.
+Admin-generierter Schl?ssel: **Least Privilege OPEN**, keine Betriebsfreigabe.
+Staging-Acceptance BLOCKED, kontinuierlicher WAL-Betrieb PARTIAL, operative
+RPO/RTO NOT YET DEMONSTRATED, erster echter Cron-Nachweis ausstehend.
+Der neue Workflow misst den realen synthetischen externen Restore-Pfad;
+Host-Loss-End-to-End und Production-SLA werden daraus nicht abgeleitet.
+
+Phase 3 PARTIAL; READY FOR SOFTWARE COMPLETION PHASE 4: NO.
+Die folgenden Inventare dokumentieren fr?here Zust?nde vor der IONOS-Freigabe.
+
+## Fortsetzungsprüfung vom 04.11.2026
+
+Aktueller Remote-master: `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.
+PR #4 und #5 sind integriert; Code-Kandidat bleibt unverändert
+`21e196762c18bc8ad7b3425a2b49652a0de43acc`.
+[Recovery 41791165665](https://github.com/Florian1518/Meterwerk/actions/runs/41791165665)
+ist PASSED. [CI 41791165623](https://github.com/Florian1518/Meterwerk/actions/runs/41791165623)
+lief bei der Prüfung noch: Fast Checks, Unit und Integration/Migration bestanden,
+Browser/Mobile und Build noch in Ausführung. Kein neuer Run gestartet.
+
+Recovery-Workflow `404557168` ist active, Schedule auf master `23 7 * * 1`.
+Die GitHub-Abfrage mit `event=schedule` liefert 0 Runs. Der erfolgreiche manuelle
+Dispatch bleibt gültig, zählt jedoch nicht als Cron-Evidence; dieses Gate PARTIAL.
+
+Kein autorisierter Offsite-Testpfad oder read-only Staging-Backup-Zugang in den
+geprüften Konfigurationen nachgewiesen. Bucket/Versioning, KMS und IAM/OIDC sind
+nicht bereitgestellt; externer Upload und ausschließlich externer Restore
+wurden nicht durchgeführt. Externe WAL-Übertragung, Retention und Monitoring
+sind nicht vollständig belegt. Die bestandene lokale WAL-/PITR-Softwareprüfung
+bleibt PASSED; kontinuierlicher WAL-Offsite-Betrieb bleibt PARTIAL/BLOCKED.
+Full-Restore-, PITR- und Host-Loss-End-to-End-Dauer: nicht gemessen.
+RPO-/RTO-Zielerreichung technisch und operativ: NOT YET DEMONSTRATED.
+
+Die genaue externe Übergabeliste und begrenzten Rechte stehen in
+[DISASTER-RECOVERY.md](DISASTER-RECOVERY.md#operative-fortsetzung-inventar-vom-04112026).
+Gesamtstatus Phase 3 PARTIAL; Offsite, Staging-Acceptance und operative RPO/RTO
+BLOCKED. READY FOR SOFTWARE COMPLETION PHASE 4: NO.
+Production, echte Staging-Daten und Hardware unangetastet; RC7 unverändert.
+
 ## Software Completion Phase 3 – operativer Stand vom 03.11.2026
 
 **Gesamtstatus: PARTIAL / externe Acceptance BLOCKED. Keine Freigabe für Phase 4 oder Production.**

@@ -253,19 +253,25 @@ async function uploadOffsite(
       "METERWERK_BACKUP_S3_URI must be a dedicated private backup prefix",
     );
   const prefix = destination.replace(/\/$/, "");
-  const kmsKeyId = validateS3KmsKeyReference(
-    requireEnv("METERWERK_BACKUP_S3_KMS_KEY_ID"),
-  );
-  const kmsKeyArn = await readProcessOutput("aws", [
-    "kms",
-    "describe-key",
-    "--key-id",
-    kmsKeyId,
-    "--query",
-    "KeyMetadata.Arn",
-    "--output",
-    "text",
-  ]);
+  const sse = process.env.METERWERK_BACKUP_S3_SSE ?? "aws:kms";
+  if (!["AES256", "aws:kms"].includes(sse))
+    throw new Error("Unsupported S3 server-side encryption");
+  const kmsKeyId =
+    sse === "aws:kms"
+      ? validateS3KmsKeyReference(requireEnv("METERWERK_BACKUP_S3_KMS_KEY_ID"))
+      : undefined;
+  const kmsKeyArn = kmsKeyId
+    ? await readProcessOutput("aws", [
+        "kms",
+        "describe-key",
+        "--key-id",
+        kmsKeyId,
+        "--query",
+        "KeyMetadata.Arn",
+        "--output",
+        "text",
+      ])
+    : undefined;
   // AWS credentials are supplied by the standard external credential provider/role.
   // No credentials are passed on the command line or written to the manifest.
   const encryptedCopy = run("aws", [
@@ -274,9 +280,8 @@ async function uploadOffsite(
     encrypted,
     `${prefix}/${basename(encrypted)}`,
     "--sse",
-    "aws:kms",
-    "--sse-kms-key-id",
-    kmsKeyId,
+    sse,
+    ...(kmsKeyId ? ["--sse-kms-key-id", kmsKeyId] : []),
     "--only-show-errors",
   ]);
   await encryptedCopy.done;
@@ -286,9 +291,8 @@ async function uploadOffsite(
     manifest,
     `${prefix}/${basename(manifest)}`,
     "--sse",
-    "aws:kms",
-    "--sse-kms-key-id",
-    kmsKeyId,
+    sse,
+    ...(kmsKeyId ? ["--sse-kms-key-id", kmsKeyId] : []),
     "--only-show-errors",
   ]);
   await manifestCopy.done;
@@ -311,10 +315,10 @@ async function uploadOffsite(
     ) as { size?: number; sse?: string; version?: string; kmsKeyId?: string };
     if (
       remote.size !== size ||
-      remote.sse !== "aws:kms" ||
+      remote.sse !== sse ||
       !remote.version ||
       remote.version === "null" ||
-      remote.kmsKeyId !== kmsKeyArn
+      (kmsKeyArn !== undefined && remote.kmsKeyId !== kmsKeyArn)
     )
       throw new Error(
         "Offsite backup encryption, versioning or size verification failed",

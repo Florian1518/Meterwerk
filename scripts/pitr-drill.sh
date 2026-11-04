@@ -84,6 +84,10 @@ if ! docker exec "$source" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc
 fi
 docker cp "$source:/tmp/phase3-base/." "$work/base/" >/dev/null
 node scripts/pitr-archive.mjs archive "$source" "$work" "$evidence"
+
+if [ "${METERWERK_PITR_OFFSITE:-0}" = "1" ]; then
+  bash scripts/offsite-wal-roundtrip.sh "$work" "$evidence"
+fi
 test ! -e "$work/base/pg_wal/$expected_segment"
 # Validate the untouched backup before recovery configuration or deliberate damage.
 docker run --rm --network none -v "$work/base:/data:ro" \
@@ -226,3 +230,15 @@ docker exec "$restored" pg_restore --list /tmp/pitr-verified.dump >/dev/null
 docker exec "$restored" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
   "SELECT json_build_object('inRecovery',pg_is_in_recovery(),'replayLsn',pg_last_wal_replay_lsn(),'baselineCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='baseline'),'preErrorCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='target-marker'),'postTargetErrorCount',(SELECT count(*) FROM phase3_pitr_probe WHERE marker='simulated-error'),'constraintsValid',NOT EXISTS(SELECT 1 FROM pg_constraint WHERE NOT convalidated))" > "$work/positive.json"
 node scripts/pitr-archive.mjs verify "$restored" "$work" "$evidence"
+if [ "${METERWERK_PITR_OFFSITE:-0}" = "1" ]; then
+  node --input-type=module - "$evidence/offsite-wal.json" <<'NODE'
+import { readFileSync, writeFileSync } from 'node:fs';
+const file = process.argv[2];
+const evidence = JSON.parse(readFileSync(file, 'utf8'));
+evidence.recoveryEndEpoch = Date.now() / 1000;
+evidence.durationSeconds = evidence.recoveryEndEpoch - evidence.downloadStartEpoch;
+evidence.targetValidated = true;
+evidence.readinessScope = 'synthetic PostgreSQL probe; full application readiness is a separate gate';
+writeFileSync(file, JSON.stringify(evidence, null, 2) + '\n');
+NODE
+fi

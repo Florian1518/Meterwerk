@@ -1,5 +1,59 @@
 # Disaster Recovery
 
+## IONOS Offsite Acceptance (04.11.2026)
+
+Der Betreiber hat den nicht-produktiven Bucket `meterwerk-offsite-backup-fesch`
+in `eu-central-3` am Endpoint `https://s3.eu-central-3.ionoscloud.com`
+freigegeben. Die bisherigen AWS-KMS-Anforderungen gelten f?r diesen Pfad nicht:
+Client-side **age ist zwingend**, zus?tzlich wird **SSE-S3 / AES256** bei Upload
+verlangt und bei HeadObject und Download gepr?ft. Der generische Backup-Helfer
+beh?lt AWS-KMS als bisherigen Default; `METERWERK_BACKUP_S3_SSE=AES256` w?hlt
+SSE-S3 ausdr?cklich. Endpoint-Konfiguration erfolgt ?ber den AWS-CLI-Provider,
+kein Credential-File und kein `aws configure`.
+
+Der separate Workflow `offsite-recovery.yml` verwendet GitHub-Secrets ausschlie?lich
+als tempor?re Prozessvariablen. Private-Bucket-Pr?fung erfolgt vor Upload:
+Region, Versioning, Website deaktiviert, ACL, Policy und Public-Access-Status.
+?ffentliche Allow-Principals (auch konditional) und unbekannte ACL-Formen werden
+abgewiesen. Unterst?tztes Public Access Block wird auf alle vier Sperren gesetzt;
+API- und Infrastrukturfehler werden nicht als Negativtest-Erfolg akzeptiert.
+
+Testobjekte liegen ausschlie?lich unter `phase3-acceptance/<run-id>-<attempt>/`.
+Ciphertext und Manifest werden mit konkreten Version-IDs wieder abgerufen;
+Hash und Gr??e werden gegen vor dem L?schen festgehaltene Werte gepr?ft.
+Vor Retrieval werden lokale Ausgangskopien entfernt. Der separate synthetische
+Versionierungsprobe enth?lt keine DB-Daten. Alle Testversionen bleiben erhalten;
+keine Remote-L?schung. Betreiber muss Lifecycle/Retention und sp?tere berechtigte
+Bereinigung festlegen. CI-Artefakte enthalten nur begrenzte Evidence, keine Dumps,
+Ciphertexte oder privaten age-Identit?ten.
+
+WAL/Base-Backup werden im expliziten Offsite-Drill als age-verschl?sseltes,
+hashgebundenes Archiv ?bertragen. Segmentnamen bleiben erhalten. Erst nach
+Entfernung der lokalen Archiv-/Base-Kopien und externem Abruf laufen die
+unver?nderten Target-, Missing-WAL- und Incomplete-Base-Pr?fungen. Dies validiert
+einen abgegrenzten WAL-Bereich, keinen dauerhaften WAL-Uploader oder 5-Minuten-RPO.
+PITR-Zeit umfasst die synthetische PostgreSQL-Probe; vollst?ndige App-Readiness
+geh?rt zum separaten Full-Restore-Gate. Kein Production-SLA-Nachweis.
+
+**Least Privilege bleibt OPEN:** Der aktuelle Schl?ssel stammt laut Betreiber aus
+einem Administrator-Kontext. Ziel ist ein separater IONOS-User ohne Adminrolle,
+Gruppe nur mit ?Use Object Storage?, getestete Bucket-/Prefix-Policy mit
+`PutObject`, `GetObject`, `GetObjectVersion`, `GetBucketVersioning` und nur
+ben?tigtem prefixbeschr?nktem `ListBucket`. Sicherheitsinventur ben?tigt zus?tzlich
+Read-Rechte f?r Location, ACL, Policy, Website und Public Access Block; dessen
+?nderung sollte langfristig ein separater Betreiber ?bernehmen. Kein Delete-Recht
+f?r den Acceptance-Pfad. Eine Allow-Policy allein beweist nicht, dass anderweitige
+Adminrechte entfallen: Negativzugriff auf fremde Prefixe/Buckets separat abnehmen,
+anschlie?end Administrator-Schl?ssel rotieren/entfernen. Keine Policy automatisch
+erzeugen und keine AWS-IAM-/KMS-Semantik f?r IONOS behaupten.
+
+Quellen: [IONOS Service Catalog](https://docs.ionos.com/cloud/support/general-information/service-catalog),
+[IONOS Storage Security](https://docs.ionos.com/cloud/security-safeguards/best-practice-guideline/best-practice-cloud-storage-products).
+
+Staging bleibt BLOCKED: keine freigegebene read-only Backup-Quelle. Echte
+Offsite-Ergebnisse werden erst nach dem Workflow als PASSED dokumentiert.
+Die folgenden fr?heren Inventare sind historische St?nde vor Bereitstellung.
+
 ## Scope and current evidence
 
 This runbook covers PostgreSQL, application release/configuration, workers,
@@ -331,3 +385,48 @@ Download, Hash, Entschlüsselung und vollständigen Restore nachweisen.
 
 Ein gemessener Archive-Wait oder die Dauer eines CI-Jobs ist keine vollständige
 RTO-Messung. Kein synthetischer Run belegt eine reale Production-RPO.
+
+## Operative Fortsetzung: Inventar vom 04.11.2026
+
+Read-only geprüft wurden Repository-/CI-/Staging-Unterlagen, die Namen der
+GitHub-Konfiguration und die relevanten lokalen Prozessvariablen. GitHub meldet
+0 Environments, 0 Repository-Variablen und 0 Repository-Secrets. Backup-S3-URI,
+KMS-Key, AWS-Region, AWS-Rolle und Endpoint sind lokal nicht gesetzt. Die
+Staging-Unterlagen nennen Vorlagen und optionalen Attachment-Speicher, jedoch
+keinen freigegebenen Offsite-Testpfad oder read-only Backup-Principal. Die
+CI-S3-/KMS-Ziele sind Fehler-Testdoubles, keine externen Ressourcen. Unbekannte
+Cloud-Ressourcen wurden nicht untersucht; kein Host oder Cloudkonto kontaktiert.
+
+**OFFSITE REQUIRED:** Betreiber muss Provider, privaten Test-Bucket und Prefix,
+Region/Endpoint, aktiviertes Versioning, regionalen SSE-KMS-Key sowie eine
+dedizierte IAM-/OIDC-Testrolle mit Trust-Policy benennen. Der vorhandene
+Backup-Adapter verwendet AWS CLI und AWS KMS; bloße S3-Kompatibilität eines
+anderen Providers belegt keine KMS-Kompatibilität. Öffentlichen age-Empfänger
+und sichere separate Schlüsselbereitstellung festlegen; keine Secrets im Chat.
+
+Minimalpolicy: `s3:PutObject`, `s3:GetObject`, `s3:GetObjectVersion` auf den
+Testprefix; `s3:GetBucketVersioning` auf den Bucket. `s3:ListBucket` nur für
+benötigte Inventur, mit Prefix-Bedingung. `kms:DescribeKey`,
+`kms:GenerateDataKey` und `kms:Decrypt` nur auf den Test-Key. `kms:Encrypt`
+nur bei zusätzlich eingesetztem direktem KMS-Encrypt-Aufruf; der vorhandene
+SSE-KMS-Upload verwendet keinen solchen Aufruf. Multipart-Rechte nur soweit
+für die tatsächliche Uploadgröße erforderlich. Keine Administrationsrechte.
+`s3:DeleteObject` und `s3:DeleteObjectVersion` sind für Upload/Restore-Acceptance
+nicht erforderlich; Bereinigung separat über Betreiber-Retention oder eine
+explizit freigegebene, auf Testversionen begrenzte Cleanup-Policy regeln.
+
+**STAGING REQUIRED:** Freigabe für konsistentes read-only Backup, benannter
+Quellhost/Endpoint und Datenbank, dedizierter Backup-Principal, Credential-Art
+und sichere Bereitstellung außerhalb des Chats, erlaubter Netzwerkpfad und
+gegebenenfalls Zeitfenster. Zusätzlich Datenumfang, Aufbewahrung und Löschung
+der isolierten Kopie festlegen. Ein bekannter Staging-Webhost ist keine
+Freigabe eines DB-Backup-Zugangs. Kein Restore nach Staging.
+
+Ohne diese Angaben bleiben externer Upload/Restore, Staging-Acceptance und
+operative RPO/RTO blockiert. Full Restore, PITR und Host Loss haben keine
+End-to-End-Messreihe mit Start, Ende, Teilschritten und Readiness. Die Ziele
+24 h / 5 min RPO und 4 h / 8 h RTO sind **NOT YET DEMONSTRATED**;
+synthetische Recovery-Korrektheit ist **TECHNICALLY DEMONSTRATED**, externe
+Betriebsabnahme nicht **OPERATIVELY DEMONSTRATED**. Kontinuierliches WAL-Offsite
+bleibt auch softwareseitig unvollständig belegt; der lokale Archiv-Drill allein
+rechtfertigt dafür kein DONE.

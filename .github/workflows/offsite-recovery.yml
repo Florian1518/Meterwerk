@@ -1,0 +1,300 @@
+name: Offsite Recovery Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [software-completion/phase-3-ionos]
+    paths:
+      - ".github/workflows/offsite-recovery.yml"
+      - "scripts/offsite-*"
+      - "scripts/backup.ts"
+      - "scripts/pitr-drill.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offsite-recovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-recovery:
+    name: IONOS synthetic offsite backup, restore and PITR
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meterwerk
+          POSTGRES_PASSWORD: ci-only-recovery-password
+          POSTGRES_DB: meterwerk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U meterwerk -d meterwerk"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk
+      APP_URL: http://127.0.0.1:3000
+      SESSION_SECRET: ci-only-synthetic-session-secret
+      NODE_ENV: test
+      METERWERK_ENV: test
+      SEED_DEMO: "true"
+      DEMO_PASSWORD: ci-only-synthetic-demo-password
+      GIT_COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - name: Validate private offsite bucket before any upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+        run: python3 scripts/offsite-storage.py preflight "$RUNNER_TEMP/offsite-security.json"
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with: { version: 12.5.1 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: pnpm }
+      - name: Install PostgreSQL 16 client and age
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes age ca-certificates curl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --location \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          test "$(pg_dump --version | awk '{print $3}' | cut -d. -f1)" = "16"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: python3 scripts/offsite-storage-test.py
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:seed
+      - name: Create ephemeral age identity
+        shell: bash
+        run: |
+          age-keygen -o "$RUNNER_TEMP/meterwerk-age-identity" 2>/dev/null
+          chmod 600 "$RUNNER_TEMP/meterwerk-age-identity"
+          echo "METERWERK_BACKUP_AGE_IDENTITY_FILE=$RUNNER_TEMP/meterwerk-age-identity" >> "$GITHUB_ENV"
+          echo "METERWERK_BACKUP_AGE_RECIPIENT=$(age-keygen -y "$RUNNER_TEMP/meterwerk-age-identity")" >> "$GITHUB_ENV"
+      - name: Create and verify encrypted database backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          backup="$RUNNER_TEMP/meterwerk-${GITHUB_SHA}-$(date -u +%Y%m%dT%H%M%SZ).age"
+          pnpm db:backup backup "$backup"
+          pnpm db:backup verify "$backup"
+          echo "METERWERK_BACKUP_FILE=$backup" >> "$GITHUB_ENV"
+          echo "METERWERK_BACKUP_MANIFEST=$backup.manifest.json" >> "$GITHUB_ENV"
+      - run: pnpm build
+        env: { NODE_ENV: production }
+      - name: Validate real version retrieval and denied access
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+        run: python3 scripts/offsite-version-test.py "$RUNNER_TEMP/offsite-versions.json"
+      - name: Upload encrypted backup, remove local copies and retrieve exact external versions
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+        run: python3 scripts/offsite-storage.py roundtrip "$METERWERK_BACKUP_FILE" "$RUNNER_TEMP/offsite-full.json"
+      - name: Restore into a new isolated database
+        run: pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_phase3_ci
+      - name: Verify recovery failures fail closed
+        shell: bash
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: meterwerk
+          PGPASSWORD: ci-only-recovery-password
+        run: |
+          set -euo pipefail
+          corrupt="$RUNNER_TEMP/meterwerk-corrupt.age"
+          cp "$METERWERK_BACKUP_FILE" "$corrupt"
+          cp "$METERWERK_BACKUP_MANIFEST" "$corrupt.manifest.json"
+          printf X | dd of="$corrupt" bs=1 seek=0 conv=notrunc status=none
+          if pnpm db:backup verify "$corrupt" >/dev/null 2>&1; then
+            echo "Corrupt backup unexpectedly passed verification" >&2
+            exit 1
+          fi
+
+          age-keygen -o "$RUNNER_TEMP/wrong-age-identity" 2>/dev/null
+          chmod 600 "$RUNNER_TEMP/wrong-age-identity"
+          if METERWERK_BACKUP_AGE_IDENTITY_FILE="$RUNNER_TEMP/wrong-age-identity" \
+            pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_wrong_key \
+            >"$RUNNER_TEMP/wrong-key.log" 2>&1; then
+            echo "Backup encrypted for a different age identity unexpectedly restored" >&2
+            exit 1
+          fi
+          missing_db="$(psql -d postgres -Atqc \
+            "SELECT count(*) FROM pg_database WHERE datname = 'meterwerk_restore_wrong_key'")"
+          test "$missing_db" = "0"
+
+          mock_kms="$RUNNER_TEMP/mock-aws-kms-denied"
+          mkdir -p "$mock_kms"
+          cat > "$mock_kms/aws" <<'MOCK'
+          #!/bin/sh
+          exit 42
+          MOCK
+          chmod 700 "$mock_kms/aws"
+          if PATH="$mock_kms:$PATH" METERWERK_BACKUP_S3_URI="s3://meterwerk-ci-test/meterwerk-backups/kms-denied" \
+            METERWERK_BACKUP_S3_KMS_KEY_ID="alias/meterwerk-test" \
+            pnpm db:backup backup "$RUNNER_TEMP/meterwerk-kms-denied.age" \
+            >"$RUNNER_TEMP/kms-denied.log" 2>&1; then
+            echo "KMS denial unexpectedly passed backup publication" >&2
+            exit 1
+          fi
+          pnpm db:backup verify "$RUNNER_TEMP/meterwerk-kms-denied.age" >/dev/null
+
+          mock_s3="$RUNNER_TEMP/mock-aws-s3-unavailable"
+          mkdir -p "$mock_s3"
+          cat > "$mock_s3/aws" <<'MOCK'
+          #!/bin/sh
+          if [ "$1" = "kms" ] && [ "$2" = "describe-key" ]; then
+            printf '%s\n' 'arn:aws:kms:us-east-1:000000000000:key/00000000-0000-0000-0000-000000000000'
+            exit 0
+          fi
+          exit 44
+          MOCK
+          chmod 700 "$mock_s3/aws"
+          if PATH="$mock_s3:$PATH" METERWERK_BACKUP_S3_URI="s3://meterwerk-ci-test/meterwerk-backups/unavailable" \
+            METERWERK_BACKUP_S3_KMS_KEY_ID="alias/meterwerk-test" \
+            pnpm db:backup backup "$RUNNER_TEMP/meterwerk-offsite-unavailable.age" \
+            >"$RUNNER_TEMP/offsite-unavailable.log" 2>&1; then
+            echo "Unavailable offsite target unexpectedly passed publication" >&2
+            exit 1
+          fi
+          pnpm db:backup verify "$RUNNER_TEMP/meterwerk-offsite-unavailable.age" >/dev/null
+          echo "Recovery negative tests PASSED: checksum, wrong key, KMS denial, unavailable offsite"
+      - name: Start application against restored database
+        shell: bash
+        run: |
+          export DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          export METERWERK_ENV=test NODE_ENV=production
+          pnpm start > "$RUNNER_TEMP/recovery-app.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/recovery-app.pid"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Reconstruct synthetic MQTT and ingestion worker after host loss
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          METERWERK_ENV: test
+          MQTT_BROKER_URL: mqtt://127.0.0.1:1883
+        run: |
+          set -euo pipefail
+          docker run --detach --name meterwerk-recovery-mqtt \
+            --publish 127.0.0.1:1883:1883 \
+            --volume "$GITHUB_WORKSPACE/infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
+            eclipse-mosquitto:2 >/dev/null
+          node --input-type=module -e 'import { generateKeyPairSync } from "node:crypto"; import { writeFileSync } from "node:fs"; const { privateKey } = generateKeyPairSync("ed25519"); writeFileSync(process.env.RUNNER_TEMP + "/mqtt-receipt-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });'
+          export MQTT_RECEIPT_KEY_PATH="$RUNNER_TEMP/mqtt-receipt-private.pem"
+          pnpm mqtt-worker > "$RUNNER_TEMP/recovery-worker.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/recovery-worker.pid"
+          for attempt in $(seq 1 30); do
+            if grep -q 'mqtt.subscribed' "$RUNNER_TEMP/recovery-worker.log"; then
+              echo '{"status":"PASSED","scenario":"synthetic-host-loss","checks":{"postgresRestore":true,"webReadiness":true,"mqttService":true,"ingestionWorkerSubscribed":true},"data":"synthetic-only"}' > "$RUNNER_TEMP/host-loss-evidence.json"
+              exit 0
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/recovery-worker.pid")" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/recovery-worker.log"
+          exit 1
+      - name: Verify restore schema, migrations, data and application
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          PGDATABASE: meterwerk_restore_phase3_ci
+          METERWERK_RESTORE_READY_URL: http://127.0.0.1:3000/api/health/ready
+        run: pnpm exec tsx scripts/restore-verifier.ts > "$RUNNER_TEMP/recovery-evidence.json"
+      - name: Record external full restore duration
+        run: |
+          node --input-type=module - <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file = process.env.RUNNER_TEMP + '/offsite-full.json';
+          const evidence = JSON.parse(readFileSync(file));
+          evidence.recoveryEndEpoch = Date.now() / 1000;
+          evidence.durationSeconds = evidence.recoveryEndEpoch - evidence.downloadStartEpoch;
+          evidence.timingScope = 'download through restore verifier and app readiness, including negative checks and worker reconstruction';
+          evidence.restoreVerifier = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/recovery-evidence.json')).status;
+          writeFileSync(file, JSON.stringify(evidence, null, 2) + '\n');
+          NODE
+      - name: Simulate failed migration and recovery from verified backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=meterwerk PGPASSWORD=ci-only-recovery-password
+          createdb meterwerk_migration_probe
+          export PGDATABASE=meterwerk_migration_probe
+          psql -v ON_ERROR_STOP=1 -c 'CREATE TABLE migration_probe (id integer PRIMARY KEY);' >/dev/null
+          if psql -v ON_ERROR_STOP=1 -c 'BEGIN; ALTER TABLE migration_probe ADD COLUMN half_applied text; SELECT 1 / 0; COMMIT;' >/dev/null 2>&1; then
+            echo "Injected migration failure unexpectedly succeeded" >&2
+            exit 1
+          fi
+          remaining="$(psql -Atqc "SELECT count(*) FROM information_schema.columns WHERE table_name='migration_probe' AND column_name='half_applied'")"
+          test "$remaining" = "0"
+          export METERWERK_ENV=test
+          pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_migration_recovered
+          restored="$(PGDATABASE=meterwerk_restore_migration_recovered psql -Atqc 'SELECT count(*) FROM "Tenant"')"
+          test "$restored" -gt 0
+      - name: Run existing PITR checks with external base and WAL retrieval
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+          METERWERK_PITR_OFFSITE: "1"
+        run: bash scripts/pitr-drill.sh
+      - name: Require complete recovery evidence
+        run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: offsite-recovery-evidence
+          path: |
+            ${{ runner.temp }}/offsite-*.json
+            ${{ runner.temp }}/recovery-evidence.json
+            ${{ runner.temp }}/host-loss-evidence.json
+            ${{ runner.temp }}/meterwerk-pitr-evidence/*.json
+            ${{ env.METERWERK_BACKUP_MANIFEST }}
+          retention-days: 30
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: failed-offsite-recovery-evidence
+          path: |
+            ${{ runner.temp }}/offsite-*.json
+            ${{ runner.temp }}/meterwerk-pitr-evidence/*.json
+          retention-days: 7
+      - if: always()
+        shell: bash
+        run: |
+          if [[ -f "$RUNNER_TEMP/recovery-app.pid" ]]; then kill "$(cat "$RUNNER_TEMP/recovery-app.pid")" 2>/dev/null || true; fi
+          if [[ -f "$RUNNER_TEMP/recovery-worker.pid" ]]; then kill "$(cat "$RUNNER_TEMP/recovery-worker.pid")" 2>/dev/null || true; fi
+          docker rm -f meterwerk-recovery-mqtt >/dev/null 2>&1 || true
+          rm -f "$RUNNER_TEMP/meterwerk-age-identity"
+          rm -f "$RUNNER_TEMP/wrong-age-identity"
+          rm -f "$RUNNER_TEMP/mqtt-receipt-private.pem"
+          rm -rf "$RUNNER_TEMP/mock-aws-kms-denied" "$RUNNER_TEMP/mock-aws-s3-unavailable"
+          rm -f "$RUNNER_TEMP"/meterwerk-*.age
+          rm -f "$RUNNER_TEMP"/meterwerk-*.age.manifest.json

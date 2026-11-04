@@ -33,7 +33,9 @@ test("RC PWA manifest, service worker, offline, reconnect and navigation", async
     .getByRole("navigation", { name: "Hauptnavigation" })
     .getByRole("link", { name: "Zähler", exact: true })
     .click();
-  await expect(page.locator("h1")).toContainText("Zähler");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Zähler", exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
