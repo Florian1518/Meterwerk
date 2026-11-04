@@ -57,9 +57,25 @@ assert.equal(host.databaseVerified, true);
 assert.equal(host.appReady, true);
 assert.equal(host.mqttWorkerSubscribed, true);
 assert.ok(Number.isFinite(host.durationSeconds) && host.durationSeconds > 0);
-for (const step of ["start", "imagesReady", "configurationReady", "databaseReady",
-  "downloadAndHashComplete", "ageDecryptionComplete", "databaseRestored",
-  "appStartup", "appReady", "mqttWorkerReady", "restoreVerifierPassed", "end"])
-  assert.ok(Number.isFinite(host.marks[step]), `host-loss phase missing: ${step}`);
+for (const step of [
+  "start",
+  "imagesReady",
+  "configurationReady",
+  "databaseReady",
+  "downloadAndHashComplete",
+  "ageDecryptionComplete",
+  "databaseRestored",
+  "appStartup",
+  "appReady",
+  "mqttWorkerReady",
+  "restoreVerifierPassed",
+  "end",
+])
+  assert.ok(
+    Number.isFinite(host.marks[step]),
+    `host-loss phase missing: ${step}`,
+  );
 assert.ok(host.marks.end > host.marks.start);
-console.log("Offsite, versioning, PITR, negative recovery and empty-host evidence PASSED");
+console.log(
+  "Offsite, versioning, PITR, negative recovery and empty-host evidence PASSED",
+);
