@@ -63,7 +63,11 @@ inner run --rm --user 0 --volume recovery-receipt-key:/key --entrypoint sh \
   meterwerk-offsite-worker:acceptance -c \
   "test -s /key/receipt.pem && chown $worker_uid:$worker_gid /key/receipt.pem && chmod 600 /key/receipt.pem"
 inner run --rm --user 0 --volume recovery-mosquitto-config:/config --entrypoint sh \
-  meterwerk-offsite-worker:acceptance -c 'test -s /config/mosquitto.conf && chmod 644 /config/mosquitto.conf'
+  meterwerk-offsite-worker:acceptance -c \
+  'test -s /config/mosquitto.conf && chmod 755 /config && chmod 644 /config/mosquitto.conf'
+inner run --rm --volume recovery-mosquitto-config:/mosquitto/config:ro \
+  --entrypoint sh eclipse-mosquitto:2 -c \
+  'test -r /mosquitto/config/mosquitto.conf && test -s /mosquitto/config/mosquitto.conf'
 inner network create recovery >/dev/null
 mark configurationReady
 current_step='restore database service'
