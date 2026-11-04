@@ -296,6 +296,8 @@ jobs:
         run: bash scripts/offsite-host-loss.sh
       - name: Require complete recovery evidence
         run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
+      - name: Verify external offsite acceptance evidence
+        run: node scripts/verify-offsite-evidence.mjs "$RUNNER_TEMP" "$GITHUB_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: offsite-recovery-evidence

@@ -79,7 +79,6 @@ rm "$stage/restore.dump"
 mark databaseRestored
 inner run -d --name mqtt --network recovery \
   -v /tmp/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro eclipse-mosquitto:2 >/dev/null
-mark appStartup
 inner run -d --name web --network recovery -p 3100:3000 \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e APP_URL=http://127.0.0.1:3100 \
@@ -96,7 +95,6 @@ for attempt in $(seq 1 60); do
   sleep 2
 done
 curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null
-mark appReady
 mark appReady
 inner logs worker 2>&1 | grep -q mqtt.subscribed
 test "$(inner inspect -f '{{.State.Running}}' worker)" = true
