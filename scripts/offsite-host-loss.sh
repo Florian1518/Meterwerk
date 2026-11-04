@@ -13,6 +13,11 @@ current_step='prepare release images'
 trap 'rc=$?; printf "HOST_LOSS_FAILED_STAGE=%s\n" "$current_step" >&2; exit "$rc"' ERR
 inner() { docker exec "$host" docker "$@"; }
 mark() { printf '%s %s\n' "$1" "$(date -u +%s%3N)" >> "$stage/times"; }
+safe_logs() {
+  inner logs --tail 40 "$1" 2>&1 | sed -E \
+    -e 's#(postgres(ql)?://[^:/[:space:]]+:)[^@[:space:]]+@#\1[REDACTED]@#g' \
+    -e 's/(SESSION_SECRET|MFA_ENCRYPTION_KEY|DATABASE_URL)=([^[:space:]]+)/\1=[REDACTED]/g'
+}
 
 # Prepare recoverable release artifacts outside the lost target, before timing.
 # Existing application/worker Dockerfiles remain the source of runtime images.
@@ -102,15 +107,30 @@ inner run -d --name worker --network recovery \
   -e METERWERK_ENV=test -e NODE_ENV=test -e MQTT_BROKER_URL=mqtt://mqtt:1883 \
   -e MQTT_RECEIPT_KEY_PATH=/app/receipt.pem -v /tmp/receipt.pem:/app/receipt.pem:ro \
   meterwerk-offsite-worker:acceptance dist/mqtt-worker.js >/dev/null
-current_step='wait for web readiness and MQTT worker subscription'
+current_step='wait for web readiness'
 for attempt in $(seq 1 60); do
-  if curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null \
-    && inner logs worker 2>&1 | grep -q mqtt.subscribed; then break; fi
+  if curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null; then break; fi
   sleep 2
 done
-curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null
+if ! curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null; then
+  echo 'HOST_LOSS_WEB_READINESS_FAILED' >&2
+  inner inspect -f '{{.Name}} status={{.State.Status}} exit={{.State.ExitCode}}' web >&2 || true
+  safe_logs web >&2
+  exit 1
+fi
 mark appReady
-inner logs worker 2>&1 | grep -q mqtt.subscribed
+current_step='wait for MQTT worker subscription'
+for attempt in $(seq 1 60); do
+  if inner logs worker 2>&1 | grep -q mqtt.subscribed; then break; fi
+  sleep 2
+done
+if ! inner logs worker 2>&1 | grep -q mqtt.subscribed; then
+  echo 'HOST_LOSS_MQTT_WORKER_SUBSCRIPTION_FAILED' >&2
+  inner inspect -f '{{.Name}} status={{.State.Status}} exit={{.State.ExitCode}}' worker mqtt >&2 || true
+  safe_logs worker >&2
+  safe_logs mqtt >&2
+  exit 1
+fi
 test "$(inner inspect -f '{{.State.Running}}' worker)" = true
 mark mqttWorkerReady
 current_step='run restore verifier'
