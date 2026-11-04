@@ -53,10 +53,12 @@ def validate_policy(policy):
 
 class Store:
     def __init__(self):
+        credentials = {}
         for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
-            value = os.environ.get(name, "")
-            require(bool(value), "CREDENTIAL_NOT_CONFIGURED")
-            require(not any(character.isspace() for character in value), "CREDENTIAL_FORMAT_INVALID")
+            value = os.environ.get(name, "").strip()
+            require(bool(value), name + ":CREDENTIAL_NOT_CONFIGURED")
+            require(not any(character.isspace() for character in value), name + ":CREDENTIAL_FORMAT_INVALID")
+            credentials[name] = value
         self.bucket = os.environ["IONOS_S3_BUCKET"]
         self.region = os.environ["IONOS_S3_REGION"]
         self.endpoint = os.environ["IONOS_S3_ENDPOINT"]
@@ -73,6 +75,7 @@ class Store:
         self.env = dict(os.environ, AWS_EC2_METADATA_DISABLED="true", AWS_PAGER="",
                         AWS_MAX_ATTEMPTS="2", AWS_SHARED_CREDENTIALS_FILE=os.devnull,
                         AWS_CONFIG_FILE=os.devnull)
+        self.env.update(credentials)
 
     def call(self, operation, *args, allowed=(), anonymous=False):
         command = ["aws", "--endpoint-url", self.endpoint, "--region", self.region,
@@ -123,6 +126,8 @@ class Store:
         status = self.call("get-bucket-policy-status", allowed=("NoSuchBucketPolicy", "NotImplemented"))
         if "PolicyStatus" in status:
             require(status["PolicyStatus"].get("IsPublic") is False, "PUBLIC_BUCKET")
+        else:
+            require(status.get("expectedError") in ("NoSuchBucketPolicy", "NotImplemented"), "POLICY_STATUS_UNREADABLE")
         pab = self.call("get-public-access-block", allowed=("NoSuchPublicAccessBlockConfiguration", "NotImplemented"))
         supported = pab.get("expectedError") != "NotImplemented"
         if supported:

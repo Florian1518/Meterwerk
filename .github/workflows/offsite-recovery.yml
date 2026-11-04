@@ -52,7 +52,9 @@ jobs:
           IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
           IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
-        run: python3 scripts/offsite-storage.py preflight "$RUNNER_TEMP/offsite-security.json"
+        run: |
+          python3 scripts/offsite-storage-test.py
+          python3 scripts/offsite-storage.py preflight "$RUNNER_TEMP/offsite-security.json"
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with: { version: 12.5.1 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
