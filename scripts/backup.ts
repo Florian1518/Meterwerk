@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createReadStream, createWriteStream } from "node:fs";
 import {
+  appendFile,
   chmod,
   mkdir,
   mkdtemp,
@@ -214,6 +215,28 @@ async function assertPrivateFile(file: string) {
   await chmod(file, 0o600);
 }
 
+async function measured<T>(
+  phase: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const started = Date.now();
+  const result = await operation();
+  const finished = Date.now();
+  const file = process.env.METERWERK_RECOVERY_TIMINGS;
+  if (file)
+    await appendFile(
+      file,
+      JSON.stringify({
+        phase,
+        startedAt: new Date(started).toISOString(),
+        endedAt: new Date(finished).toISOString(),
+        durationMs: finished - started,
+      }) + "\n",
+      { mode: 0o600 },
+    );
+  return result;
+}
+
 async function encryptDump(dump: string, encrypted: string) {
   const recipient = requireEnv("METERWERK_BACKUP_AGE_RECIPIENT");
   // age recipients are public encryption keys; only the identity file can decrypt.
@@ -229,10 +252,8 @@ async function decryptDump(encrypted: string, output: string) {
     throw new Error(
       "Age identity file permissions must be restricted to its owner",
     );
-  await streamProcessToFile(
-    "age",
-    ["-d", "-i", identityPath, encrypted],
-    output,
+  await measured("decryption", () =>
+    streamProcessToFile("age", ["-d", "-i", identityPath, encrypted], output),
   );
   await assertPrivateFile(output);
 }
@@ -495,7 +516,7 @@ export async function restoreBackup(file: string, target: string) {
       ],
       { env: restoreEnv },
     );
-    await restore.done;
+    await measured("pg_restore", () => restore.done);
     return {
       database: target,
       sourceSha: manifest.sourceSha,

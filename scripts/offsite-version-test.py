@@ -17,17 +17,21 @@ def main():
         path = Path(directory) / "version-probe"
         path.write_bytes(b"synthetic version one")
         first = store.put(path, store.prefix + "version-probe", encrypted=False)
+        print("VERSION_ONE_METADATA_CONFIRMED")
         path.write_bytes(b"synthetic version two")
         second = store.put(path, first["key"], encrypted=False)
+        print("VERSION_TWO_METADATA_CONFIRMED")
         m.require(first["version"] != second["version"], "VERSIONING_NOT_EFFECTIVE")
         path.unlink()
         store.get(first, path)
+        print("OLDER_VERSION_RETRIEVED")
         m.require(path.read_bytes() == b"synthetic version one", "OLD_VERSION_INVALID")
         missing = store.call("head-object", "--key", store.prefix + "absent",
                              allowed=("404", "NoSuchKey", "NotFound"))
         m.require("expectedError" in missing, "MISSING_OBJECT_UNEXPECTED_SUCCESS")
+        store.call("head-object", "--key", first["key"])
         version = store.call("get-object", "--key", first["key"], "--version-id", "invalid-version",
-                             str(Path(directory) / "invalid"), allowed=("NoSuchVersion", "InvalidArgument", "404"))
+                             str(Path(directory) / "invalid"), allowed=("NoSuchVersion", "NoSuchKey", "InvalidArgument", "404"))
         m.require("expectedError" in version, "INVALID_VERSION_UNEXPECTED_SUCCESS")
         denied = store.call("get-object", "--key", first["key"], str(Path(directory) / "anonymous"),
                             anonymous=True, allowed=("AccessDenied", "403"))

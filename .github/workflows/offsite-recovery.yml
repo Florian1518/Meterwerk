@@ -122,7 +122,77 @@ jobs:
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: python3 scripts/offsite-storage.py roundtrip "$METERWERK_BACKUP_FILE" "$RUNNER_TEMP/offsite-full.json"
       - name: Restore into a new isolated database
+        env:
+          METERWERK_RECOVERY_TIMINGS: ${{ runner.temp }}/offsite-phases.jsonl
         run: pnpm db:backup restore "$METERWERK_BACKUP_FILE" meterwerk_restore_phase3_ci
+      - name: Start application against restored database
+        shell: bash
+        run: |
+          date -u +%s%3N > "$RUNNER_TEMP/offsite-app-start"
+          export DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          export METERWERK_ENV=test NODE_ENV=production
+          pnpm start > "$RUNNER_TEMP/recovery-app.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/recovery-app.pid"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then date -u +%s%3N > "$RUNNER_TEMP/offsite-app-ready"; exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Verify restore schema, migrations, data and application
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          PGDATABASE: meterwerk_restore_phase3_ci
+          METERWERK_RESTORE_READY_URL: http://127.0.0.1:3000/api/health/ready
+        run: |
+          date -u +%s%3N > "$RUNNER_TEMP/offsite-verify-start"
+          pnpm exec tsx scripts/restore-verifier.ts > "$RUNNER_TEMP/recovery-evidence.json"
+          date -u +%s%3N > "$RUNNER_TEMP/offsite-verify-end"
+      - name: Record external full restore duration
+        run: |
+          node --input-type=module - <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file = process.env.RUNNER_TEMP + '/offsite-full.json';
+          const evidence = JSON.parse(readFileSync(file));
+          evidence.recoveryEndEpoch = Date.now() / 1000;
+          evidence.durationSeconds = evidence.recoveryEndEpoch - evidence.downloadStartEpoch;
+          evidence.endedAt = new Date().toISOString();
+          evidence.timingScope = 'external download through full restore verifier and application readiness';
+          evidence.phases = readFileSync(process.env.RUNNER_TEMP + '/offsite-phases.jsonl', 'utf8').trim().split('\n').map(JSON.parse);
+          for (const [phase, from, to] of [['appStartup','app-start','app-ready'],['restoreVerification','verify-start','verify-end']]) {
+            const start = Number(readFileSync(process.env.RUNNER_TEMP + '/offsite-' + from, 'utf8'));
+            const end = Number(readFileSync(process.env.RUNNER_TEMP + '/offsite-' + to, 'utf8'));
+            evidence.phases.push({phase, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), durationMs: end-start});
+          }
+          evidence.restoreVerifier = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/recovery-evidence.json')).status;
+          writeFileSync(file, JSON.stringify(evidence, null, 2) + '\n');
+          NODE
+      - name: Reconstruct synthetic MQTT and ingestion worker after host loss
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
+          METERWERK_ENV: test
+          MQTT_BROKER_URL: mqtt://127.0.0.1:1883
+        run: |
+          set -euo pipefail
+          docker run --detach --name meterwerk-recovery-mqtt \
+            --publish 127.0.0.1:1883:1883 \
+            --volume "$GITHUB_WORKSPACE/infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
+            eclipse-mosquitto:2 >/dev/null
+          node --input-type=module -e 'import { generateKeyPairSync } from "node:crypto"; import { writeFileSync } from "node:fs"; const { privateKey } = generateKeyPairSync("ed25519"); writeFileSync(process.env.RUNNER_TEMP + "/mqtt-receipt-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });'
+          export MQTT_RECEIPT_KEY_PATH="$RUNNER_TEMP/mqtt-receipt-private.pem"
+          pnpm mqtt-worker > "$RUNNER_TEMP/recovery-worker.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/recovery-worker.pid"
+          for attempt in $(seq 1 30); do
+            if grep -q 'mqtt.subscribed' "$RUNNER_TEMP/recovery-worker.log"; then
+              echo '{"status":"PASSED","scenario":"synthetic-host-loss","checks":{"postgresRestore":true,"webReadiness":true,"mqttService":true,"ingestionWorkerSubscribed":true},"data":"synthetic-only"}' > "$RUNNER_TEMP/host-loss-evidence.json"
+              exit 0
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/recovery-worker.pid")" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/recovery-worker.log"
+          exit 1
       - name: Verify recovery failures fail closed
         shell: bash
         env:
@@ -189,63 +259,6 @@ jobs:
           fi
           pnpm db:backup verify "$RUNNER_TEMP/meterwerk-offsite-unavailable.age" >/dev/null
           echo "Recovery negative tests PASSED: checksum, wrong key, KMS denial, unavailable offsite"
-      - name: Start application against restored database
-        shell: bash
-        run: |
-          export DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
-          export METERWERK_ENV=test NODE_ENV=production
-          pnpm start > "$RUNNER_TEMP/recovery-app.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/recovery-app.pid"
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          exit 1
-      - name: Reconstruct synthetic MQTT and ingestion worker after host loss
-        shell: bash
-        env:
-          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
-          METERWERK_ENV: test
-          MQTT_BROKER_URL: mqtt://127.0.0.1:1883
-        run: |
-          set -euo pipefail
-          docker run --detach --name meterwerk-recovery-mqtt \
-            --publish 127.0.0.1:1883:1883 \
-            --volume "$GITHUB_WORKSPACE/infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
-            eclipse-mosquitto:2 >/dev/null
-          node --input-type=module -e 'import { generateKeyPairSync } from "node:crypto"; import { writeFileSync } from "node:fs"; const { privateKey } = generateKeyPairSync("ed25519"); writeFileSync(process.env.RUNNER_TEMP + "/mqtt-receipt-private.pem", privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });'
-          export MQTT_RECEIPT_KEY_PATH="$RUNNER_TEMP/mqtt-receipt-private.pem"
-          pnpm mqtt-worker > "$RUNNER_TEMP/recovery-worker.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/recovery-worker.pid"
-          for attempt in $(seq 1 30); do
-            if grep -q 'mqtt.subscribed' "$RUNNER_TEMP/recovery-worker.log"; then
-              echo '{"status":"PASSED","scenario":"synthetic-host-loss","checks":{"postgresRestore":true,"webReadiness":true,"mqttService":true,"ingestionWorkerSubscribed":true},"data":"synthetic-only"}' > "$RUNNER_TEMP/host-loss-evidence.json"
-              exit 0
-            fi
-            if ! kill -0 "$(cat "$RUNNER_TEMP/recovery-worker.pid")" 2>/dev/null; then break; fi
-            sleep 2
-          done
-          cat "$RUNNER_TEMP/recovery-worker.log"
-          exit 1
-      - name: Verify restore schema, migrations, data and application
-        shell: bash
-        env:
-          DATABASE_URL: postgresql://meterwerk:ci-only-recovery-password@127.0.0.1:5432/meterwerk_restore_phase3_ci
-          PGDATABASE: meterwerk_restore_phase3_ci
-          METERWERK_RESTORE_READY_URL: http://127.0.0.1:3000/api/health/ready
-        run: pnpm exec tsx scripts/restore-verifier.ts > "$RUNNER_TEMP/recovery-evidence.json"
-      - name: Record external full restore duration
-        run: |
-          node --input-type=module - <<'NODE'
-          import { readFileSync, writeFileSync } from 'node:fs';
-          const file = process.env.RUNNER_TEMP + '/offsite-full.json';
-          const evidence = JSON.parse(readFileSync(file));
-          evidence.recoveryEndEpoch = Date.now() / 1000;
-          evidence.durationSeconds = evidence.recoveryEndEpoch - evidence.downloadStartEpoch;
-          evidence.timingScope = 'download through restore verifier and app readiness, including negative checks and worker reconstruction';
-          evidence.restoreVerifier = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/recovery-evidence.json')).status;
-          writeFileSync(file, JSON.stringify(evidence, null, 2) + '\n');
-          NODE
       - name: Simulate failed migration and recovery from verified backup
         shell: bash
         run: |

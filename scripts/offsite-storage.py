@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 
@@ -181,10 +182,14 @@ class Store:
     def get(self, record, path):
         require(record["key"].startswith(self.prefix), "OUTSIDE_ACCEPTANCE_PREFIX")
         require(not Path(path).exists(), "DOWNLOAD_DESTINATION_EXISTS")
+        start = time.time()
         response = self.call("get-object", "--key", record["key"], "--version-id", record["version"], path)
+        downloaded = time.time()
         require(response.get("VersionId") == record["version"] and response.get("ServerSideEncryption") == "AES256",
                 "DOWNLOAD_METADATA_INVALID")
         require(Path(path).stat().st_size == record["bytes"] and digest(path) == record["sha256"], "DOWNLOAD_HASH_INVALID")
+        record["downloadSeconds"] = downloaded - start
+        record["hashSeconds"] = time.time() - downloaded
 
 
 def roundtrip(file, evidence):
@@ -195,6 +200,28 @@ def roundtrip(file, evidence):
     records = [store.put(path, store.prefix + path.name)]
     if manifest.exists():
         records.append(store.put(manifest, store.prefix + manifest.name, encrypted=False))
+    # Deliberately damaged ciphertext must be rejected, including for WAL bundles.
+    corrupt = path.with_name(path.name + ".corrupt.age")
+    returned = path.with_name(path.name + ".corrupt-returned.age")
+    import shutil
+    shutil.copyfile(path, corrupt)
+    with open(corrupt, "r+b") as stream:
+        stream.seek(-1, 2)
+        byte = stream.read(1)
+        stream.seek(-1, 2)
+        stream.write(bytes([byte[0] ^ 1]))
+    damaged = store.put(corrupt, store.prefix + corrupt.name)
+    corrupt.unlink()
+    damaged["sha256"] = records[0]["sha256"]
+    rejected = False
+    try:
+        store.get(damaged, returned)
+    except StorageFailure as error:
+        require(str(error) == "DOWNLOAD_HASH_INVALID", "CORRUPTION_TEST_INFRASTRUCTURE_FAILURE")
+        rejected = True
+    finally:
+        returned.unlink(missing_ok=True)
+    require(rejected, "CORRUPT_OBJECT_UNEXPECTED_SUCCESS")
     for source in (path, manifest):
         source.unlink(missing_ok=True)
     require(not path.exists() and not manifest.exists(), "LOCAL_COPY_REMAINS")
@@ -204,6 +231,8 @@ def roundtrip(file, evidence):
     result = {"status": "PASSED", "sourceSha": os.environ.get("GITHUB_SHA"),
               "security": security, "objects": records, "localCopiesRemoved": True,
               "offsiteOnlyDownload": True, "downloadStartEpoch": started,
+              "startedAt": datetime.fromtimestamp(started, timezone.utc).isoformat(),
+              "corruptExternalObject": "EXPECTED_FAILURE_CONFIRMED",
               "downloadEndEpoch": time.time(), "cleanup": "retain encrypted test objects; no remote deletes"}
     Path(evidence).write_text(json.dumps(result, indent=2) + "\n")
 
