@@ -23,10 +23,11 @@ safe_logs() {
 # Existing application/worker Dockerfiles remain the source of runtime images.
 docker build --build-arg GIT_SHA="$GITHUB_SHA" -t meterwerk-offsite-web:acceptance . > "$RUNNER_TEMP/offsite-web-build.log" 2>&1
 docker build -f Dockerfile.worker --build-arg GIT_SHA="$GITHUB_SHA" -t meterwerk-offsite-worker:acceptance . > "$RUNNER_TEMP/offsite-worker-build.log" 2>&1
+docker build -f Dockerfile.offsite-mosquitto -t meterwerk-offsite-mosquitto:acceptance . > "$RUNNER_TEMP/offsite-mosquitto-build.log" 2>&1
 docker pull postgres:16 >/dev/null
-docker pull eclipse-mosquitto:2 >/dev/null
 docker pull docker:27-dind >/dev/null
-docker save meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance postgres:16 eclipse-mosquitto:2 > "$stage/images.tar"
+docker save meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance \
+  meterwerk-offsite-mosquitto:acceptance postgres:16 > "$stage/images.tar"
 current_step='start isolated Docker daemon and verify it is empty'
 docker run -d --privileged --name "$host" -e DOCKER_TLS_CERTDIR= \
   -p 127.0.0.1:5544:5544 -p 127.0.0.1:3100:3100 docker:27-dind >/dev/null
@@ -41,17 +42,15 @@ test -z "$(inner volume ls -q)"
 mark start
 current_step='load release images into isolated Docker daemon'
 docker exec -i "$host" docker load < "$stage/images.tar" >/dev/null
-for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance postgres:16 eclipse-mosquitto:2; do
+for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptance \
+  meterwerk-offsite-mosquitto:acceptance postgres:16; do
   inner image inspect "$image" >/dev/null
 done
+inner run --rm --entrypoint sh meterwerk-offsite-mosquitto:acceptance -c \
+  'test -r /mosquitto/config/mosquitto.conf && test -s /mosquitto/config/mosquitto.conf'
 mark imagesReady
 current_step='provide runtime configuration to isolated daemon'
-inner volume create recovery-mosquitto-config >/dev/null
 inner volume create recovery-receipt-key >/dev/null
-docker exec -i "$host" docker run --rm -i --user 0 \
-  --volume recovery-mosquitto-config:/config --entrypoint sh \
-  meterwerk-offsite-worker:acceptance -c 'cat > /config/mosquitto.conf' \
-  < infra/mosquitto/mosquitto.conf
 worker_uid="$(inner run --rm --entrypoint id meterwerk-offsite-worker:acceptance -u)"
 worker_gid="$(inner run --rm --entrypoint id meterwerk-offsite-worker:acceptance -g)"
 [[ "$worker_uid" =~ ^[0-9]+$ && "$worker_gid" =~ ^[0-9]+$ ]]
@@ -62,12 +61,6 @@ docker exec -i "$host" docker run --rm -i --user 0 \
 inner run --rm --user 0 --volume recovery-receipt-key:/key --entrypoint sh \
   meterwerk-offsite-worker:acceptance -c \
   "test -s /key/receipt.pem && chown $worker_uid:$worker_gid /key/receipt.pem && chmod 600 /key/receipt.pem"
-inner run --rm --user 0 --volume recovery-mosquitto-config:/config --entrypoint sh \
-  meterwerk-offsite-worker:acceptance -c \
-  'test -s /config/mosquitto.conf && chmod 755 /config && chmod 644 /config/mosquitto.conf'
-inner run --rm --volume recovery-mosquitto-config:/mosquitto/config:ro \
-  --entrypoint sh eclipse-mosquitto:2 -c \
-  'test -r /mosquitto/config/mosquitto.conf && test -s /mosquitto/config/mosquitto.conf'
 inner network create recovery >/dev/null
 mark configurationReady
 current_step='restore database service'
@@ -112,7 +105,7 @@ rm "$stage/restore.dump"
 mark databaseRestored
 current_step='start MQTT, web and ingestion worker'
 inner run -d --name mqtt --network recovery \
-  -v recovery-mosquitto-config:/mosquitto/config:ro eclipse-mosquitto:2 >/dev/null
+  meterwerk-offsite-mosquitto:acceptance >/dev/null
 inner run -d --name web --network recovery -p 3100:3000 \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e APP_URL=http://127.0.0.1:3100 \
