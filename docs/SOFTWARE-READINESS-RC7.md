@@ -1,43 +1,66 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
-## Software Completion Phase 3 – Backup / Restore / PITR / Disaster Recovery
+## Software Completion Phase 3 – operativer Stand vom 03.11.2026
 
-Arbeitsbranch `software-completion/phase-3` wurde vom unveränderten
-`master`-SHA `ff7575e63114e651f8e32e0733f5e299b8d7c0bc` erstellt. Diese Phase
-ergänzt die vorhandenen Restore-Modelle um einen verschlüsselten
-Dump-/Manifestpfad, Offsite-Verifikation, Restore-Verifier, synthetische
-PITR-/Migrationsfehler-Drills, einen wöchentlichen Recovery-Workflow und das
-Runbook. Das ist keine Production-Konfiguration oder Production-Abnahme.
+**Gesamtstatus: PARTIAL / externe Acceptance BLOCKED. Keine Freigabe für Phase 4 oder Production.**
 
-| Recovery-Baustein                         | Phase-3-Status     | Evidence / Grenze                                                                                                                                                           |
-| ----------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PostgreSQL-Konfiguration / logischer Dump | DONE (CI)          | Synthetischer PostgreSQL-16 `pg_dump -Fc`, verschlüsseltes age-Backup, SHA-256 und Secret-freies Manifest erfolgreich erzeugt/verifiziert.                                  |
-| Backup-Verschlüsselung                    | DONE (CI)          | Ephemerer age-Schlüssel; verschlüsseltes Backup erfolgreich entschlüsselt und wiederhergestellt. Externe Schlüsselbereitstellung bleibt offen.                              |
-| PITR-Drill                                | DONE (CI)          | Synthetischer PostgreSQL-17-WAL/Base-Backup-Drill: Baseline vorhanden, nach Zielzeitpunkt geschriebener Fehlerdatensatz fehlt. Kein echtes Staging-/Production-WAL-Archiv.  |
-| Offsite / externe Retention               | PARTIAL            | Versioniertes SSE-KMS-S3-Verfahren implementiert; Bucket, KMS, IAM und realer Offsite-Upload nicht konfiguriert oder getestet.                                              |
-| Full Restore / Restore-Verifier           | DONE (CI)          | Neue isolierte DB; Schema, Migrationen, Tenant-Daten, FK, Drift und App-Readiness erfolgreich verifiziert.                                                                  |
-| RPO / RTO                                 | PARTIAL            | Ziele in `DISASTER-RECOVERY.md`; echte Betriebswerte und Provider-WAL-Latenz noch nicht gemessen.                                                                           |
-| Migration-Failure / Host-Loss             | DONE (synthetisch) | Fehlerhafte Transaktion zurückgerollt und aus Backup wiederhergestellt; synthetische App-/Worker-/MQTT-Rekonstruktion im CI. Proxy, echte Secrets und DNS nicht akzeptiert. |
-| Wöchentlicher Restore-Test                | PARTIAL            | Schedule/Dispatch implementiert; der Schedule wird erst nach Aufnahme in `master` registriert. Noch kein Workflow-Run auf `master`.                                         |
-| Staging-Recovery-Acceptance               | BLOCKED            | Kein Zugriff auf bestehende Staging-Daten oder deren Backup; ausschließlich synthetische Recovery-Daten verwendet.                                                          |
+Der finale Code-Kandidat `21e196762c18bc8ad7b3425a2b49652a0de43acc`
+wurde über [PR #4](https://github.com/Florian1518/Meterwerk/pull/4) nach
+`master` integriert. Ausgangs-master:
+`ff7575e63114e651f8e32e0733f5e299b8d7c0bc`; Integrations-Merge:
+`43cee3416778f172fbfd2f05c88bbd491ac5a070`. Der Kandidat ist Ancestor
+dieses Merge-Commits. Der ursprüngliche lokale master-Arbeitsbaum wurde nicht
+verändert; alle Arbeiten erfolgten im separaten Worktree.
 
-Keine Phase-3-Evidence verwendet echte Hardware oder echte Kundendaten. Der
-vorhandene lokale Arbeitsbaum außerhalb dieses isolierten Worktrees blieb
-unverändert. RC7 und Production sind nicht verändert.
+| Recovery-Baustein                 | Status                                              | Evidence / Grenze                                                                                                                                             |
+| --------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB Backup / Manifest / SHA-256    | DONE (synthetische CI)                              | PostgreSQL-Custom-Dump, Manifest und Hash im Master-Dispatch bestanden.                                                                                       |
+| Encryption                        | DONE (synthetische CI)                              | age-Verschlüsselung, Entschlüsselung und falscher-Key-Negativtest bestanden. Externe Schlüsselbereitstellung offen.                                           |
+| Full Restore / Restore-Verifier   | DONE (synthetische CI)                              | Neue isolierte DB; Schema, Migrationen, Tenant-Strukturen, FK, Drift NONE und App-Readiness bestanden.                                                        |
+| PITR                              | DONE (synthetische CI)                              | Commit/Switch getrennt; vollständige Segmentmenge und Archiver bestätigt; Target erreicht, Baseline und gewünschter Commit vorhanden, späterer Fehler fehlt.  |
+| Missing WAL / Incomplete Base     | DONE (synthetische CI)                              | Beide `EXPECTED_FAILURE_CONFIRMED`; konkrete Ursache in Evidence gespeichert. Docker-/Infrastrukturfehler bestehen nicht.                                     |
+| Offsite / S3 Versioning / SSE-KMS | BLOCKED (extern)                                    | Softwarepfad vorhanden; kein autorisierter TEST/STAGING-Bucket, Region, KMS-Key und IAM-Principal nachgewiesen. Kein echter Offsite-Restore ausgeführt.       |
+| Migration-Failure / Host-Loss     | DONE (synthetische CI)                              | Rollback, neuer DB-Restore sowie App-/MQTT-/Worker-Rekonstruktion bestanden. Vollständiger unabhängiger Host-/Provider-Drill offen.                           |
+| RPO / RTO                         | PARTIAL                                             | Keine gemessenen End-to-End-Betriebszeiten für Full Restore, PITR und Host Loss. 24 h / 5 min RPO und 4 h / 8 h RTO sind Ziele, keine bestätigten Ergebnisse. |
+| Disaster Recovery                 | PARTIAL                                             | Synthetische Recovery bestanden; Offsite, kontinuierlicher verschlüsselter WAL-Betrieb und Staging-Acceptance offen.                                          |
+| Restore Runbook                   | DONE (Softwareverfahren), PARTIAL (Betriebsabnahme) | `DISASTER-RECOVERY.md` enthält echte CI-Evidence, Befehle, Fehlerfälle, Eskalation, Credential Rotation und minimale externe Konfiguration.                   |
+| Scheduled Restore Validation      | DONE (Konfiguration + Master-Dispatch)              | Workflow auf Default-Branch master `active`; `23 7 * * 1`; manueller Master-Run bestanden. Erster tatsächlicher Cron-Lauf noch ausstehend.                    |
+| Staging Recovery Acceptance       | BLOCKED                                             | Keine echte Staging-DB gesichert oder verändert. Autorisierte read-only Quelle und externer Offsite-Pfad fehlen für die nächste Acceptance.                   |
 
-Phase-3-Evidence: Branch `software-completion/phase-3`, Commit
-`c70e9e010453a6b2eb1a1abb33315840fe2284ad`; Remote-CI-Lauf
-[41457820750](https://github.com/Florian1518/Meterwerk/actions/runs/41457820750)
-mit Fast Checks, Unit-, Integration-/Migration-, Browser-/Mobile- und
-Production-Build-Jobs erfolgreich. Der separate synthetische Full-Restore/PITR-
-Recovery-Lauf [41457820797](https://github.com/Florian1518/Meterwerk/actions/runs/41457820797)
-war ebenfalls erfolgreich und erzeugte
-synthetische Recovery-/Host-Loss-Evidence als CI-Artefakt (30 Tage); Backup-Dump
-und private Schlüssel wurden nicht als Artefakte hochgeladen. Der wöchentliche
-Schedule `23 7 * * 1` ist im Branch definiert, auf `master` aber noch nicht
-registriert; nach Integration ist der nächste planmäßige Lauf Montag, 09.11.2026,
-07:23 UTC. Ein Dispatch oder eine Staging-Abnahme auf `master` wurde noch nicht
-ausgeführt.
+### Autoritative Nachweise
+
+- Code-Kandidat: Haupt-CI [41636755019](https://github.com/Florian1518/Meterwerk/actions/runs/41636755019)
+  und PR-CI [41636765372](https://github.com/Florian1518/Meterwerk/actions/runs/41636765372)
+  vollständig PASSED, einschließlich Browser/Mobile und Production Build.
+- Recovery auf Kandidat: [41636754986](https://github.com/Florian1518/Meterwerk/actions/runs/41636754986)
+  und PR-Recovery [41636765785](https://github.com/Florian1518/Meterwerk/actions/runs/41636765785)
+  vollständig PASSED. 52 Recovery-Regressionen: 17 Archive-/PITR-, 20 fail-closed
+  und 15 bestehende Recovery-Tests.
+- Integrations-master: Haupt-CI [41638394904](https://github.com/Florian1518/Meterwerk/actions/runs/41638394904)
+  und Push-Recovery [41638394907](https://github.com/Florian1518/Meterwerk/actions/runs/41638394907)
+  vollständig PASSED.
+- Manueller `workflow_dispatch` auf Integrations-master:
+  [41638539926](https://github.com/Florian1518/Meterwerk/actions/runs/41638539926),
+  vollständig PASSED. Artefakt `synthetic-recovery-evidence`,
+  ID `13231319316`, 30 Tage Aufbewahrung; heruntergeladen und mit
+  `verify-recovery-evidence.mjs` erneut geprüft.
+- Master-PITR-Evidence: Commit-Zeit `2026-11-03T12:48:49.581701Z`,
+  Commit-LSN `0/4000190`, Switch-LSN `0/40002C8`;
+  erforderliche Segmente `000000010000000000000003` und
+  `000000010000000000000004`. `ARCHIVE_CONFIRMED` nach gemessenen 78 ms;
+  dies ist nur der Archive-Wait, keine RTO. Target und Replay: `0/40001F8`;
+  Baseline 1, gewünschter Datensatz 1, späterer Fehler 0.
+- Schedule: Workflow-ID `404557168`, Zustand `active`, Default-Branch
+  `master`. Nächster Solltermin, berechnet am 03.11.2026:
+  **09.11.2026 07:23 UTC / 08:23 Europe/Berlin**. Ein zukünftiger Cron-Lauf
+  wird nicht als bereits ausgeführt behauptet.
+
+Die Arbeit an externen Ressourcen stoppt hier gemäß Auftrag. Die minimale
+Bucket-/Region-/Versioning-/KMS-/IAM-Konfiguration einschließlich begrenzter
+Rechte steht in `DISASTER-RECOVERY.md`. Es wurden keine Cloud-Ressourcen
+angelegt, keine Production-Credentials gesucht und keine echten Geräte
+verbunden. RC7 bleibt `v1.0.0-rc.7` auf
+`15fb7c070f3671cce6d19faca1286f6fd2ee1851`; keine neuen Tags, kein Deployment.
 
 ## Phase 2 – Abschluss auf dem Default-Branch (02.11.2026)
 
