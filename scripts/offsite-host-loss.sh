@@ -137,6 +137,14 @@ done
 if ! inner logs worker 2>&1 | grep -q mqtt.subscribed; then
   echo 'HOST_LOSS_MQTT_WORKER_SUBSCRIPTION_FAILED' >&2
   inner inspect -f '{{.Name}} status={{.State.Status}} exit={{.State.ExitCode}}' worker mqtt >&2 || true
+  inner inspect -f 'image={{.Config.Image}} user={{.Config.User}} cmd={{json .Config.Cmd}} entrypoint={{json .Config.Entrypoint}} mounts={{json .Mounts}} stateError={{.State.Error}}' mqtt >&2 || true
+  if inner cp mqtt:/mosquitto/config/mosquitto.conf /tmp/mosquitto-runtime.conf >/dev/null 2>&1; then
+    docker exec "$host" stat -c 'MOSQUITTO_CONFIG_MODE=%a OWNER=%u:%g SIZE=%s' /tmp/mosquitto-runtime.conf >&2 || true
+    docker exec "$host" sha256sum /tmp/mosquitto-runtime.conf >&2 || true
+  else
+    echo 'HOST_LOSS_MOSQUITTO_CONFIG_UNAVAILABLE_IN_CONTAINER' >&2
+  fi
+  sha256sum infra/mosquitto/mosquitto.conf >&2
   safe_logs worker >&2
   safe_logs mqtt >&2
   exit 1
