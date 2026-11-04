@@ -62,6 +62,16 @@ inner run --rm --user 0 --volume recovery-receipt-key:/key --entrypoint sh \
   meterwerk-offsite-worker:acceptance -c \
   "test -s /key/receipt.pem && chown $worker_uid:$worker_gid /key/receipt.pem && chmod 600 /key/receipt.pem"
 inner network create recovery >/dev/null
+current_step='validate Mosquitto configuration as the runtime user'
+broker_probe_status=0
+broker_probe_output="$(inner run --rm --network recovery --user mosquitto --entrypoint sh \
+  meterwerk-offsite-mosquitto:acceptance -c \
+  'timeout 3 /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v' 2>&1)" || broker_probe_status=$?
+if [[ "$broker_probe_status" -ne 124 ]] || ! grep -q 'Opening ipv4 listen socket' <<< "$broker_probe_output"; then
+  echo 'HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT_FAILED' >&2
+  printf '%s\n' "$broker_probe_output" >&2
+  exit 1
+fi
 mark configurationReady
 current_step='restore database service'
 inner run -d --name db --network recovery -p 5544:5432 \
