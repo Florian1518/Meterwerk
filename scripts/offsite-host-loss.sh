@@ -46,12 +46,24 @@ for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptanc
 done
 mark imagesReady
 current_step='provide runtime configuration to isolated daemon'
-docker exec -i "$host" sh -c 'cat > /tmp/mosquitto.conf' < infra/mosquitto/mosquitto.conf
-docker exec -i "$host" sh -c 'cat > /tmp/receipt.pem' < "$RUNNER_TEMP/mqtt-receipt-private.pem"
-docker exec "$host" test -s /tmp/mosquitto.conf
-docker exec "$host" test -s /tmp/receipt.pem
-docker exec "$host" chown 1000:1000 /tmp/receipt.pem
-docker exec "$host" chmod 600 /tmp/receipt.pem
+inner volume create recovery-mosquitto-config >/dev/null
+inner volume create recovery-receipt-key >/dev/null
+docker exec -i "$host" docker run --rm -i --user 0 \
+  --volume recovery-mosquitto-config:/config --entrypoint sh \
+  meterwerk-offsite-worker:acceptance -c 'cat > /config/mosquitto.conf' \
+  < infra/mosquitto/mosquitto.conf
+worker_uid="$(inner run --rm --entrypoint id meterwerk-offsite-worker:acceptance -u)"
+worker_gid="$(inner run --rm --entrypoint id meterwerk-offsite-worker:acceptance -g)"
+[[ "$worker_uid" =~ ^[0-9]+$ && "$worker_gid" =~ ^[0-9]+$ ]]
+docker exec -i "$host" docker run --rm -i --user 0 \
+  --volume recovery-receipt-key:/key --entrypoint sh \
+  meterwerk-offsite-worker:acceptance -c 'cat > /key/receipt.pem' \
+  < "$RUNNER_TEMP/mqtt-receipt-private.pem"
+inner run --rm --user 0 --volume recovery-receipt-key:/key --entrypoint sh \
+  meterwerk-offsite-worker:acceptance -c \
+  "test -s /key/receipt.pem && chown $worker_uid:$worker_gid /key/receipt.pem && chmod 600 /key/receipt.pem"
+inner run --rm --user 0 --volume recovery-mosquitto-config:/config --entrypoint sh \
+  meterwerk-offsite-worker:acceptance -c 'test -s /config/mosquitto.conf && chmod 644 /config/mosquitto.conf'
 inner network create recovery >/dev/null
 mark configurationReady
 current_step='restore database service'
@@ -96,7 +108,7 @@ rm "$stage/restore.dump"
 mark databaseRestored
 current_step='start MQTT, web and ingestion worker'
 inner run -d --name mqtt --network recovery \
-  -v /tmp/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro eclipse-mosquitto:2 >/dev/null
+  -v recovery-mosquitto-config:/mosquitto/config:ro eclipse-mosquitto:2 >/dev/null
 inner run -d --name web --network recovery -p 3100:3000 \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e APP_URL=http://127.0.0.1:3100 \
@@ -105,7 +117,8 @@ mark appStartup
 inner run -d --name worker --network recovery \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e NODE_ENV=test -e MQTT_BROKER_URL=mqtt://mqtt:1883 \
-  -e MQTT_RECEIPT_KEY_PATH=/app/receipt.pem -v /tmp/receipt.pem:/app/receipt.pem:ro \
+  -e MQTT_RECEIPT_KEY_PATH=/run/secrets/receipt.pem \
+  -v recovery-receipt-key:/run/secrets:ro \
   meterwerk-offsite-worker:acceptance dist/mqtt-worker.js >/dev/null
 current_step='wait for web readiness'
 for attempt in $(seq 1 60); do
