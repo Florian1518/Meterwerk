@@ -235,3 +235,16 @@ Unter Vertragsverwaltung kann SUPER_ADMIN zwischen Festpreis (`FIXED`) und Grund
 Die additive Migration `202610260001_saas_pricing` erhält bestehende Subscriptions als `FIXED`, einschließlich noch nicht festgelegter Preise. Meter werden standardmäßig abrechenbar; historische Altzähler aus `MeterReplacement` werden davon ausgenommen, auch innerhalb einer Wechselkette. Messwerte bleiben unverändert. Beim erfolgreichen Zählerwechsel wird der alte Zähler nicht abrechenbar und der neue abrechenbar, atomar mit Wechsel und Audit. `OFFLINE` und `MAINTENANCE` beeinflussen die Abrechenbarkeit nicht. Der aktuelle Bestand wird gezählt, ohne historische Stichtagsabrechnung oder zeitanteilige Berechnung.
 
 Für lokale Entwicklung: Datenbank mit `pnpm db:local` starten, Migrationen nach dem Baseline-Check mit `pnpm db:migrate` anwenden und `pnpm db:generate` ausführen. Tests: `pnpm test:licensing` (nur lokale Demo-Datenbank mit `SEED_DEMO=true`) und `pnpm exec vitest run tests/saas-pricing.test.ts tests/billing-provider.test.ts`. Die neuen Integrationstests erzeugen und entfernen eigene Preis-/Zählerfixtures und prüfen die Migration in einem zurückgerollten Testschema.
+
+## Isolierte Offsite-Recovery-Acceptance
+
+Der separate Workflow `offsite-recovery.yml` pr?ft den freigegebenen IONOS-Testbucket
+?ber Standard-S3 mit clientseitigem age und zus?tzlichem SSE-S3/AES256. Secrets
+werden ausschlie?lich im Prozess bereitgestellt. Versionierte externe Downloads
+ersetzen vor dem Restore entfernte lokale Kopien; Hash, private Bucket-Sicherheit,
+Schema und Readiness sind Pflicht-Gates. Der optionale PITR-Offsite-Hook l?sst die
+bestehenden Target- und Negativpr?fungen unver?ndert. Der Host-Loss-Drill verwendet
+einen leeren verschachtelten Docker-Daemon und entfernt ihn anschlie?end.
+Dies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes
+WAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe
+[DR-Runbook](docs/DISASTER-RECOVERY.md).\n## Isolierte Offsite-Recovery-Acceptance\n\nDer separate Workflow offsite-recovery.yml pr\u00fcft den freigegebenen IONOS-Testbucket\n\u00fcber Standard-S3 mit clientseitigem age und zus\u00e4tzlichem SSE-S3/AES256. Secrets\nwerden ausschlie\u00dflich im Prozess bereitgestellt. Versionierte externe Downloads\nersetzen vor dem Restore entfernte lokale Kopien; Hash, private Bucket-Sicherheit,\nSchema und Readiness sind Pflicht-Gates. Der PITR-Offsite-Hook l\u00e4sst die\nbestehenden Target- und Negativpr\u00fcfungen unver\u00e4ndert. Der Host-Loss-Drill verwendet\neinen anfangs leeren, isolierten Docker-Daemon und entfernt ihn anschlie\u00dfend.\nDies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes\nWAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe\n[DR-Runbook](docs/DISASTER-RECOVERY.md).\n

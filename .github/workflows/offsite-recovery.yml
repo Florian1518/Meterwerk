@@ -286,6 +286,14 @@ jobs:
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
           METERWERK_PITR_OFFSITE: "1"
         run: bash scripts/pitr-drill.sh
+      - name: Measure host loss in an empty isolated Docker daemon
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+        run: bash scripts/offsite-host-loss.sh
       - name: Require complete recovery evidence
         run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

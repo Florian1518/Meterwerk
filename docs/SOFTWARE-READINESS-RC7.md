@@ -1,5 +1,15 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## IONOS-Evidence-Fortsetzung vom 04.11.2026
+
+Offsite Acceptance **PASSED, synthetisch** auf SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494`; [Workflow 41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425), Artefakt 13308157780. Private Bucket/ACL/Policy/Public Access Block, Region, Versioning, age, SSE-S3/AES256, zwei echte Objektversionen, Abruf einer alten Version, ausschlie?lich externer Download, Hash und Full Restore mit Restore Verifier/App Readiness bestanden. Negative Tests f?r fehlendes Objekt, ung?ltige Version, anonymen Zugriff, besch?digten Ciphertext, falschen age-Key und lokale Backup-Hashkorruption fail-closed.
+
+Synthetische Download-to-readiness-Zeit 7,471 s; externe PITR-Download-to-Target-Zeit 8,068 s. Werte sind keine Production-SLA. Offsite WAL-/Base-Restore und positive PITR bestanden. Laufzeit-/Teilmessungen und Commit-/WAL-LSNs stehen im [DR-Runbook](DISASTER-RECOVERY.md).
+
+IAM Least Privilege bleibt OPEN (Admin-generierter Key). Staging Recovery Acceptance BLOCKED (keine freigegebene read-only Backup-Quelle). Kontinuierlicher WAL-Offsite-Betrieb/Gapping bleiben nicht abgenommen. Ein echter Scheduled-Cron-Run ist nicht vorhanden; nur der manuelle Dispatch ist PASSED. Host-Loss im leeren separaten Docker-Daemon wird im neuesten Kandidatenlauf noch ausgeführt und bleibt bis dahin PENDING. RPO/RTO bleiben operativ PARTIAL/BLOCKED.
+
+Gesamtstatus Phase 3 PARTIAL; READY FOR SOFTWARE COMPLETION PHASE 4: NO. RC7 unverändert; Production unangetastet.
+
 ## IONOS-Fortsetzung (04.11.2026)
 
 Master-Ausgangspunkt `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.

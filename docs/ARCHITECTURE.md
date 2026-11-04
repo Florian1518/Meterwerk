@@ -525,3 +525,16 @@ Die Prüfung verlangt das neueste erfolgreiche TEST-Ergebnis für Mandant, Gerä
 REVIEW, ASSIGN und COMPLETE prüfen diese Nachweise unter den vorhandenen Gateway-/Geräte-/Zählersperren erneut und schreiben Bestätigung und AuditEvent atomar. Benutzer und Zeitpunkt der drei Bestätigungen werden gespeichert. Der Auditnachweis referenziert TEST-Command, Messdatensatz, Gateway und Konfigurationsrevision einschließlich Profil- und Kommunikationssnapshot; die strikt validierten Modbus-Parameter enthalten keine Zugangsdaten. Das Gateway bestätigt Ergebnisse ausschließlich über den vorhandenen authentifizierten Gerätekanal.
 
 Jedes CONFIGURE erhöht die Revision, stoppt Polling, verwirft die aktuelle Diagnose und Bestätigungen und storniert alte PENDING-Aufträge. Historische Konfigurationen und Messdaten bleiben erhalten. Änderungen von Gateway, Zähler, Protokoll oder Profil eines bereits konfigurierten Geräts über den allgemeinen Geräteeditor werden abgelehnt und auf den Assistenten verwiesen. Dadurch kann ein Gateway-Wechsel außerhalb des Assistenten alte Nachweise nicht wiederverwenden. Die Reparaturmigration prüft ausschließlich TEST-EL-001 und protokolliert jede tatsächliche Rücksetzung; sie setzt keine anderen produktiven Inbetriebnahmen zurück.
+
+## Isolierte Offsite-Recovery-Acceptance
+
+Der separate Workflow `offsite-recovery.yml` pr?ft den freigegebenen IONOS-Testbucket
+?ber Standard-S3 mit clientseitigem age und zus?tzlichem SSE-S3/AES256. Secrets
+werden ausschlie?lich im Prozess bereitgestellt. Versionierte externe Downloads
+ersetzen vor dem Restore entfernte lokale Kopien; Hash, private Bucket-Sicherheit,
+Schema und Readiness sind Pflicht-Gates. Der optionale PITR-Offsite-Hook l?sst die
+bestehenden Target- und Negativpr?fungen unver?ndert. Der Host-Loss-Drill verwendet
+einen leeren verschachtelten Docker-Daemon und entfernt ihn anschlie?end.
+Dies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes
+WAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe
+[DR-Runbook](DISASTER-RECOVERY.md).\n## Isolierte Offsite-Recovery-Acceptance\n\nDer separate Workflow offsite-recovery.yml pr\u00fcft den freigegebenen IONOS-Testbucket\n\u00fcber Standard-S3 mit clientseitigem age und zus\u00e4tzlichem SSE-S3/AES256. Secrets\nwerden ausschlie\u00dflich im Prozess bereitgestellt. Versionierte externe Downloads\nersetzen vor dem Restore entfernte lokale Kopien; Hash, private Bucket-Sicherheit,\nSchema und Readiness sind Pflicht-Gates. Der PITR-Offsite-Hook l\u00e4sst die\nbestehenden Target- und Negativpr\u00fcfungen unver\u00e4ndert. Der Host-Loss-Drill verwendet\neinen anfangs leeren, isolierten Docker-Daemon und entfernt ihn anschlie\u00dfend.\nDies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes\nWAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe\n[DR-Runbook](DISASTER-RECOVERY.md).\n

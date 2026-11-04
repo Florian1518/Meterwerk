@@ -1,5 +1,23 @@
 # Disaster Recovery
 
+## IONOS-Offsite-Acceptance: Ergebnis vom 04.11.2026
+
+Der synthetische Acceptance-Run [41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425) auf Code-SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494` bestand. Evidence-Artefakt `offsite-recovery-evidence`, ID `13308157780`, SHA-256 `a34432cfda6e3a2b1dc271fd4191a7c7e24402f3f988f1f092fb11fda2c1dd1c`, Ablauf 04.12.2026. Es enthält nur synthetische Prüfnachweise, keine Dumps, Ciphertexte oder privaten Schlüssel.
+
+IONOS-Endpoint, Bucket-Region, aktiviertes Versioning, deaktiviertes Website Hosting, private ACL und Policy ohne Public Allow wurden geprüft. Alle vier Public Access Block Flags wurden aktiviert und rückgeprüft. Object Storage bestätigte `AES256` bei Upload und HeadObject; Client-Side age blieb aktiv. Kein AWS-KMS wurde verwendet.
+
+Der verschlüsselte Dump und das Manifest wurden unter `phase3-acceptance/41802033425-1/` hochgeladen. Objektversionen: Dump `tTeIRCI760JyWtA8oNe9xHbdjYNJx3G`, Manifest `rKhnay-Ntrxm.wUtzSPJBQKoMsy8XCj`. Lokale Kopien wurden vor Download entfernt. Exakter Download dieser Versionen, Hash, Entschlüsselung, `pg_restore`, Schema-/Migrations-/Tenant-/FK-/Drift- und zentrale Tabellenprüfung sowie App Readiness: PASSED. Restore Verifier: PASSED.
+
+Praktischer Versionsnachweis bestand mit zwei verschiedenen Version-IDs desselben Testobjekts; die frühere Version wurde gezielt wiederhergestellt und gehasht. Fehlendes Objekt, ungültige Version und anonymer Zugriff wurden fail-closed nachgewiesen. Ein absichtlich beschädigter, verschlüsselter Offsite-Download scheiterte am Hash. Die Testobjekte verbleiben verschlüsselt im rungebundenen Prefix; kein DeleteObject war nötig. Retention und autorisierte Bereinigung bleiben Betreiberaufgaben.
+
+Full Restore vom Beginn des externen Downloads bis zum erfolgreichen Restore Verifier und App Readiness: **7,471 Sekunden** (synthetischer Runner). Darin: Download 1,965 s; age-Entschlüsselung 0,011 s; pg_restore 0,934 s; App Start bis Ready 2,257 s; Restore-Verifikation 1,939 s. Die Phasen sind Einzelmessungen; ihre Summe entspricht wegen weiterer Prüf-/Laufzeitanteile nicht zwingend der Gesamtdauer.
+
+Der unveränderte positive PITR-Drill wurde mit externer Base-/WAL-Bundle-Retrieval-Stufe ausgeführt. Deren altersverschlüsseltes Bundle enthielt das Base Backup und WAL; lokale Base-/Archivkopien wurden vor Offsite-Download entfernt. Der Vollbereich der bestehenden Probe-Archivierung war lückenlos: Segmente `000000010000000000000003` und `000000010000000000000004`. Commit-LSN `0/4000190`, Commit-Segment `000000010000000000000004`, Target/Replay-LSN `0/40001F8`, Switch-LSN `0/40002C8`; Commit-Zeit `2026-11-04T08:48:46.266254Z`. Archive wurde nach 99 ms bestätigt. Externer Download bis validiertem PITR-Target: **8,068 Sekunden**; Baseline 1, gewünschter Datensatz 1, späterer Fehler 0. Dies ist nur die synthetische Probe, kein kontinuierliches WAL-Offsite oder betriebliches RPO.
+
+Missing WAL und beschädigtes Base Backup blieben `EXPECTED_FAILURE_CONFIRMED`; Infrastrukturfehler wurden nicht als Erfolg klassifiziert. Testversionen und Offsite-Daten nicht löschen, bis die festgelegte Run-Retention abgelaufen ist.
+
+**Nicht mitbewertete Restpunkte:** Der für diese Akzeptanz verwendete IONOS-Key stammt aus einem Administrator-Kontext. IAM Least Privilege bleibt OPEN/PARTIAL. Spätere Härtung: separater IONOS-User mit ausschließlich „Use Object Storage“, auf Bucket/Backup-Prefix begrenzte Aktionen und negativer Zugriffstest für fremde Prefixe/Buckets; kein Delete-Recht für Restore, danach Admin-Key rotieren. Keine AWS-IAM-/KMS-Semantik behaupten. Keine freigegebene read-only Staging-Backup-Quelle: Staging Recovery BLOCKED. Dauerhafter verschlüsselter WAL-Uploader und Gap-/Lag-Monitoring bleiben offen. Echter Cron-Run: keiner; Workflow active, erster erwarteter Termin 09.11.2026 07:23 UTC. Schedule- und manuelle Dispatch-Evidence nicht verwechseln. RPO aus einem einzelnen synthetischen Backup nicht ableitbar. Host-Loss ist getrennt zu bewerten.
+
 ## IONOS Offsite Acceptance (04.11.2026)
 
 Der Betreiber hat den nicht-produktiven Bucket `meterwerk-offsite-backup-fesch`
