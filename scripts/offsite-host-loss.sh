@@ -46,7 +46,7 @@ for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptanc
   meterwerk-offsite-mosquitto:acceptance postgres:16; do
   inner image inspect "$image" >/dev/null
 done
-inner run --rm --entrypoint sh meterwerk-offsite-mosquitto:acceptance -c \
+inner run --rm --user mosquitto --entrypoint sh meterwerk-offsite-mosquitto:acceptance -c \
   'test -r /mosquitto/config/mosquitto.conf && test -s /mosquitto/config/mosquitto.conf'
 mark imagesReady
 current_step='provide runtime configuration to isolated daemon'
