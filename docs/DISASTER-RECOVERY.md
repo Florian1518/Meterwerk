@@ -1,5 +1,13 @@
 # Disaster Recovery
 
+## Host-Loss-Validation: Ergebnis vom 05.11.2026
+
+Der isolierte Host-Loss-Drill bestand im [Workflow-Run 42040140763](https://github.com/Florian1518/Meterwerk/actions/runs/42040140763) auf Kandidaten-SHA `1120e7cfec11ae81374ed0745136138218cf4ae6`. Das Persistence-Gate aus Run `42034092512` war zuvor erfolgreich; der Fortsetzungsrun verifizierte es und übersprang eine Wiederholung. Aus einer leeren isolierten Docker-Umgebung wurden die unveränderlichen Images geladen, ein verschlüsseltes synthetisches Backup ausschließlich aus IONOS Object Storage bezogen, SHA-256 validiert, mit age entschlüsselt, PostgreSQL wiederhergestellt und Restore Verifier sowie App Readiness bestanden. Mosquitto war READY, der MQTT-Worker subscribed und Web/App Readiness war erfolgreich.
+
+Die gemessene Zeit vom Drill-Start bis Restore Verifier und App Readiness beträgt **28,613 Sekunden** (`offsite-host-loss.json`, Evidence-Artefakt `host-loss-apparmor-evidence`, ID `13421845531`). Der Restore-Verifier bestätigte Datenbank-Erreichbarkeit, Schema, Migrationshistorie, Tenant-Integrität, Foreign Keys, keinen Schema-Drift und keine ausstehenden Migrationen. Der Runner-lokale Mosquitto-AppArmor-Override blieb im ENFORCE-Modus; nach dem Drill wurden keine Mosquitto-Denials gefunden und Cleanup bestand.
+
+Dieser Nachweis gilt für die synthetische, leere Docker-Umgebung. OS-Provisionierung und externe Wiederherstellung eines Schlüsselverwahrers waren nicht Teil des Drills; die gemessene Dauer ist kein operatives RTO oder Production-SLA. IAM Least Privilege, freigegebene Staging-Recovery, kontinuierliches WAL-Offsite, echter Scheduled-Cron-Nachweis sowie operatives RPO/RTO bleiben separat offen. Offsite Full Restore `7,471 s` und PITR `8,068 s` sind bestehende Evidence und wurden für diesen Lauf nicht wiederholt.
+
 ## IONOS-Offsite-Acceptance: Ergebnis vom 04.11.2026
 
 Der synthetische Acceptance-Run [41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425) auf Code-SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494` bestand. Evidence-Artefakt `offsite-recovery-evidence`, ID `13308157780`, SHA-256 `a34432cfda6e3a2b1dc271fd4191a7c7e24402f3f988f1f092fb11fda2c1dd1c`, Ablauf 04.12.2026. Es enthält nur synthetische Prüfnachweise, keine Dumps, Ciphertexte oder privaten Schlüssel.
