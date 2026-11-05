@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Euo pipefail
+source scripts/hostloss-persistence-evidence.sh
 
 stage="initialization"
 out=""
@@ -104,7 +105,7 @@ capture_data_state() {
   local phase="$2"
   local statefile
   stage="filesystem-$phase"
-  statefile="$out/$name-$phase-filesystem.log"
+  statefile="$(evidence_path "$phase")"
   : > "$statefile"
   if ! inner run --rm --volumes-from "$name" --entrypoint sh "$image" -c '
     for path in /mosquitto/data /mosquitto/data/mosquitto.db /mosquitto/data/mosquitto.db.new; do
@@ -268,18 +269,8 @@ if grep -q 'Error saving in-memory database' "$out/after.log" 2>/dev/null; then
   echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
   failure=1
 fi
-if ! grep -q '^PATH=/mosquitto/data/mosquitto.db OWNER=' "$out/after-shutdown-filesystem.log" 2>/dev/null; then
-  echo MOSQUITTO_PERSISTENCE_DATABASE=FAIL_MISSING
-  failure=1
-else
-  echo MOSQUITTO_PERSISTENCE_DATABASE=PASS
-fi
-if ! grep -q '^PATH=/mosquitto/data/mosquitto.db.new STATE=ABSENT$' "$out/after-shutdown-filesystem.log" 2>/dev/null; then
-  echo MOSQUITTO_PERSISTENCE_TEMPFILE_CLEANUP=FAIL
-  failure=1
-else
-  echo MOSQUITTO_PERSISTENCE_TEMPFILE_CLEANUP=PASS
-fi
+after_filesystem="$(evidence_path after-shutdown)"
+if ! verify_persistence_filesystem "$after_filesystem"; then failure=1; fi
 if grep -q 'Config loaded from /mosquitto/config/mosquitto.conf' "$out/after.log" 2>/dev/null; then
   echo MOSQUITTO_CONFIG_READ=PASS
 else
