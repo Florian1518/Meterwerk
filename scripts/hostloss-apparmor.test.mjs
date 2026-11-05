@@ -50,3 +50,13 @@ test("bootstrap reloads and checks enforce, with no bypass or package-profile wr
     /aa-disable|aa-complain|apparmor=unconfined|chmod.*777/,
   );
 });
+
+test("persistence evidence is checked through the nested Docker host", () => {
+  const code = readFileSync(
+    new URL("./hostloss-apparmor-regression.sh", import.meta.url),
+    "utf8",
+  );
+  assert.match(code, /inner cp .*\/mosquitto\/data\/mosquitto\.db.*\/tmp\//);
+  assert.match(code, /PERSISTENCE_FILE=.*SIZE=/);
+  assert.doesNotMatch(code, /inner cp .*\$out/);
+});

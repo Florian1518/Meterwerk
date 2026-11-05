@@ -42,9 +42,12 @@ probe() {
   if test "$(inner inspect "$name" -f '{{.State.Running}}')" = true; then
     inner stop -t 5 "$name" >/dev/null
     inner logs "$name" > "$out/$name.log" 2>&1
-    inner cp "$name:/mosquitto/data/mosquitto.db" "$out/$name-mosquitto.db"
+    inner cp "$name:/mosquitto/data/mosquitto.db" "/tmp/$name-mosquitto.db"
+    docker exec "$host" sh -c "test -s '/tmp/$name-mosquitto.db' && stat -c 'PERSISTENCE_FILE=%n SIZE=%s OWNER=%u:%g MODE=%a' '/tmp/$name-mosquitto.db'" > "$out/$name-persistence.log"
+    docker exec "$host" rm -f "/tmp/$name-mosquitto.db"
   fi
   cat "$out/$name.log"
+  if test -f "$out/$name-persistence.log"; then cat "$out/$name-persistence.log"; fi
 }
 before="$(date -u '+%Y-%m-%d %H:%M:%S')"
 probe before
@@ -73,7 +76,7 @@ if grep -q 'name="/mosquitto/data/mosquitto.db.new"' "$out/after-audit.log"; the
   echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
   exit 1
 fi
-if grep -q 'Error saving in-memory database' "$out/after.log" || ! test -s "$out/after-mosquitto.db"; then
+if grep -q 'Error saving in-memory database' "$out/after.log" || ! grep -q 'PERSISTENCE_FILE=/mosquitto/data/mosquitto.db SIZE=' "$out/after-persistence.log"; then
   echo MOSQUITTO_DB_NEW_CREATE=UNPROVEN
   echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
   exit 1
