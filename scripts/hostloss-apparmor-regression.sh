@@ -1,24 +1,49 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -Euo pipefail
 
-out="$RUNNER_TEMP/meterwerk-apparmor-evidence"
-mkdir -p "$out"
-exec > >(tee "$out/regression.log") 2>&1
-
-host="meterwerk-apparmor-${GITHUB_RUN_ID}"
+stage="initialization"
+out=""
+host=""
 image=""
 failure=0
+
 inner() { docker exec "$host" docker "$@"; }
 mark_failure() {
-  echo "DIAGNOSTIC_FAILURE=$1"
+  echo "DIAGNOSTIC_FAILURE stage=$stage reason=$1"
   failure=1
 }
 
-cleanup() { docker rm -fv "$host" >/dev/null 2>&1 || true; }
+on_error() {
+  local error_code="$1" error_line="$2" error_stage="${stage:-unknown}"
+  echo "HARNESS_UNEXPECTED_ERROR stage=$error_stage exit=$error_code line=$error_line"
+  exit "$error_code"
+}
+cleanup() {
+  local exit_code="$?" exit_stage="${stage:-unknown}"
+  stage="cleanup"
+  echo "HARNESS_EXIT_STAGE=$exit_stage EXIT_CODE=$exit_code CLEANUP_STAGE=$stage"
+  if [[ -n "${host:-}" ]]; then docker rm -fv "$host" >/dev/null 2>&1 || true; fi
+}
+trap 'on_error "$?" "$LINENO"' ERR
 trap cleanup EXIT
 
+if [[ -z "${RUNNER_TEMP:-}" ]]; then
+  echo "HARNESS_ERROR stage=$stage missing_required_env=RUNNER_TEMP"
+  exit 2
+fi
+out="$RUNNER_TEMP/meterwerk-apparmor-evidence"
+mkdir -p "$out"
+exec > >(tee "$out/regression.log") 2>&1
+if [[ -z "${GITHUB_RUN_ID:-}" ]]; then
+  echo "HARNESS_ERROR stage=$stage missing_required_env=GITHUB_RUN_ID"
+  exit 2
+fi
+host="meterwerk-apparmor-${GITHUB_RUN_ID}"
+
+stage="runner-metadata"
 cat /etc/os-release
 uname -a
+stage="apparmor-bootstrap"
 if test "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null || true)" = Y; then
   echo APPARMOR_ACTIVE=YES
 else
@@ -27,14 +52,18 @@ else
 fi
 
 if ! node scripts/hostloss-apparmor.mjs check; then mark_failure APPARMOR_BOOTSTRAP_PRECHECK_FAILED; fi
+stage="image-build"
 if ! docker build -f Dockerfile.offsite-mosquitto -t meterwerk-offsite-mosquitto:acceptance .; then mark_failure MOSQUITTO_IMAGE_BUILD_FAILED; fi
+stage="image-save"
 if ! docker save meterwerk-offsite-mosquitto:acceptance > "$out/image.tar"; then mark_failure MOSQUITTO_IMAGE_SAVE_FAILED; fi
+stage="nested-docker-start"
 if ! docker run -d --privileged --name "$host" -e DOCKER_TLS_CERTDIR= docker:27-dind >/dev/null; then mark_failure NESTED_DOCKER_START_FAILED; fi
 for attempt in $(seq 1 60); do
   if inner info >/dev/null 2>&1; then break; fi
   sleep 1
 done
 if ! inner info >/dev/null 2>&1; then mark_failure NESTED_DOCKER_UNAVAILABLE; fi
+stage="image-load"
 if ! docker exec -i "$host" docker load < "$out/image.tar"; then mark_failure MOSQUITTO_IMAGE_LOAD_FAILED; fi
 rm -f "$out/image.tar"
 
@@ -52,6 +81,7 @@ fi
 
 audit() {
   local marker="$1" target="$2" raw="$out/kernel-raw.tmp" source="dmesg" status="${2%.log}-status.log"
+  stage="audit-collection"
   : > "$target"
   if ! sudo -n dmesg --since "$marker" > "$raw" 2>"$out/dmesg-error.tmp"; then
     source="journalctl"
@@ -70,7 +100,11 @@ audit() {
 }
 
 capture_data_state() {
-  local name="$1" stage="$2" statefile="$out/$name-$stage-filesystem.log"
+  local name="$1"
+  local phase="$2"
+  local statefile
+  stage="filesystem-$phase"
+  statefile="$out/$name-$phase-filesystem.log"
   : > "$statefile"
   if ! inner run --rm --volumes-from "$name" --entrypoint sh "$image" -c '
     for path in /mosquitto/data /mosquitto/data/mosquitto.db /mosquitto/data/mosquitto.db.new; do
@@ -101,6 +135,7 @@ capture_data_state() {
 probe() {
   local name="$1" marker="$2" running="false" stop_rc="NOT_RUN" state_exit="UNKNOWN"
   local inspectfile="$out/$name-inspect.log" logfile="$out/$name.log"
+  stage="container-create"
   if ! inner create --name "$name" "$image" > "$out/$name-create.log" 2>&1; then
     cat "$out/$name-create.log"
     mark_failure "CONTAINER_CREATE_$name_FAILED"
@@ -110,11 +145,13 @@ probe() {
   echo "CONTAINER_MOUNTS_$name=$(inner inspect "$name" -f '{{json .Mounts}}' 2>&1)" | tee "$out/$name-mounts.log"
   capture_data_state "$name" before-start
 
+  stage="mosquitto-start"
   if inner start "$name" > "$out/$name-start.log" 2>&1; then echo "CONTAINER_START_$name=PASS"; else cat "$out/$name-start.log"; mark_failure "CONTAINER_START_$name"; fi
   sleep 3
   running="$(inner inspect "$name" -f '{{.State.Running}}' 2>/dev/null || echo unknown)"
   inner inspect "$name" -f 'USER={{.Config.User}} APPARMOR={{.AppArmorProfile}} STATE={{json .State}}' > "$inspectfile" 2>&1 || true
   cat "$inspectfile"
+  stage="persistence-shutdown"
   if test "$running" = true; then
     if inner stop -t 10 "$name" > "$out/$name-stop.log" 2>&1; then stop_rc=0; else stop_rc=$?; mark_failure "DOCKER_STOP_$name_EXIT_$stop_rc"; fi
   else
@@ -132,6 +169,7 @@ probe() {
 
 trace_persistence() {
   local marker="$1" running="false" stop_rc="NOT_RUN" trace_name=mosquitto-persistence-strace
+  stage="strace-analysis"
   if ! inner run --rm --entrypoint sh "$image" -c 'command -v strace >/dev/null 2>&1'; then
     echo STRACE_RESULT=UNAVAILABLE_IN_EXACT_IMAGE
     return 0
@@ -160,14 +198,17 @@ trace_persistence() {
   capture_data_state "$trace_name" after-strace
 }
 
+stage="negative-control"
 before_marker="$(date -u '+%Y-%m-%d %H:%M:%S')"
 probe before "$before_marker"
 if ! grep -q 'Unable to open config file' "$out/before.log" 2>/dev/null; then mark_failure EXPECTED_NEGATIVE_CONFIG_TEST_NOT_REPRODUCED; fi
 if ! grep -q 'name="/mosquitto/config/mosquitto.conf".*denied_mask="r"' "$out/before-audit.log" 2>/dev/null; then mark_failure EXPECTED_NEGATIVE_CONFIG_AUDIT_NOT_FOUND; fi
 echo APPARMOR_NEGATIVE_REGRESSION=$([ "$failure" -eq 0 ] && echo PASS || echo REVIEW)
 
+stage="apparmor-bootstrap"
 if ! node scripts/hostloss-apparmor.mjs apply; then mark_failure APPARMOR_LOCAL_OVERRIDE_APPLY_FAILED; fi
 sleep 1
+stage="persistence-positive-control"
 after_marker="$(date -u '+%Y-%m-%d %H:%M:%S')"
 probe after "$after_marker"
 
@@ -209,4 +250,5 @@ else
 fi
 echo "MOSQUITTO_RUNTIME_DIAGNOSIS=$([ "$failure" -eq 0 ] && echo COMPLETED || echo COMPLETED_WITH_FAILURES)"
 echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
+stage="complete"
 exit "$failure"

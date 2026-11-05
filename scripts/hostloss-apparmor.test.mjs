@@ -77,6 +77,21 @@ test("missing persistence files and failed shutdown cannot skip audit evidence",
   assert.match(code, /MOSQUITTO_PERSISTENCE_AUDIT_DENIAL=UNKNOWN/);
 });
 
+test("stage is initialized before traps and remains diagnostic through cleanup", () => {
+  const code = readFileSync(
+    new URL("./hostloss-apparmor-regression.sh", import.meta.url),
+    "utf8",
+  );
+  assert.ok(code.indexOf('stage="initialization"') < code.indexOf("trap 'on_error"));
+  assert.match(code, /trap 'on_error "\$\?" "\$LINENO"' ERR/);
+  assert.match(code, /trap cleanup EXIT/);
+  assert.match(code, /HARNESS_UNEXPECTED_ERROR stage=\$error_stage/);
+  assert.match(code, /HARNESS_EXIT_STAGE=\$exit_stage EXIT_CODE=\$exit_code CLEANUP_STAGE=\$stage/);
+  assert.match(code, /stage="filesystem-\$phase"/);
+  assert.doesNotMatch(code, /local name="\$1" stage="\$2" statefile=.*\$stage/);
+  assert.ok(code.indexOf('exec > >(tee "$out/regression.log")') < code.indexOf('stage="mosquitto-start"'));
+});
+
 test("push-triggered persistence gate cannot continue into host loss", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/host-loss-recovery.yml", import.meta.url),
