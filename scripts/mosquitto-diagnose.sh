@@ -17,6 +17,8 @@ step() {
 }
 fatal() { echo "MOSQUITTO_RUNTIME_DIAGNOSIS=INCOMPLETE reason=$1"; exit 1; }
 inner() { docker exec "$host" docker "$@"; }
+source scripts/mosquitto-lsm-diagnose.sh
+lsm_host
 echo 'SOURCE_CANDIDATE=60352da8f3f27432b6a56a54180ee705c81d3f55'
 for path in / "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/infra" "$GITHUB_WORKSPACE/infra/mosquitto" "$GITHUB_WORKSPACE/infra/mosquitto/mosquitto.conf"; do
   step host_stat stat -c '%u:%g %a %F %s %n' "$path"
@@ -48,6 +50,9 @@ image="$(inner image inspect "$image" -f '{{.Id}}')" || fatal loaded_id_unavaila
 test -n "$image" || fatal empty_loaded_id
 rm "$out/image.tar"
 step loaded_image inner image inspect "$image" --format 'ID={{.Id}} DIGESTS={{json .RepoDigests}} USER={{json .Config.User}} ENTRYPOINT={{json .Config.Entrypoint}} CMD={{json .Config.Cmd}} VOLUMES={{json .Config.Volumes}}'
+step nested_docker_version inner version
+step nested_docker_info inner info --format 'VERSION={{.ServerVersion}} OS={{.OperatingSystem}} KERNEL={{.KernelVersion}} DRIVER={{.Driver}} SECURITY={{json .SecurityOptions}}'
+step daemon_security docker inspect "$host" --format 'APPARMOR={{json .AppArmorProfile}} SECURITY_OPT={{json .HostConfig.SecurityOpt}} PRIVILEGED={{.HostConfig.Privileged}}'
 step create inner create --name mqtt "$image"
 create_rc=$?
 step container_inspect inner inspect mqtt --format 'USER={{json .Config.User}} PATH={{json .Path}} ARGS={{json .Args}} ENTRYPOINT={{json .Config.Entrypoint}} CMD={{json .Config.Cmd}} WORKDIR={{json .Config.WorkingDir}} MOUNTS={{json .Mounts}} IMAGE={{.Image}}'
@@ -72,6 +77,9 @@ fi
 rm -f "$out/container.tar"
 probe='prefix=$1
 id
+echo SELF_SECURITY_CONTEXT; cat /proc/self/attr/current || true
+echo PID1_SECURITY_CONTEXT; cat /proc/1/attr/current || true
+echo IDENTITY_AND_CAPABILITIES; grep -E "^(Uid|Gid|Groups|Cap|NoNewPrivs|Seccomp)" /proc/self/status || true
 printf "%s_UID=" "$prefix"; id -u
 printf "%s_GID=" "$prefix"; id -g
 printf "%s_GROUPS=" "$prefix"; id -G
@@ -89,18 +97,45 @@ check _CONFIG_CAT sh -c "cat /mosquitto/config/mosquitto.conf >/dev/null"
 sha256sum /mosquitto/config/mosquitto.conf || true
 if test -r /docker-entrypoint.sh; then echo ENTRYPOINT_SOURCE; cat /docker-entrypoint.sh; fi
 echo "$prefix PROBE_COMPLETED"'
-step default_user inner run --rm --entrypoint sh "$image" -c "$probe" sh MOSQUITTO > "$out/default-user.log" 2>&1
+step default_user inner run --name shell-context --entrypoint sh "$image" -c "$probe" sh MOSQUITTO > "$out/default-user.log" 2>&1
 default_rc=$?; cat "$out/default-user.log"
+security_inspect shell-context
 step root_comparison_only inner run --rm --user 0:0 --entrypoint sh "$image" -c "$probe" sh ROOT > "$out/root-user.log" 2>&1
 root_rc=$?; cat "$out/root-user.log"
 # Start the real binary directly: no shell, timeout binary, or entrypoint wrapper.
+lsm_marker="$(date -u '+%Y-%m-%d %H:%M:%S')"
+echo "MOSQUITTO_TEST_MARKER=$lsm_marker"
 step direct_start inner run -d --name direct --entrypoint /usr/sbin/mosquitto "$image" -c /mosquitto/config/mosquitto.conf
 direct_rc=$?
 sleep 4
 inner logs direct > "$out/direct.log" 2>&1; direct_logs_rc=$?; cat "$out/direct.log"
 step direct_inspect inner inspect direct --format 'USER={{json .Config.User}} PATH={{json .Path}} ARGS={{json .Args}} MOUNTS={{json .Mounts}} STATE={{json .State}}'
 direct_running="$(inner inspect direct -f '{{.State.Running}}')"
+security_inspect direct
+lsm_audit normal
+if test "$direct_running" = true && grep -q 'mosquitto .* running' "$out/direct.log"; then
+  echo NORMAL_RESULT=CONFIG_READ_OK
+else
+  echo NORMAL_RESULT=FAILED
+fi
 if test "$direct_running" = true; then step direct_stop inner stop -t 5 direct; fi
+# A/B: identical immutable image, default identity, command, environment and
+# exact same data/log volumes. Only AppArmor option differs. Diagnostic only.
+step unconfined_start inner run -d --name unconfined --volumes-from direct --security-opt apparmor=unconfined --entrypoint /usr/sbin/mosquitto "$image" -c /mosquitto/config/mosquitto.conf
+unconfined_rc=$?
+sleep 4
+inner logs unconfined > "$out/unconfined.log" 2>&1; cat "$out/unconfined.log"
+security_inspect unconfined
+step unconfined_state inner inspect unconfined --format 'STATE={{json .State}}'
+unconfined_running="$(inner inspect unconfined -f '{{.State.Running}}')"
+if test "$unconfined_running" = true && grep -q 'mosquitto .* running' "$out/unconfined.log"; then
+  echo UNCONFINED_RESULT=CONFIG_READ_OK
+  step unconfined_context inner exec unconfined sh -c 'id; cat /proc/1/attr/current; grep -E "^(Uid|Gid|Groups|Cap|NoNewPrivs|Seccomp)" /proc/1/status'
+else
+  echo "UNCONFINED_RESULT=FAILED start_exit=$unconfined_rc"
+fi
+lsm_audit unconfined
+if test "$unconfined_running" = true; then step unconfined_stop inner stop -t 5 unconfined; fi
 step original_entrypoint_start inner start mqtt
 original_rc=$?
 sleep 4
@@ -116,10 +151,14 @@ fi
 step trace_container inner run -d --name trace --entrypoint sh "$image" -c 'sleep 120'
 if step install_debugger inner exec --user 0:0 trace sh -c 'command -v apk >/dev/null && apk add --no-cache strace'; then
   step trace_identity inner exec trace id
-  step syscall_trace inner exec trace sh -c 'timeout 5 strace -f -s 256 -e trace=%file,%creds,prctl /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v'
+  security_inspect trace
+  step pre_exec_context inner exec trace sh -c 'echo BEFORE_EXEC; cat /proc/self/attr/current; cat /proc/1/attr/current; grep -E "^(Uid|Gid|Groups|Cap|NoNewPrivs|Seccomp)" /proc/self/status'
+  step syscall_trace inner exec trace sh -c 'timeout 5 strace -f -s 256 -e trace=%file,%creds,prctl,capset,chroot /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v'
 else
   echo SUPPLEMENTARY_TRACE_UNAVAILABLE
 fi
+lsm_audit final
+echo 'LSM_ROOT_CAUSE=UNKNOWN_PENDING_EVIDENCE_REVIEW; NO_HOST_LOSS_PASS'
 # Conservative classification; unknowns never become a broker PASS.
 classification=OTHER
 if grep -q 'MOSQUITTO_DIR_TRAVERSE=FAIL\|MOSQUITTO_CONFIG_DIR_TRAVERSE=FAIL' "$out/default-user.log"; then

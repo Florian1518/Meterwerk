@@ -4,6 +4,7 @@ on:
     branches: [diagnostics/phase-3-mosquitto]
     paths:
       - scripts/mosquitto-diagnose.sh
+      - scripts/mosquitto-lsm-diagnose.sh
       - scripts/mosquitto-image-identity.py
       - scripts/mosquitto-image-identity-test.py
       - .github/workflows/mosquitto-diagnostic.yml
