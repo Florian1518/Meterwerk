@@ -138,6 +138,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
+          openssl genpkey -algorithm ED25519 -out "$RUNNER_TEMP/mqtt-receipt-private.pem"
+          test -s "$RUNNER_TEMP/mqtt-receipt-private.pem"
           age-keygen -o "$RUNNER_TEMP/meterwerk-age-identity" 2>/dev/null
           chmod 600 "$RUNNER_TEMP/meterwerk-age-identity"
           identity="$RUNNER_TEMP/meterwerk-age-identity"
@@ -226,5 +229,6 @@ jobs:
         shell: bash
         run: |
           rm -f "$RUNNER_TEMP/meterwerk-age-identity"
+          rm -f "$RUNNER_TEMP/mqtt-receipt-private.pem"
           rm -f "$RUNNER_TEMP"/meterwerk-*.age "$RUNNER_TEMP"/meterwerk-*.age.manifest.json
           rm -f "$RUNNER_TEMP/meterwerk-apparmor-evidence/"*-mosquitto.db

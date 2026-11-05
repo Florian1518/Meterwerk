@@ -211,6 +211,11 @@ test("host loss runs after a green gate or verifies previously passed gate evide
   );
   assert.match(workflow, /GIT_COMMIT_SHA: \$\{\{ github\.sha \}\}/);
   assert.match(workflow, /export METERWERK_BACKUP_AGE_RECIPIENT=/);
+  assert.match(
+    workflow,
+    /openssl genpkey -algorithm ED25519 -out "\$RUNNER_TEMP\/mqtt-receipt-private\.pem"/,
+  );
+  assert.match(workflow, /rm -f "\$RUNNER_TEMP\/mqtt-receipt-private\.pem"/);
   assert.match(workflow, /Apply least-privilege Mosquitto AppArmor override/);
   assert.match(workflow, /git merge-base --is-ancestor "\$gate_sha" HEAD/);
   assert.match(workflow, /fetch-depth: 0/);
