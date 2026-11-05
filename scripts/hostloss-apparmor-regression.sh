@@ -10,7 +10,7 @@ cat /etc/os-release
 uname -a
 test "$(cat /sys/module/apparmor/parameters/enabled)" = Y
 echo APPARMOR_ACTIVE=YES
-node scripts/offsite-apparmor.mjs check
+node scripts/hostloss-apparmor.mjs check
 docker build -f Dockerfile.offsite-mosquitto -t meterwerk-offsite-mosquitto:acceptance .
 docker save meterwerk-offsite-mosquitto:acceptance > "$out/image.tar"
 docker run -d --privileged --name "$host" -e DOCKER_TLS_CERTDIR= docker:27-dind >/dev/null
@@ -42,6 +42,7 @@ probe() {
   if test "$(inner inspect "$name" -f '{{.State.Running}}')" = true; then
     inner stop -t 5 "$name" >/dev/null
     inner logs "$name" > "$out/$name.log" 2>&1
+    inner cp "$name:/mosquitto/data/mosquitto.db" "$out/$name-mosquitto.db"
   fi
   cat "$out/$name.log"
 }
@@ -51,7 +52,7 @@ audit "$before" "$out/before-audit.log"
 grep -q 'Unable to open config file' "$out/before.log"
 grep 'name="/mosquitto/config/mosquitto.conf"' "$out/before-audit.log" | grep -q 'denied_mask="r"'
 echo APPARMOR_NEGATIVE_REGRESSION=PASS
-node scripts/offsite-apparmor.mjs apply
+node scripts/hostloss-apparmor.mjs apply
 sleep 1
 after="$(date -u '+%Y-%m-%d %H:%M:%S')"
 probe after
@@ -65,8 +66,22 @@ if ! grep -q 'Config loaded from /mosquitto/config/mosquitto.conf' "$out/after.l
   exit 1
 fi
 echo MOSQUITTO_CONFIG_APPARMOR_FIX=PASS
+if grep -q 'name="/mosquitto/data/mosquitto.db.new"' "$out/after-audit.log"; then
+  grep 'name="/mosquitto/data/mosquitto.db.new"' "$out/after-audit.log"
+  echo MOSQUITTO_DB_NEW_CREATE=FAIL
+  echo NEW_APPARMOR_DENIAL=YES
+  echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
+  exit 1
+fi
+if grep -q 'Error saving in-memory database' "$out/after.log" || ! test -s "$out/after-mosquitto.db"; then
+  echo MOSQUITTO_DB_NEW_CREATE=UNPROVEN
+  echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
+  exit 1
+fi
+echo MOSQUITTO_DB_NEW_CREATE=PASS
 if test -s "$out/after-audit.log"; then
   echo NEW_APPARMOR_DENIAL=YES
+  cat "$out/after-audit.log"
   echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
   exit 1
 fi

@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export const rule = "/mosquitto/config/mosquitto.conf r,";
+export const persistenceRule = "/mosquitto/data/mosquitto.db.new rw,";
+export const rules = [rule, persistenceRule];
 const profile = "/etc/apparmor.d/mosquitto";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -26,10 +28,11 @@ export function localInclude(source) {
 }
 
 export function addition(existing) {
-  if (existing.split(/\r?\n/).some((line) => line.trim() === rule)) {
+  const lines = existing.split(/\r?\n/).map((line) => line.trim());
+  if (rules.some((item) => lines.includes(item))) {
     throw new Error("APPARMOR_RULE_ALREADY_PRESENT_BASELINE_NOT_REPRODUCIBLE");
   }
-  return `\n${rule}\n`;
+  return `\n${rules.join("\n")}\n`;
 }
 
 function sudo(...args) {
@@ -106,10 +109,11 @@ export function main(mode) {
   });
   if (write.status !== 0 || sudo("cat", local) !== existing + append)
     throw new Error("APPARMOR_APPEND_FAILED");
-  console.log(`APPARMOR_ADDED_RULE=${rule}`);
+  for (const item of rules) console.log(`APPARMOR_ADDED_RULE=${item}`);
   const expanded = sudo("apparmor_parser", "--preprocess", profile);
-  if (!expanded.split("\n").some((line) => line.trim() === rule))
-    throw new Error("APPARMOR_RULE_NOT_INCLUDED");
+  const expandedLines = expanded.split("\n").map((line) => line.trim());
+  if (rules.some((item) => !expandedLines.includes(item)))
+    throw new Error("APPARMOR_RULES_NOT_INCLUDED");
   sudo("apparmor_parser", "-r", profile);
   console.log("APPARMOR_RELOAD_EXIT=0");
   enforce();

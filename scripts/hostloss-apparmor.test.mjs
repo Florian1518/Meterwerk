@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { addition, localInclude, rule } from "./offsite-apparmor.mjs";
+import {
+  addition,
+  localInclude,
+  persistenceRule,
+  rule,
+} from "./hostloss-apparmor.mjs";
 
 test("uses the actual unique local include and refuses absent or unsafe includes", () => {
   const header = "profile mosquitto /usr/sbin/mosquitto {\n";
@@ -22,18 +27,19 @@ test("uses the actual unique local include and refuses absent or unsafe includes
 
 test("only adds the exact read rule and preserves all existing content", () => {
   const original = "# existing operator rules\n/etc/mosquitto/custom.conf r,\n";
-  assert.equal(
-    original + addition(original),
-    original + "\n/mosquitto/config/mosquitto.conf r,\n",
+  const exact = `${rule}\n${persistenceRule}`;
+  assert.equal(original + addition(original), original + `\n${exact}\n`);
+  assert.equal(addition(""), `\n${exact}\n`);
+  assert.throws(() => addition(persistenceRule));
+  assert.doesNotMatch(
+    addition(original),
+    /\/mosquitto\/data\/\*\*|\/mosquitto\/\*\*|\/\*\s+rw|complain|unconfined/,
   );
-  assert.equal(addition(""), `\n${rule}\n`);
-  assert.throws(() => addition(rule));
-  assert.doesNotMatch(addition(original), /\*|\brw[k]?\b|complain|unconfined/);
 });
 
 test("bootstrap reloads and checks enforce, with no bypass or package-profile write", () => {
   const code = readFileSync(
-    new URL("./offsite-apparmor.mjs", import.meta.url),
+    new URL("./hostloss-apparmor.mjs", import.meta.url),
     "utf8",
   );
   assert.match(code, /sudo\("apparmor_parser", "-r", profile\)/);
