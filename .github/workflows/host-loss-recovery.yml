@@ -4,15 +4,28 @@ on:
   push:
     branches: [software-completion/phase-3-ionos]
     paths:
-      - .github/workflows/host-loss-recovery.yml
-      - scripts/hostloss-apparmor*
+      - scripts/hostloss-apparmor-regression.sh
+      - scripts/hostloss-apparmor.mjs
+      - scripts/hostloss-persistence-evidence.sh
       - scripts/offsite-storage.py
       - scripts/offsite-host-loss.sh
       - scripts/verify-host-loss-evidence.mjs
       - Dockerfile.offsite-mosquitto
       - infra/mosquitto/mosquitto.conf
+  workflow_dispatch:
+    inputs:
+      run_host_loss_from_passed_gate:
+        description: Continue to Host Loss after verifying an earlier successful gate step
+        type: boolean
+        required: false
+        default: false
+      persistence_gate_run_id:
+        description: Earlier recovery run whose persistence-gate step passed
+        type: string
+        required: false
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -42,13 +55,48 @@ jobs:
       METERWERK_ENV: test
       SEED_DEMO: "true"
       DEMO_PASSWORD: ci-only-synthetic-demo-password
+      GIT_COMMIT_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with: { persist-credentials: false }
+        with: { persist-credentials: false, fetch-depth: 0 }
       - name: Test exact AppArmor bootstrap rules
         run: node --test scripts/hostloss-apparmor.test.mjs
+      - name: Verify the already passed persistence gate
+        if: ${{ inputs.run_host_loss_from_passed_gate }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PERSISTENCE_GATE_RUN_ID: ${{ inputs.persistence_gate_run_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/software-completion/phase-3-ionos
+          test -n "$PERSISTENCE_GATE_RUN_ID"
+          run_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$PERSISTENCE_GATE_RUN_ID")"
+          gate_sha="$(jq -r '.head_sha' <<< "$run_json")"
+          git merge-base --is-ancestor "$gate_sha" HEAD
+          jq -e --arg sha "$gate_sha" \
+            '.head_sha == $sha and .head_branch == "software-completion/phase-3-ionos"' \
+            <<< "$run_json" >/dev/null
+          jobs_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$PERSISTENCE_GATE_RUN_ID/jobs?per_page=100")"
+          jq -e '
+            any(.jobs[];
+              .name == "AppArmor persistence gate then isolated host loss" and
+              any(.steps[];
+                .name == "Reproduce, allow and verify Mosquitto persistence" and
+                .conclusion == "success"))
+          ' <<< "$jobs_json" >/dev/null
+          echo "PERSISTENCE_GATE_RUN=$PERSISTENCE_GATE_RUN_ID SHA=$gate_sha STEP=PASSED"
       - name: Reproduce, allow and verify Mosquitto persistence
+        if: ${{ !inputs.run_host_loss_from_passed_gate }}
         run: bash scripts/hostloss-apparmor-regression.sh
+      - name: Apply least-privilege Mosquitto AppArmor override
+        if: ${{ inputs.run_host_loss_from_passed_gate }}
+        run: node scripts/hostloss-apparmor.mjs apply
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         if: ${{ success() }}
         with: { version: 12.5.1 }
@@ -92,8 +140,12 @@ jobs:
           set -euo pipefail
           age-keygen -o "$RUNNER_TEMP/meterwerk-age-identity" 2>/dev/null
           chmod 600 "$RUNNER_TEMP/meterwerk-age-identity"
-          echo "METERWERK_BACKUP_AGE_IDENTITY_FILE=$RUNNER_TEMP/meterwerk-age-identity" >> "$GITHUB_ENV"
-          echo "METERWERK_BACKUP_AGE_RECIPIENT=$(age-keygen -y "$RUNNER_TEMP/meterwerk-age-identity")" >> "$GITHUB_ENV"
+          identity="$RUNNER_TEMP/meterwerk-age-identity"
+          recipient="$(age-keygen -y "$identity")"
+          export METERWERK_BACKUP_AGE_IDENTITY_FILE="$identity"
+          export METERWERK_BACKUP_AGE_RECIPIENT="$recipient"
+          echo "METERWERK_BACKUP_AGE_IDENTITY_FILE=$identity" >> "$GITHUB_ENV"
+          echo "METERWERK_BACKUP_AGE_RECIPIENT=$recipient" >> "$GITHUB_ENV"
           backup="$RUNNER_TEMP/meterwerk-${GITHUB_SHA}-$(date -u +%Y%m%dT%H%M%SZ).age"
           pnpm db:backup backup "$backup"
           pnpm db:backup verify "$backup"
@@ -108,6 +160,9 @@ jobs:
           IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: python3 scripts/offsite-storage.py roundtrip "$METERWERK_BACKUP_FILE" "$RUNNER_TEMP/offsite-full.json"
+      - name: Mark AppArmor audit window for host-loss
+        id: host-loss-window
+        run: echo "marker=$(date -u '+%Y-%m-%d %H:%M:%S')" >> "$GITHUB_OUTPUT"
       - name: Run complete host-loss drill in an empty isolated Docker daemon
         if: ${{ success() }}
         env:
@@ -117,6 +172,34 @@ jobs:
           IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: bash scripts/offsite-host-loss.sh
+      - name: Collect Mosquitto AppArmor denials from host-loss
+        if: ${{ always() && steps.host-loss-window.outcome == 'success' }}
+        env:
+          APPARMOR_AUDIT_MARKER: ${{ steps.host-loss-window.outputs.marker }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/meterwerk-apparmor-evidence/host-loss-audit.log"
+          raw="$RUNNER_TEMP/host-loss-kernel.tmp"
+          mkdir -p "$RUNNER_TEMP/meterwerk-apparmor-evidence"
+          if ! sudo -n dmesg --since "$APPARMOR_AUDIT_MARKER" > "$raw" 2>"$RUNNER_TEMP/host-loss-dmesg-error.log"; then
+            if ! sudo -n journalctl -k --since "$APPARMOR_AUDIT_MARKER" --no-pager > "$raw" 2>"$RUNNER_TEMP/host-loss-journal-error.log"; then
+              echo APPARMOR_HOST_LOSS_AUDIT=UNAVAILABLE | tee "$evidence"
+              rm -f "$raw" "$RUNNER_TEMP/host-loss-dmesg-error.log" "$RUNNER_TEMP/host-loss-journal-error.log"
+              exit 1
+            fi
+          fi
+          { grep 'apparmor="DENIED"' "$raw" || true; } \
+            | { grep 'profile="mosquitto"' || true; } > "$evidence"
+          if test -s "$evidence"; then
+            echo APPARMOR_HOST_LOSS_AUDIT=DENIED
+            cat "$evidence"
+            echo HOST_LOSS_RESULT=BLOCKED_BY_APPARMOR_DENIAL
+            rm -f "$raw" "$RUNNER_TEMP/host-loss-dmesg-error.log" "$RUNNER_TEMP/host-loss-journal-error.log"
+            exit 1
+          fi
+          echo APPARMOR_HOST_LOSS_AUDIT=NO_MOSQUITTO_DENIAL | tee "$evidence"
+          rm -f "$raw" "$RUNNER_TEMP/host-loss-dmesg-error.log" "$RUNNER_TEMP/host-loss-journal-error.log"
       - name: Verify full host-loss evidence
         if: ${{ success() }}
         run: node scripts/verify-host-loss-evidence.mjs "$RUNNER_TEMP/offsite-full.json" "$RUNNER_TEMP/offsite-host-loss.json" "$RUNNER_TEMP/offsite-host-verifier.json" "$GITHUB_SHA"

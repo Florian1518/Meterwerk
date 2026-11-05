@@ -190,18 +190,36 @@ test("stage is initialized before traps and remains diagnostic through cleanup",
   );
 });
 
-test("host loss runs only after the persistence gate succeeds in the same run", () => {
+test("host loss runs after a green gate or verifies previously passed gate evidence", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/host-loss-recovery.yml", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(workflow, /run_host_loss:/);
+  assert.match(workflow, /run_host_loss_from_passed_gate:/);
   assert.match(
     workflow,
-    /name: Reproduce, allow and verify Mosquitto persistence\n\s+run: bash scripts\/hostloss-apparmor-regression\.sh[\s\S]*?name: Run complete host-loss drill in an empty isolated Docker daemon\n\s+if: \$\{\{ success\(\) \}\}/,
+    /name: Reproduce, allow and verify Mosquitto persistence\n\s+if: \$\{\{ !inputs\.run_host_loss_from_passed_gate \}\}[\s\S]*?name: Run complete host-loss drill in an empty isolated Docker daemon\n\s+if: \$\{\{ success\(\) \}\}/,
   );
   assert.doesNotMatch(
     workflow,
-    /github\.event_name == 'workflow_dispatch' && inputs\.run_host_loss/,
+    /- \.github\/workflows\/host-loss-recovery\.yml/,
+  );
+  assert.doesNotMatch(workflow, /- scripts\/hostloss-apparmor\*/);
+  assert.match(
+    workflow,
+    /Verify the already passed persistence gate[\s\S]*?\.conclusion == "success"/,
+  );
+  assert.match(workflow, /GIT_COMMIT_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /export METERWERK_BACKUP_AGE_RECIPIENT=/);
+  assert.match(workflow, /Apply least-privilege Mosquitto AppArmor override/);
+  assert.match(workflow, /git merge-base --is-ancestor "\$gate_sha" HEAD/);
+  assert.match(workflow, /fetch-depth: 0/);
+  assert.match(
+    workflow,
+    /Mark AppArmor audit window for host-loss[\s\S]*?id: host-loss-window/,
+  );
+  assert.match(
+    workflow,
+    /Collect Mosquitto AppArmor denials from host-loss[\s\S]*?always\(\)[\s\S]*?profile="mosquitto"/,
   );
 });
