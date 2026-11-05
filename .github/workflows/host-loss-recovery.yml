@@ -12,6 +12,12 @@ on:
       - Dockerfile.offsite-mosquitto
       - infra/mosquitto/mosquitto.conf
   workflow_dispatch:
+    inputs:
+      run_host_loss:
+        description: Run the separate full host-loss recovery after the AppArmor persistence gate
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -51,19 +57,19 @@ jobs:
       - name: Reproduce, allow and verify Mosquitto persistence
         run: bash scripts/hostloss-apparmor-regression.sh
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         with: { version: 12.5.1 }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         with: { node-version: 22 }
       - name: Install offsite client
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         run: |
           python3 -m venv "$RUNNER_TEMP/offsite-sdk"
           "$RUNNER_TEMP/offsite-sdk/bin/pip" install 'boto3==1.40.0'
           echo "$RUNNER_TEMP/offsite-sdk/bin" >> "$GITHUB_PATH"
       - name: Install age and PostgreSQL 16 client
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         shell: bash
         run: |
           set -euo pipefail
@@ -80,14 +86,14 @@ jobs:
           sudo apt-get install --yes postgresql-client-16
           echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
       - name: Install project and prepare synthetic source database
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         run: |
           pnpm install --frozen-lockfile
           pnpm db:generate
           pnpm exec prisma migrate deploy
           pnpm db:seed
       - name: Create ephemeral age identity and encrypted recovery source
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         shell: bash
         run: |
           set -euo pipefail
@@ -101,7 +107,7 @@ jobs:
           echo "METERWERK_BACKUP_FILE=$backup" >> "$GITHUB_ENV"
           echo "METERWERK_BACKUP_MANIFEST=$backup.manifest.json" >> "$GITHUB_ENV"
       - name: Upload and retrieve the exact encrypted recovery source
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
@@ -110,7 +116,7 @@ jobs:
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: python3 scripts/offsite-storage.py roundtrip "$METERWERK_BACKUP_FILE" "$RUNNER_TEMP/offsite-full.json"
       - name: Run complete host-loss drill in an empty isolated Docker daemon
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
@@ -119,7 +125,7 @@ jobs:
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: bash scripts/offsite-host-loss.sh
       - name: Verify full host-loss evidence
-        if: success()
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.run_host_loss }}
         run: node scripts/verify-host-loss-evidence.mjs "$RUNNER_TEMP/offsite-full.json" "$RUNNER_TEMP/offsite-host-loss.json" "$RUNNER_TEMP/offsite-host-verifier.json" "$GITHUB_SHA"
       - name: Restore original AppArmor override and profile
         if: always()

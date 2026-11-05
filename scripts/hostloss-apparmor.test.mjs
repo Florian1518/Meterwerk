@@ -56,7 +56,39 @@ test("persistence evidence is checked through the nested Docker host", () => {
     new URL("./hostloss-apparmor-regression.sh", import.meta.url),
     "utf8",
   );
-  assert.match(code, /inner cp .*\/mosquitto\/data\/mosquitto\.db.*\/tmp\//);
-  assert.match(code, /PERSISTENCE_FILE=.*SIZE=/);
-  assert.doesNotMatch(code, /inner cp .*\$out/);
+  assert.match(code, /--volumes-from "\$name" --entrypoint sh/);
+  assert.match(code, /PATH=%n OWNER=%u:%g MODE=%a TYPE=%F SIZE=%s/);
+  assert.match(code, /PATH=\$path STATE=ABSENT/);
+  assert.doesNotMatch(code, /inner cp/);
+});
+
+test("missing persistence files and failed shutdown cannot skip audit evidence", () => {
+  const code = readFileSync(
+    new URL("./hostloss-apparmor-regression.sh", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(code, /^set -e/m);
+  assert.match(code, /PATH=\$path STATE=ABSENT/);
+  assert.match(code, /CONTROLLED_SHUTDOWN=.*CONTAINER_EXIT=/);
+  assert.match(code, /audit "\$marker" "\$out\/\$name-audit\.log" \|\| true/);
+  assert.match(code, /capture_data_state "\$name" after-shutdown/);
+  assert.match(code, /audit "\$marker"/);
+  assert.match(code, /AUDIT_READ=PASS SOURCE=/);
+  assert.match(code, /MOSQUITTO_PERSISTENCE_AUDIT_DENIAL=UNKNOWN/);
+});
+
+test("push-triggered persistence gate cannot continue into host loss", () => {
+  const workflow = readFileSync(
+    new URL("../.github/workflows/host-loss-recovery.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /run_host_loss:[\s\S]*default: false/);
+  assert.match(
+    workflow,
+    /github\.event_name == 'workflow_dispatch' && inputs\.run_host_loss/,
+  );
+  assert.doesNotMatch(
+    workflow,
+    /name: Run complete host-loss drill in an empty isolated Docker daemon\n\s+if: success\(\)/,
+  );
 });
