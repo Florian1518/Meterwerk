@@ -6,7 +6,8 @@ import { pathToFileURL } from "node:url";
 
 export const rule = "/mosquitto/config/mosquitto.conf r,";
 export const persistenceRule = "/mosquitto/data/mosquitto.db.new rw,";
-export const rules = [rule, persistenceRule];
+export const databaseRule = "/mosquitto/data/mosquitto.db w,";
+export const rules = [rule, persistenceRule, databaseRule];
 const profile = "/etc/apparmor.d/mosquitto";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 

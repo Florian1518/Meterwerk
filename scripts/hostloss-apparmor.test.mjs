@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   addition,
+  databaseRule,
   localInclude,
   persistenceRule,
   rule,
@@ -25,12 +26,12 @@ test("uses the actual unique local include and refuses absent or unsafe includes
   );
 });
 
-test("only adds the exact read rule and preserves all existing content", () => {
+test("only adds the three exact least-privilege rules and preserves content", () => {
   const original = "# existing operator rules\n/etc/mosquitto/custom.conf r,\n";
-  const exact = `${rule}\n${persistenceRule}`;
+  const exact = `${rule}\n${persistenceRule}\n${databaseRule}`;
   assert.equal(original + addition(original), original + `\n${exact}\n`);
   assert.equal(addition(""), `\n${exact}\n`);
-  assert.throws(() => addition(persistenceRule));
+  assert.throws(() => addition(databaseRule));
   assert.doesNotMatch(
     addition(original),
     /\/mosquitto\/data\/\*\*|\/mosquitto\/\*\*|\/\*\s+rw|complain|unconfined/,
@@ -59,6 +60,9 @@ test("persistence evidence is checked through the nested Docker host", () => {
   assert.match(code, /--volumes-from "\$name" --entrypoint sh/);
   assert.match(code, /PATH=%n OWNER=%u:%g MODE=%a TYPE=%F SIZE=%s/);
   assert.match(code, /PATH=\$path STATE=ABSENT/);
+  assert.match(code, /mosquitto_pub -h 127\.0\.0\.1 -p 1883/);
+  assert.match(code, /MOSQUITTO_PERSISTENCE_DATABASE=PASS/);
+  assert.match(code, /MOSQUITTO_PERSISTENCE_TEMPFILE_CLEANUP=PASS/);
   assert.doesNotMatch(code, /inner cp/);
 });
 
@@ -92,18 +96,15 @@ test("stage is initialized before traps and remains diagnostic through cleanup",
   assert.ok(code.indexOf('exec > >(tee "$out/regression.log")') < code.indexOf('stage="mosquitto-start"'));
 });
 
-test("push-triggered persistence gate cannot continue into host loss", () => {
+test("host loss runs only after the persistence gate succeeds in the same run", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/host-loss-recovery.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /run_host_loss:[\s\S]*default: false/);
+  assert.doesNotMatch(workflow, /run_host_loss:/);
   assert.match(
     workflow,
-    /github\.event_name == 'workflow_dispatch' && inputs\.run_host_loss/,
+    /name: Reproduce, allow and verify Mosquitto persistence\n\s+run: bash scripts\/hostloss-apparmor-regression\.sh[\s\S]*?name: Run complete host-loss drill in an empty isolated Docker daemon\n\s+if: \$\{\{ success\(\) \}\}/,
   );
-  assert.doesNotMatch(
-    workflow,
-    /name: Run complete host-loss drill in an empty isolated Docker daemon\n\s+if: success\(\)/,
-  );
+  assert.doesNotMatch(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.run_host_loss/);
 });

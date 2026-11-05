@@ -149,6 +149,19 @@ probe() {
   if inner start "$name" > "$out/$name-start.log" 2>&1; then echo "CONTAINER_START_$name=PASS"; else cat "$out/$name-start.log"; mark_failure "CONTAINER_START_$name"; fi
   sleep 3
   running="$(inner inspect "$name" -f '{{.State.Running}}' 2>/dev/null || echo unknown)"
+  if test "$running" = true; then
+    if inner exec "$name" mosquitto_pub -h 127.0.0.1 -p 1883 -q 1 \
+      -t recovery/persistence-gate -m ready > "$out/$name-ready.log" 2>&1; then
+      echo "MOSQUITTO_BROKER_READY=$name PASS"
+    else
+      echo "MOSQUITTO_BROKER_READY=$name FAIL"
+      cat "$out/$name-ready.log"
+      mark_failure "BROKER_NOT_READY_$name"
+    fi
+  else
+    echo "MOSQUITTO_BROKER_READY=$name FAIL"
+    mark_failure "BROKER_NOT_RUNNING_$name"
+  fi
   inner inspect "$name" -f 'USER={{.Config.User}} APPARMOR={{.AppArmorProfile}} STATE={{json .State}}' > "$inspectfile" 2>&1 || true
   cat "$inspectfile"
   stage="persistence-shutdown"
@@ -201,9 +214,22 @@ trace_persistence() {
 stage="negative-control"
 before_marker="$(date -u '+%Y-%m-%d %H:%M:%S')"
 probe before "$before_marker"
-if ! grep -q 'Unable to open config file' "$out/before.log" 2>/dev/null; then mark_failure EXPECTED_NEGATIVE_CONFIG_TEST_NOT_REPRODUCED; fi
-if ! grep -q 'name="/mosquitto/config/mosquitto.conf".*denied_mask="r"' "$out/before-audit.log" 2>/dev/null; then mark_failure EXPECTED_NEGATIVE_CONFIG_AUDIT_NOT_FOUND; fi
-echo APPARMOR_NEGATIVE_REGRESSION=$([ "$failure" -eq 0 ] && echo PASS || echo REVIEW)
+negative_ok=1
+if ! grep -q 'Unable to open config file' "$out/before.log" 2>/dev/null; then
+  echo EXPECTED_NEGATIVE_CONFIG_TEST_NOT_REPRODUCED
+  negative_ok=0
+fi
+if ! grep -q 'name="/mosquitto/config/mosquitto.conf".*denied_mask="r"' "$out/before-audit.log" 2>/dev/null; then
+  echo EXPECTED_NEGATIVE_CONFIG_AUDIT_NOT_FOUND
+  negative_ok=0
+fi
+if test "$negative_ok" -eq 1; then
+  failure=0
+  echo APPARMOR_NEGATIVE_REGRESSION=PASS
+else
+  mark_failure APPARMOR_NEGATIVE_REGRESSION_FAILED
+  echo APPARMOR_NEGATIVE_REGRESSION=FAIL
+fi
 
 stage="apparmor-bootstrap"
 if ! node scripts/hostloss-apparmor.mjs apply; then mark_failure APPARMOR_LOCAL_OVERRIDE_APPLY_FAILED; fi
@@ -241,6 +267,18 @@ if grep -q 'Error saving in-memory database' "$out/after.log" 2>/dev/null; then
   echo MOSQUITTO_PERSISTENCE=FAIL
   echo HOST_LOSS_RESULT=BLOCKED_BEFORE_DRILL
   failure=1
+fi
+if ! grep -q '^PATH=/mosquitto/data/mosquitto.db OWNER=' "$out/after-shutdown-filesystem.log" 2>/dev/null; then
+  echo MOSQUITTO_PERSISTENCE_DATABASE=FAIL_MISSING
+  failure=1
+else
+  echo MOSQUITTO_PERSISTENCE_DATABASE=PASS
+fi
+if ! grep -q '^PATH=/mosquitto/data/mosquitto.db.new STATE=ABSENT$' "$out/after-shutdown-filesystem.log" 2>/dev/null; then
+  echo MOSQUITTO_PERSISTENCE_TEMPFILE_CLEANUP=FAIL
+  failure=1
+else
+  echo MOSQUITTO_PERSISTENCE_TEMPFILE_CLEANUP=PASS
 fi
 if grep -q 'Config loaded from /mosquitto/config/mosquitto.conf' "$out/after.log" 2>/dev/null; then
   echo MOSQUITTO_CONFIG_READ=PASS
