@@ -4,6 +4,8 @@ on:
     branches: [diagnostics/phase-3-mosquitto]
     paths:
       - scripts/mosquitto-diagnose.sh
+      - scripts/mosquitto-image-identity.py
+      - scripts/mosquitto-image-identity-test.py
       - .github/workflows/mosquitto-diagnostic.yml
 permissions:
   contents: read
@@ -15,10 +17,15 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Validate diagnostic identity logic
+        continue-on-error: true
+        run: python3 scripts/mosquitto-image-identity-test.py
       - run: bash scripts/mosquitto-diagnose.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: mosquitto-runtime-evidence
-          path: ${{ runner.temp }}/mosquitto-diagnostic/evidence.log
+          path: |
+            ${{ runner.temp }}/mosquitto-diagnostic/*.log
+            ${{ runner.temp }}/mosquitto-diagnostic/loaded-image.json
           if-no-files-found: error
