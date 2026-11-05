@@ -46,6 +46,11 @@ for image in meterwerk-offsite-web:acceptance meterwerk-offsite-worker:acceptanc
   meterwerk-offsite-mosquitto:acceptance postgres:16; do
   inner image inspect "$image" >/dev/null
 done
+web_image="$(inner image inspect meterwerk-offsite-web:acceptance -f '{{.Id}}')"
+worker_image="$(inner image inspect meterwerk-offsite-worker:acceptance -f '{{.Id}}')"
+mqtt_image="$(inner image inspect meterwerk-offsite-mosquitto:acceptance -f '{{.Id}}')"
+db_image="$(inner image inspect postgres:16 -f '{{.Id}}')"
+printf 'HOST_LOSS_LOADED_IMAGE=%s\n' "$web_image" "$worker_image" "$mqtt_image" "$db_image"
 inner run --rm --user mosquitto --entrypoint sh meterwerk-offsite-mosquitto:acceptance -c \
   'test -r /mosquitto/config/mosquitto.conf && test -s /mosquitto/config/mosquitto.conf'
 mark imagesReady
@@ -76,7 +81,7 @@ mark configurationReady
 current_step='restore database service'
 inner run -d --name db --network recovery -p 5544:5432 \
   -e POSTGRES_USER=meterwerk -e POSTGRES_PASSWORD=ci-only-recovery-password \
-  -e POSTGRES_DB=meterwerk_restore_host_loss postgres:16 >/dev/null
+  -e POSTGRES_DB=meterwerk_restore_host_loss "$db_image" >/dev/null
 for attempt in $(seq 1 60); do
   if inner exec db pg_isready -h 127.0.0.1 -U meterwerk -d meterwerk_restore_host_loss >/dev/null 2>&1; then break; fi
   sleep 1
@@ -115,18 +120,25 @@ rm "$stage/restore.dump"
 mark databaseRestored
 current_step='start MQTT, web and ingestion worker'
 inner run -d --name mqtt --network recovery \
-  meterwerk-offsite-mosquitto:acceptance >/dev/null
+  "$mqtt_image" >/dev/null
+current_step='wait for MQTT readiness'
+for attempt in $(seq 1 30); do
+  if inner exec mqtt mosquitto_pub -h 127.0.0.1 -q 1 -t recovery/readiness -m ready >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+inner exec mqtt mosquitto_pub -h 127.0.0.1 -q 1 -t recovery/readiness -m ready >/dev/null
+mark mqttReady
 inner run -d --name web --network recovery -p 3100:3000 \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e APP_URL=http://127.0.0.1:3100 \
-  -e SESSION_SECRET=ci-only-synthetic-session-secret meterwerk-offsite-web:acceptance >/dev/null
+  -e SESSION_SECRET=ci-only-synthetic-session-secret "$web_image" >/dev/null
 mark appStartup
 inner run -d --name worker --network recovery \
   -e DATABASE_URL=postgresql://meterwerk:ci-only-recovery-password@db:5432/meterwerk_restore_host_loss \
   -e METERWERK_ENV=test -e NODE_ENV=test -e MQTT_BROKER_URL=mqtt://mqtt:1883 \
   -e MQTT_RECEIPT_KEY_PATH=/run/secrets/receipt.pem \
   -v recovery-receipt-key:/run/secrets:ro \
-  meterwerk-offsite-worker:acceptance dist/mqtt-worker.js >/dev/null
+  "$worker_image" dist/mqtt-worker.js >/dev/null
 current_step='wait for web readiness'
 for attempt in $(seq 1 60); do
   if curl --fail --silent http://127.0.0.1:3100/api/health/ready >/dev/null; then break; fi
@@ -173,4 +185,5 @@ node --input-type=module - "$stage/times" <<'NODE'
 import {readFileSync, writeFileSync} from 'node:fs';
 const marks = Object.fromEntries(readFileSync(process.argv[2], 'utf8').trim().split('\n').map(line => { const [key,value] = line.split(' '); return [key,Number(value)]; }));
 writeFileSync(process.env.RUNNER_TEMP + '/offsite-host-loss.json', JSON.stringify({status:'PASSED', sourceSha:process.env.GITHUB_SHA, scope:'synthetic empty Docker daemon; OS provisioning and external key-store recovery excluded', startedAt:new Date(marks.start).toISOString(), endedAt:new Date(marks.end).toISOString(), durationSeconds:(marks.end-marks.start)/1000, marks, emptyTargetVerified:true, imagesLoaded:true, offsiteOnlyRestore:true, databaseVerified:true, appReady:true, mqttWorkerSubscribed:true}, null, 2) + '\n');
+console.log('HOST_LOSS_DURATION_SECONDS=' + (marks.end-marks.start)/1000);
 NODE

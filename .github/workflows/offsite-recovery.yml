@@ -45,6 +45,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { persist-credentials: false }
+      - name: Check narrow AppArmor bootstrap logic
+        run: node --test scripts/offsite-apparmor.test.mjs
+      - name: Reproduce denial and validate exact runner-local AppArmor rule
+        run: bash scripts/offsite-apparmor-regression.sh
       - name: Install isolated standard S3 SDK
         run: |
           python3 -m venv "$RUNNER_TEMP/offsite-sdk"
@@ -298,6 +302,22 @@ jobs:
         run: node scripts/verify-recovery-evidence.mjs "$RUNNER_TEMP/recovery-evidence.json" "$RUNNER_TEMP/host-loss-evidence.json" "$RUNNER_TEMP/meterwerk-pitr-evidence"
       - name: Verify external offsite acceptance evidence
         run: node scripts/verify-offsite-evidence.mjs "$RUNNER_TEMP" "$GITHUB_SHA"
+      - name: Restore original runner-local AppArmor policy
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/meterwerk-apparmor-evidence"
+          node scripts/offsite-apparmor.mjs cleanup 2>&1 | tee "$RUNNER_TEMP/meterwerk-apparmor-evidence/cleanup.log"
+      - name: Archive AppArmor evidence regardless of result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: host-loss-apparmor-evidence
+          path: |
+            ${{ runner.temp }}/meterwerk-apparmor-evidence/*.log
+            ${{ runner.temp }}/offsite-host-loss.json
+          retention-days: 30
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: offsite-recovery-evidence
