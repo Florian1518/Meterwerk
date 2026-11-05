@@ -72,11 +72,15 @@ broker_probe_status=0
 broker_probe_output="$(inner run --rm --network recovery --user mosquitto --entrypoint sh \
   meterwerk-offsite-mosquitto:acceptance -c \
   'timeout 3 /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v' 2>&1)" || broker_probe_status=$?
-if [[ "$broker_probe_status" -ne 124 ]] || ! grep -q 'Opening ipv4 listen socket' <<< "$broker_probe_output"; then
+echo "HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT_EXIT=$broker_probe_status"
+if [[ "$broker_probe_status" -ne 0 && "$broker_probe_status" -ne 124 ]] \
+  || ! grep -q 'Config loaded from /mosquitto/config/mosquitto.conf' <<< "$broker_probe_output" \
+  || ! grep -q 'Opening ipv4 listen socket' <<< "$broker_probe_output"; then
   echo 'HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT_FAILED' >&2
   printf '%s\n' "$broker_probe_output" >&2
   exit 1
 fi
+echo HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT=PASS
 mark configurationReady
 current_step='restore database service'
 inner run -d --name db --network recovery -p 5544:5432 \

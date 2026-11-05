@@ -228,3 +228,21 @@ test("host loss runs after a green gate or verifies previously passed gate evide
     /Collect Mosquitto AppArmor denials from host-loss[\s\S]*?always\(\)[\s\S]*?profile="mosquitto"/,
   );
 });
+
+test("host-loss Mosquitto preflight requires loaded config and listener, not one timeout code", () => {
+  const code = readFileSync(
+    new URL("./offsite-host-loss.sh", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    code,
+    /HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT_EXIT=\$broker_probe_status/,
+  );
+  assert.match(
+    code,
+    /\[\[ "\$broker_probe_status" -ne 0 && "\$broker_probe_status" -ne 124 \]\]/,
+  );
+  assert.match(code, /Config loaded from \/mosquitto\/config\/mosquitto\.conf/);
+  assert.match(code, /Opening ipv4 listen socket/);
+  assert.match(code, /HOST_LOSS_MOSQUITTO_CONFIG_PREFLIGHT=PASS/);
+});

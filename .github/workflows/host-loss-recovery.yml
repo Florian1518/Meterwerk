@@ -8,7 +8,6 @@ on:
       - scripts/hostloss-apparmor.mjs
       - scripts/hostloss-persistence-evidence.sh
       - scripts/offsite-storage.py
-      - scripts/offsite-host-loss.sh
       - scripts/verify-host-loss-evidence.mjs
       - Dockerfile.offsite-mosquitto
       - infra/mosquitto/mosquitto.conf
