@@ -8,6 +8,8 @@ Die gemessene Zeit vom Drill-Start bis Restore Verifier und App Readiness beträ
 
 Dieser Nachweis gilt für die synthetische, leere Docker-Umgebung. OS-Provisionierung und externe Wiederherstellung eines Schlüsselverwahrers waren nicht Teil des Drills; die gemessene Dauer ist kein operatives RTO oder Production-SLA. IAM Least Privilege, freigegebene Staging-Recovery, kontinuierliches WAL-Offsite, echter Scheduled-Cron-Nachweis sowie operatives RPO/RTO bleiben separat offen. Offsite Full Restore `7,471 s` und PITR `8,068 s` sind bestehende Evidence und wurden für diesen Lauf nicht wiederholt.
 
+Historischer Zwischenstand aus `037887db41dfc07c22fb9f03e3b76f3ffab55f54`: Am 04.11.2026 war Host Loss wegen des Mosquitto-Config-Open-Fehlers noch BLOCKED; die Ursache war damals ausdrücklich nicht belegt. Run `42040140763` ist die spätere erfolgreiche Validierung und löst diesen Zwischenstand ab.
+
 ## IONOS-Offsite-Acceptance: Ergebnis vom 04.11.2026
 
 Der synthetische Acceptance-Run [41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425) auf Code-SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494` bestand. Evidence-Artefakt `offsite-recovery-evidence`, ID `13308157780`, SHA-256 `a34432cfda6e3a2b1dc271fd4191a7c7e24402f3f988f1f092fb11fda2c1dd1c`, Ablauf 04.12.2026. Es enthält nur synthetische Prüfnachweise, keine Dumps, Ciphertexte oder privaten Schlüssel.

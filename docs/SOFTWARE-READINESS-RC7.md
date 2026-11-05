@@ -6,6 +6,8 @@
 
 IAM Least Privilege bleibt PARTIAL; Staging Recovery Acceptance BLOCKED, solange keine freigegebene read-only Backup-Quelle existiert. Continuous WAL Offsite und ein echter `event=schedule`-Run sind nicht belegt. Operatives RPO/RTO bleibt NOT YET DEMONSTRATED. **READY FOR SOFTWARE COMPLETION PHASE 4: NO.** RC7 unverändert; Production unangetastet. Details und Grenzen des Host-Loss-Nachweises stehen im [Disaster-Recovery-Runbook](DISASTER-RECOVERY.md).
 
+Der Zwischenstand vom 04.11.2026 in Commit `037887db41dfc07c22fb9f03e3b76f3ffab55f54` hielt Host Loss noch als BLOCKED fest, ohne belegte Root Cause. Er wird durch Run `42040140763` vom 05.11.2026 abgelöst.
+
 ## IONOS-Evidence-Fortsetzung vom 04.11.2026
 
 Offsite Acceptance **PASSED, synthetisch** auf SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494`; [Workflow 41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425), Artefakt 13308157780. Private Bucket/ACL/Policy/Public Access Block, Region, Versioning, age, SSE-S3/AES256, zwei echte Objektversionen, Abruf einer alten Version, ausschlie?lich externer Download, Hash und Full Restore mit Restore Verifier/App Readiness bestanden. Negative Tests f?r fehlendes Objekt, ung?ltige Version, anonymen Zugriff, besch?digten Ciphertext, falschen age-Key und lokale Backup-Hashkorruption fail-closed.
