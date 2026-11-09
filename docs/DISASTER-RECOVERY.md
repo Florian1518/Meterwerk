@@ -17,6 +17,20 @@ PITR and Host Loss acceptance remains unchanged. IAM Least Privilege and
 Staging Recovery remain **BLOCKED**; genuine schedule and operational RPO/RTO
 evidence remain pending. No production deployment or operational SLA is claimed.
 
+## Technical RPO/RTO evidence, 2026-11-09
+
+Accepted synthetic Full Restore, PITR and Host Loss timings establish a
+conservative technical RTO envelope of **28.613 s**. The synthetic drill's
+60-second archive-timeout setting plus the accepted maximum 12.603525-second archive-to-
+verified-upload delay yields a **conditional 72.604-second RPO estimate**, not
+an observed worst-case RPO: three accepted cycles used manual WAL switches,
+and two follow-up natural-timeout probes failed closed with
+`ARCHIVE_TIMEOUT_NOT_AUTOMATIC`. Technical RTO evidence is PASSED for the
+measured synthetic scenarios; technical RPO remains conditional/pending, and
+operational/SLA RPO/RTO remains NOT PROVEN. The detector's 120-second freshness
+threshold is not a measured alert delay. See the [acceptance table, run IDs,
+measurements and limits](acceptance/TECHNICAL-RPO-RTO-20261109.md).
+
 ## Host-Loss-Validation: Ergebnis vom 05.11.2026
 
 Der isolierte Host-Loss-Drill bestand im [Workflow-Run 42040140763](https://github.com/Florian1518/Meterwerk/actions/runs/42040140763) auf Kandidaten-SHA `1120e7cfec11ae81374ed0745136138218cf4ae6`. Das Persistence-Gate aus Run `42034092512` war zuvor erfolgreich; der Fortsetzungsrun verifizierte es und übersprang eine Wiederholung. Aus einer leeren isolierten Docker-Umgebung wurden die unveränderlichen Images geladen, ein verschlüsseltes synthetisches Backup ausschließlich aus IONOS Object Storage bezogen, SHA-256 validiert, mit age entschlüsselt, PostgreSQL wiederhergestellt und Restore Verifier sowie App Readiness bestanden. Mosquitto war READY, der MQTT-Worker subscribed und Web/App Readiness war erfolgreich.

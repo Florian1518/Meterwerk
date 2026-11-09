@@ -48,6 +48,17 @@ returned `total_count: 0`, an empty run list. A separate repository-wide
 `Supported image vulnerabilities`, workflow ID `404237428`. None ran recovery;
 even the successful ones are not substitutes for this acceptance gate.
 
+### Recheck after the RPO/RTO work
+
+At the later read-only recheck on 2026-11-09, workflow metadata still reported
+`Recovery Validation` (`404557168`) as active. The workflow-specific
+`event=schedule` query again returned `total_count: 0`; the repository-wide
+schedule query returned six runs, and none were Recovery Validation. Therefore
+no qualifying schedule run appeared during this continuation and the gate
+remains **PENDING**. The `workflow_dispatch` WAL drills in this continuation
+are unrelated and are not counted as schedule evidence. Cron remains unchanged
+at `23 7 * * 1`.
+
 Accordingly, qualifying run ID, event, executed SHA, created/updated timestamps,
 conclusion, jobs and artifacts are **not available**. They are null/empty in the
 evidence record rather than populated with an unrelated successful run.

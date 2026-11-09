@@ -6,6 +6,7 @@ Genuine Scheduled Recovery Evidence: **PENDING**. The API audit found zero
 Recovery `schedule` runs. The existing default-branch workflow is active and
 eligible, with unchanged Monday 07:23 UTC cron; next window November 16.
 No dispatch or cron change was used. [Exact schedule audit](acceptance/SCHEDULE-RECOVERY-20261109.md).
+The later recheck also returned zero qualifying Recovery schedule runs.
 
 Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic
 incremental cycles against real IONOS, [run 42595934065 evidence](acceptance/WAL-OFFSITE-42595934065.md).
@@ -14,6 +15,15 @@ Restore, PITR and Host Loss evidence remains valid. IAM Least Privilege remains
 **BLOCKED** on the real ContractUserId; Staging Recovery remains **BLOCKED**.
 Genuine schedule-trigger evidence and operational RPO/RTO remain pending.
 **READY FOR SOFTWARE COMPLETION PHASE 4: NO.** Production remains untouched.
+
+Technical RPO/RTO evidence update: Full Restore 7.471 s, PITR 8.068 s, and
+Host Loss 28.613 s yield a synthetic technical RTO envelope of 28.613 s.
+The 72.604 s RPO figure is conditional arithmetic (60 s synthetic test-harness
+archive-timeout setting plus 12.603525 s maximum accepted archive-to-verified-upload lag), not
+an observed worst case: two natural-timeout probes failed closed. Technical
+RTO is demonstrated for those scenarios; Technical RPO remains
+CONDITIONAL/PENDING and operational RPO/RTO remains PENDING. [Detailed
+acceptance table and limitations](acceptance/TECHNICAL-RPO-RTO-20261109.md).
 
 ## Historischer Phase-3-Status vom 05.11.2026
 
