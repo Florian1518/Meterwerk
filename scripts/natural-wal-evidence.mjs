@@ -42,6 +42,11 @@ export function verifyNaturalWalEvidence({
     "ARCHIVE_TIMEOUT_NOT_60_SECONDS",
   );
   requireEvidence(
+    settings.archiveTimeoutSource === "configuration file" &&
+      settings.archiveTimeoutPendingRestart === false,
+    "ARCHIVE_TIMEOUT_RUNTIME_SOURCE_INVALID",
+  );
+  requireEvidence(
     settings.walSegmentSize === 16777216,
     "WAL_SEGMENT_SIZE_INVALID",
   );
@@ -115,6 +120,8 @@ export function verifyNaturalWalEvidence({
     );
     requireEvidence(
       Number.isInteger(cycle.checkpointerPid) &&
+        typeof cycle.checkpointerWaitEventAfter === "string" &&
+        cycle.inRecoveryAfter === false &&
         Number.isInteger(cycle.walRecordsBefore) &&
         Number.isInteger(cycle.walRecordsAfter) &&
         cycle.walRecordsAfter > cycle.walRecordsBefore,
@@ -218,6 +225,8 @@ export function verifyNaturalWalEvidence({
       checkpointerPid: cycle.checkpointerPid,
       walRecordsBefore: cycle.walRecordsBefore,
       walRecordsAfter: cycle.walRecordsAfter,
+      checkpointerWaitEventAfter: cycle.checkpointerWaitEventAfter,
+      checkpointerWaitEventTypeAfter: cycle.checkpointerWaitEventTypeAfter,
       currentSegmentMaxOffsetBeforeSwitch:
         cycle.currentSegmentMaxOffsetBeforeSwitch,
       lastOffsetBeforeSwitch: cycle.lastOffsetBeforeSwitch,

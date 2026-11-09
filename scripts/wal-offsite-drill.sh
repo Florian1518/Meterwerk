@@ -48,6 +48,8 @@ settings=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'archiveLibrary',coalesce(current_setting('archive_library',true),''),
   'archiveTimeout',current_setting('archive_timeout'),
   'archiveTimeoutSeconds',extract(epoch from current_setting('archive_timeout')::interval),
+  'archiveTimeoutSource',(SELECT source FROM pg_settings WHERE name='archive_timeout'),
+  'archiveTimeoutPendingRestart',(SELECT pending_restart FROM pg_settings WHERE name='archive_timeout'),
   'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
   'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1))")
 wal_segment_size=$(pg_controldata "$work/db" | awk -F': *' '/Bytes per WAL segment/ {print $2}')
@@ -67,7 +69,10 @@ initial=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
   'timedCheckpoints',checkpoints_timed,
   'requestedCheckpoints',checkpoints_req,
-  'walRecords',(SELECT wal_records FROM pg_stat_wal)
+  'walRecords',(SELECT wal_records FROM pg_stat_wal),
+  'checkpointerWaitEvent',(SELECT wait_event FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'checkpointerWaitEventType',(SELECT wait_event_type FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'inRecovery',pg_is_in_recovery()
 ) FROM pg_stat_archiver CROSS JOIN pg_stat_bgwriter")
 printf '%s\n' "$initial" > "$work/evidence/initial-state.json"
 export WAL_DRILL_INITIAL="$initial"
@@ -78,7 +83,8 @@ node --input-type=module -e '
   if (!settings.serverVersion.startsWith("16.") || settings.walLevel !== "replica" ||
       settings.archiveMode !== "on" || !settings.archiveCommand || settings.archiveLibrary !== "" ||
       settings.archiveTimeoutSeconds !== 60 || !Number.isInteger(settings.archiverPid) ||
-      !Number.isInteger(settings.checkpointerPid) ||
+      !Number.isInteger(settings.checkpointerPid) || settings.archiveTimeoutSource !== "configuration file" ||
+      settings.archiveTimeoutPendingRestart !== false || initial.inRecovery !== false ||
       initial.archivedCount !== 0 || initial.failedCount !== 0 || !Number.isInteger(initial.archiverPid))
     throw new Error("RUNTIME_WAL_CONFIGURATION_INVALID");
   writeFileSync(process.env.WAL_DRILL_WORK+"/evidence/t0.json",JSON.stringify({
@@ -114,7 +120,10 @@ sample() {
     'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
     'timedCheckpoints',checkpoints_timed,
     'requestedCheckpoints',checkpoints_req,
-    'walRecords',(SELECT wal_records FROM pg_stat_wal)
+    'walRecords',(SELECT wal_records FROM pg_stat_wal),
+    'checkpointerWaitEvent',(SELECT wait_event FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+    'checkpointerWaitEventType',(SELECT wait_event_type FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+    'inRecovery',pg_is_in_recovery()
   ) FROM pg_stat_archiver CROSS JOIN pg_stat_bgwriter"
 }
 
@@ -254,6 +263,9 @@ for cycle in 1 2 3; do
       lastActivityToOffsiteSeconds:(uploaded-last)/1000,archivedCountBefore:Number(process.env.WAL_CYCLE_BASELINE_COUNT),
       archivedCountAfter:Number(final.archivedCount),failedCountAfter:Number(final.failedCount),
       lastArchivedWalAfter:final.lastArchivedWal,archiverPid:final.archiverPid,
+      checkpointerWaitEventAfter:final.checkpointerWaitEvent,
+      checkpointerWaitEventTypeAfter:final.checkpointerWaitEventType,
+      inRecoveryAfter:final.inRecovery,
       archivedWalBytes:Number(process.env.WAL_CYCLE_ARCHIVED_BYTES),
       currentSegmentMaxOffsetBeforeSwitch:Number(process.env.WAL_CYCLE_MAX_OFFSET),
       lastOffsetBeforeSwitch:Number(process.env.WAL_CYCLE_PRE_OFFSET),walSegmentSize:Number(JSON.parse(process.env.WAL_DRILL_SETTINGS).walSegmentSize||process.env.WAL_DRILL_SEGMENT_SIZE),
