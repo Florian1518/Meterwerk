@@ -121,7 +121,7 @@ assert(
 );
 source = source.replaceAll(
   callsite,
-  `\t\telog(LOG, "PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=%d", MyProcPid);\n${callsite}`,
+  `\t\telog(LOG, "PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=%d archive_timeout=%d recovery=%d last_xlog_switch_time=" INT64_FORMAT, MyProcPid, XLogArchiveTimeout, RecoveryInProgress(), (int64) last_xlog_switch_time);\n${callsite}`,
 );
 
 const waitCallPattern =
@@ -135,9 +135,10 @@ const waitLogLines = [
   "\t\telog(LOG,",
   '\t\t\t "PG16_TIMEOUT_DIAG phase=WAIT now=" INT64_FORMAT',
   '\t\t\t " archive_timeout=%d last_xlog_switch_time=" INT64_FORMAT',
-  '\t\t\t " checkpointer_timeout=%d elapsed_since_switch=%d wait_seconds=%d",',
+  '\t\t\t " checkpointer_timeout=%d elapsed_since_switch=%d wait_seconds=%d recovery=%d",',
   "\t\t\t (int64) now, XLogArchiveTimeout, (int64) last_xlog_switch_time,",
-  "\t\t\t CheckPointTimeout, now - last_xlog_switch_time, cur_timeout);",
+  "\t\t\t CheckPointTimeout, (int) (now - last_xlog_switch_time), cur_timeout,",
+  "\t\t\t RecoveryInProgress());",
 ];
 const wakeLogLines = [
   "\t\t{",
@@ -145,9 +146,11 @@ const wakeLogLines = [
   "\t\t\telog(LOG,",
   '\t\t\t\t "PG16_TIMEOUT_DIAG phase=WAKE now=" INT64_FORMAT',
   '\t\t\t\t " archive_timeout=%d last_xlog_switch_time=" INT64_FORMAT',
-  '\t\t\t\t " elapsed_since_switch=%d",',
+  '\t\t\t\t " elapsed_since_switch=%d recovery=%d",',
   "\t\t\t\t (int64) wake_now, XLogArchiveTimeout,",
-  "\t\t\t\t (int64) last_xlog_switch_time, wake_now - last_xlog_switch_time);",
+  "\t\t\t\t (int64) last_xlog_switch_time,",
+  "\t\t\t\t (int) (wake_now - last_xlog_switch_time),",
+  "\t\t\t\t RecoveryInProgress());",
   "\t\t}",
 ];
 source = source.replace(

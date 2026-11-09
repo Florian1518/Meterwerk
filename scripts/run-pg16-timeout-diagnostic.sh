@@ -67,10 +67,13 @@ psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
 start_lsn=$(node -e 'process.stdout.write(JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")).t0Lsn)' "$evidence/t0.json")
 printf 'sampled_at_utc,transaction_id,lsn,insert_lsn,segment\n' > "$evidence/activity.csv"
 
-# Run four full timeout intervals after server/checkpointer start. Committed
+# Run long enough for the initial checkpointer sleep and at least three 60s
+# intervals afterward (the startup wait may equal CheckPointTimeout=300).
 # logged INSERT/UPDATE pairs every five seconds keep important WAL activity
 # continuous without approaching the 16 MiB segment size.
-for txid in $(seq 1 48); do
+activity_batches=110
+export PG_DIAGNOSTIC_ACTIVITY_BATCHES="$activity_batches"
+for txid in $(seq 1 "$activity_batches"); do
   psql -Xq -v ON_ERROR_STOP=1 -c \
     "INSERT INTO timeout_probe VALUES ($((txid + 1)), repeat('b', 128))"
   psql -Xq -v ON_ERROR_STOP=1 -c \
@@ -142,8 +145,8 @@ writeFileSync(outputPath, JSON.stringify({
   final,
   noForcedSwitch: true,
   noForcedCheckpoint: true,
-  periodicTransactionBatches: 48,
-  loggedInsertUpdateTransactions: 96,
+  periodicTransactionBatches: Number(process.env.PG_DIAGNOSTIC_ACTIVITY_BATCHES),
+  loggedInsertUpdateTransactions: Number(process.env.PG_DIAGNOSTIC_ACTIVITY_BATCHES) * 2,
   timeoutComparisons: Number(readFileSync(outputPath.replace("summary.json", "comparison-count.txt"), "utf8")),
   segmentChanged: t0.t0Segment !== final.currentSegment,
   t0Offset: t0.t0Offset,

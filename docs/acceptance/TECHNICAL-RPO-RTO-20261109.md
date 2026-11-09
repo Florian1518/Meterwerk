@@ -82,6 +82,22 @@ CI run
 [42633154372](https://github.com/Florian1518/Meterwerk/actions/runs/42633154372)
 passed on the same SHA.
 
+The next source diagnostic,
+[42635642689](https://github.com/Florian1518/Meterwerk/actions/runs/42635642689)
+at SHA `a891b4f30b7e8e288fd05b41c1e0f3fa2df89009`, recorded a checkpointer
+WAIT at `2026-11-09T14:34:59Z`: runtime `XLogArchiveTimeout=60`,
+`CheckPointTimeout=300`, `last_xlog_switch_time=1794234899`, elapsed time 0,
+and computed `wait_seconds=300`. The disposable server ran until
+`2026-11-09T14:39:00Z`, only 241 seconds after the wait began; it had not
+woken, and therefore emitted no timeout comparison. PostgreSQL 16.15 caps
+this wait at `archive_timeout` only when `!RecoveryInProgress()`. This points
+to the checkpointer calculating its first sleep while startup recovery was
+still active, before the SQL probe reported `pg_is_in_recovery()=false`; that
+in-process boolean and subsequent LSN comparisons still need direct capture.
+This failed source run is not positive RPO evidence. The next diagnostic
+records the recovery boolean and continues long enough to observe the wake and
+at least three 60-second intervals afterward.
+
 No natural timeout cycle reached the encrypted offsite worker, so no new IONOS
 object was created or verified. No production data, real hardware, bucket
 configuration, existing object, or credential was accessed or changed.
