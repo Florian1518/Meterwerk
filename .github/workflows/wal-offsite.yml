@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deterministic:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false }
@@ -31,7 +31,7 @@ jobs:
   ionos-synthetic:
     if: github.event_name == 'workflow_dispatch'
     needs: deterministic
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

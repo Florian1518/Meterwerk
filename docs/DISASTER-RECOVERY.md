@@ -458,6 +458,7 @@ synthetische Recovery-Korrektheit ist **TECHNICALLY DEMONSTRATED**, externe
 Betriebsabnahme nicht **OPERATIVELY DEMONSTRATED**. Kontinuierliches WAL-Offsite
 bleibt auch softwareseitig unvollständig belegt; der lokale Archiv-Drill allein
 rechtfertigt dafür kein DONE.
+
 ## WAL monitoring continuation, 2026-11-09
 
 Continuous WAL Offsite remains **EXTERNAL VALIDATION PENDING**, not PASSED.

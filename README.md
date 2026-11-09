@@ -248,6 +248,7 @@ einen leeren verschachtelten Docker-Daemon und entfernt ihn anschlie?end.
 Dies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes
 WAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe
 [DR-Runbook](docs/DISASTER-RECOVERY.md).\n## Isolierte Offsite-Recovery-Acceptance\n\nDer separate Workflow offsite-recovery.yml pr\u00fcft den freigegebenen IONOS-Testbucket\n\u00fcber Standard-S3 mit clientseitigem age und zus\u00e4tzlichem SSE-S3/AES256. Secrets\nwerden ausschlie\u00dflich im Prozess bereitgestellt. Versionierte externe Downloads\nersetzen vor dem Restore entfernte lokale Kopien; Hash, private Bucket-Sicherheit,\nSchema und Readiness sind Pflicht-Gates. Der PITR-Offsite-Hook l\u00e4sst die\nbestehenden Target- und Negativpr\u00fcfungen unver\u00e4ndert. Der Host-Loss-Drill verwendet\neinen anfangs leeren, isolierten Docker-Daemon und entfernt ihn anschlie\u00dfend.\nDies sind synthetische technische Nachweise, keine Production-SLA, kein dauerhaftes\nWAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege siehe\n[DR-Runbook](docs/DISASTER-RECOVERY.md).\n
+
 ## Phase-3 WAL monitoring continuation
 
 The synthetic continuous WAL uploader and independent fail-closed watchdog

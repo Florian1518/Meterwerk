@@ -632,6 +632,7 @@ Nach erfolgreichem Phase-1-Gate zuerst P0-2/P0-3 Production Runtime und Promotio
 ### Aussagegrenzen
 
 Dies ist eine Repository-/Evidence-basierte Readinessanalyse, keine Produktionsfreigabe, kein unabhängiger Penetrationstest, kein Rechts-/Steuergutachten, keine SLA-Zusage und kein Hardwaretest. Der Secret Scan erfasste den RC7-Git-Working-Scope, nicht beliebige externe Deployments oder gesamte Git-Historie. Der 0-Advisory-Audit ist zeitgebundener Snapshot. „DONE“ gilt nur für den in der Inventartabelle beschriebenen Softwareumfang und die referenzierte Testtiefe.
+
 ## WAL continuation, 2026-11-09
 
 Continuous WAL Offsite: implementation and local regression tests available;
