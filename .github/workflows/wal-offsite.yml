@@ -1,0 +1,57 @@
+name: Synthetic continuous WAL offsite
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/wal-offsite*
+      - tests/wal-offsite.test.mjs
+      - .github/workflows/wal-offsite.yml
+permissions:
+  contents: read
+concurrency:
+  group: wal-offsite-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 22 }
+      - run: node --test tests/wal-offsite.test.mjs tests/pitr-archive.test.mjs tests/recovery-negative-result.test.mjs scripts/hostloss-apparmor.test.mjs
+      - run: python3 -m py_compile scripts/wal-offsite-transport.py
+      - run: bash -n scripts/wal-offsite-drill.sh
+  ionos-synthetic:
+    if: github.event_name == 'workflow_dispatch'
+    needs: deterministic
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 22 }
+      - name: Install synthetic dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16 age
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
+          python3 -m venv "$RUNNER_TEMP/wal-sdk"
+          "$RUNNER_TEMP/wal-sdk/bin/pip" install 'boto3==1.40.0'
+          echo "$RUNNER_TEMP/wal-sdk/bin" >> "$GITHUB_PATH"
+      - run: python3 scripts/offsite-storage-test.py
+      - name: Verify three incremental encrypted WAL cycles at IONOS
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.IONOS_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.IONOS_S3_SECRET_KEY }}
+          IONOS_S3_BUCKET: ${{ vars.IONOS_S3_BUCKET }}
+          IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
+          IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
+        run: bash scripts/wal-offsite-drill.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synthetic-wal-offsite-${{ github.run_id }}
+          path: artifacts/wal-offsite/*.json
+          if-no-files-found: error
+          retention-days: 30

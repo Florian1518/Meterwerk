@@ -458,3 +458,11 @@ synthetische Recovery-Korrektheit ist **TECHNICALLY DEMONSTRATED**, externe
 Betriebsabnahme nicht **OPERATIVELY DEMONSTRATED**. Kontinuierliches WAL-Offsite
 bleibt auch softwareseitig unvollständig belegt; der lokale Archiv-Drill allein
 rechtfertigt dafür kein DONE.
+## WAL monitoring continuation, 2026-11-09
+
+Continuous WAL Offsite remains **EXTERNAL VALIDATION PENDING**, not PASSED.
+The incremental encrypted worker, fail-closed watchdog and synthetic CI drill
+are described in [WAL Offsite Monitoring](WAL-OFFSITE-MONITORING.md).
+Existing accepted restore/PITR/Host-Loss evidence below is preserved.
+IAM Least Privilege is **BLOCKED** on the real IONOS ContractUserId; no policy
+or credential changes are authorized. Staging Recovery remains **BLOCKED**.
