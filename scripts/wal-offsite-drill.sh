@@ -68,7 +68,7 @@ initial=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'timedCheckpoints',checkpoints_timed,
   'requestedCheckpoints',checkpoints_req,
   'walRecords',(SELECT wal_records FROM pg_stat_wal)
-) FROM pg_stat_archiver")
+) FROM pg_stat_archiver CROSS JOIN pg_stat_bgwriter")
 printf '%s\n' "$initial" > "$work/evidence/initial-state.json"
 export WAL_DRILL_INITIAL="$initial"
 node --input-type=module -e '
@@ -115,7 +115,7 @@ sample() {
     'timedCheckpoints',checkpoints_timed,
     'requestedCheckpoints',checkpoints_req,
     'walRecords',(SELECT wal_records FROM pg_stat_wal)
-  ) FROM pg_stat_archiver"
+  ) FROM pg_stat_archiver CROSS JOIN pg_stat_bgwriter"
 }
 
 activity_sequence=0
