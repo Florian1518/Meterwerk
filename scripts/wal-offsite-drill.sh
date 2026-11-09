@@ -55,8 +55,25 @@ for cycle in 1 2 3; do
   node scripts/wal-offsite.mjs check "$work/evidence/state.json" 120000
   cp "$work/evidence/state.json" "$work/evidence/cycle-$cycle.json"
 done
+# Prove the configured cadence without a manual WAL switch: a new synthetic
+# commit must be archived by archive_timeout, then shipped by the same worker.
+wal_timeout_result=$(psql -XAtq -F '|' -v ON_ERROR_STOP=1 -c "INSERT INTO wal_probe VALUES (4); SELECT (extract(epoch from clock_timestamp())*1000)::bigint, pg_walfile_name(pg_current_wal_lsn() - 1)")
+IFS='|' read -r wal_timeout_start wal_timeout_segment <<< "$wal_timeout_result"
+[[ "$wal_timeout_segment" =~ ^[0-9A-F]{24}$ ]] || { echo INVALID_TIMEOUT_WAL >&2; exit 1; }
+export WAL_DRILL_TIMEOUT_START="$wal_timeout_start" WAL_DRILL_TIMEOUT_WAL="$wal_timeout_segment"
+timed_out=false
+for attempt in $(seq 1 100); do
+  kill -0 "$worker" || { echo WAL_WORKER_EXITED >&2; exit 1; }
+  archived=$(psql -XAt -v ON_ERROR_STOP=1 -c 'SELECT last_archived_wal FROM pg_stat_archiver')
+  if [[ "$archived" == "$wal_timeout_segment" ]]; then timed_out=true; break; fi
+  sleep 1
+done
+[[ "$timed_out" == true ]] || { echo ARCHIVE_TIMEOUT_NOT_AUTOMATIC >&2; exit 1; }
+node --input-type=module -e 'import {readFileSync} from "node:fs"; const s=JSON.parse(readFileSync(process.env.WAL_DRILL_WORK+"/evidence/state.json")); if(s.status!=="PASSED"||s.lastArchivedWal!==process.env.WAL_DRILL_TIMEOUT_WAL) process.exit(1);'
+node scripts/wal-offsite.mjs check "$work/evidence/state.json" 120000
+cp "$work/evidence/state.json" "$work/evidence/cycle-4.json"
 export WAL_DRILL_SECONDS=$(( $(date +%s) - start ))
-node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const p=process.env.WAL_DRILL_WORK+"/evidence/"; const cycles=[1,2,3].map(n=>JSON.parse(readFileSync(p+"cycle-"+n+".json"))); if(cycles.some(c=>c.status!=="PASSED") || cycles.some((c,i)=>i>0&&c.expectedSegments<=cycles[i-1].expectedSegments)) process.exit(1); writeFileSync(p+"summary.json",JSON.stringify({status:"PASSED",scope:"three synthetic incremental WAL cycles; not operational RPO/RTO",sourceSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,event:process.env.GITHUB_EVENT_NAME,durationSeconds:Number(process.env.WAL_DRILL_SECONDS),cycles:cycles.map(c=>({segments:c.expectedSegments,lastArchiveAt:c.lastArchiveAt,lastVerifiedUploadAt:c.lastVerifiedUploadAt}))},null,2));'
+node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const p=process.env.WAL_DRILL_WORK+"/evidence/"; const cycles=[1,2,3,4].map(n=>JSON.parse(readFileSync(p+"cycle-"+n+".json"))); if(cycles.some(c=>c.status!=="PASSED") || cycles.some((c,i)=>c.expectedSegments!==i+1) || cycles[3].lastArchivedWal!==process.env.WAL_DRILL_TIMEOUT_WAL) process.exit(1); const archiveConfirmedAt=cycles[3].lastArchiveAt, uploadVerifiedAt=cycles[3].lastVerifiedUploadAt, writeCommittedAt=Number(process.env.WAL_DRILL_TIMEOUT_START); if(!(writeCommittedAt<=archiveConfirmedAt&&archiveConfirmedAt<=uploadVerifiedAt)) process.exit(1); writeFileSync(p+"summary.json",JSON.stringify({status:"PASSED",scope:"three synthetic incremental WAL uploads plus one naturally timed archive_timeout cycle; not operational RPO/RTO",sourceSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,event:process.env.GITHUB_EVENT_NAME,durationSeconds:Number(process.env.WAL_DRILL_SECONDS),configuredArchiveTimeoutSeconds:60,manualSwitchForTimedCycle:false,timedCycle:{wal:process.env.WAL_DRILL_TIMEOUT_WAL,writeCommittedAt,archiveConfirmedAt,uploadVerifiedAt,writeToOffsiteSeconds:(uploadVerifiedAt-writeCommittedAt)/1000,commitToArchiveSeconds:(archiveConfirmedAt-writeCommittedAt)/1000,archiveToUploadSeconds:(uploadVerifiedAt-archiveConfirmedAt)/1000},cycles:cycles.map(c=>({segments:c.expectedSegments,lastArchivedWal:c.lastArchivedWal,lastArchiveAt:c.lastArchiveAt,lastVerifiedUploadAt:c.lastVerifiedUploadAt}))},null,2)+"\n");'
 mkdir -p artifacts/wal-offsite
 cp "$work/evidence/"*.json artifacts/wal-offsite/
 # Retain every offsite object. Ephemeral identity never becomes an artifact.

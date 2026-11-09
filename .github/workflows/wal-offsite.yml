@@ -25,7 +25,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: { node-version: 22 }
-      - run: node --test tests/wal-offsite.test.mjs tests/pitr-archive.test.mjs tests/recovery-negative-result.test.mjs scripts/hostloss-apparmor.test.mjs
+      - run: node --test tests/wal-offsite.test.mjs tests/recovery-envelope.test.mjs tests/pitr-archive.test.mjs tests/recovery-negative-result.test.mjs scripts/hostloss-apparmor.test.mjs
       - run: python3 -m py_compile scripts/wal-offsite-transport.py
       - run: bash -n scripts/wal-offsite-drill.sh
   ionos-synthetic:
@@ -55,6 +55,8 @@ jobs:
           IONOS_S3_REGION: ${{ vars.IONOS_S3_REGION }}
           IONOS_S3_ENDPOINT: ${{ vars.IONOS_S3_ENDPOINT }}
         run: bash scripts/wal-offsite-drill.sh
+      - name: Calculate synthetic technical RPO/RTO envelope
+        run: node scripts/recovery-envelope.mjs artifacts/wal-offsite/summary.json artifacts/wal-offsite/recovery-envelope.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: synthetic-wal-offsite-${{ github.run_id }}
