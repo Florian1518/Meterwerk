@@ -67,6 +67,21 @@ corrected to use the PostgreSQL format macros correctly and to check that the
 instrumented binary is actually used; a successful source-level diagnostic is
 still required before any stock-binary natural-cycle acceptance attempt.
 
+Follow-up diagnostic workflow
+[42633154371](https://github.com/Florian1518/Meterwerk/actions/runs/42633154371)
+on SHA `21d0153725559a61da70b4df1eb6bfee77bf4e41` rebuilt PostgreSQL 16.15
+and ran for four minutes. It logged one initial checkpointer callsite, then no
+further timeout comparison; final `pg_stat_activity` still showed the same
+checkpointer PID in `CheckpointerMain`/`Activity`. Because this run did not
+record the checkpointer's computed wait duration or wake time, it cannot
+distinguish an internal timer/configuration issue from a wait-loop issue and
+does not establish the root cause. The disposable diagnostic now records those
+values before and after `WaitLatch`; a successful source-level diagnostic is
+still required before any stock-binary natural-cycle acceptance attempt. Full
+CI run
+[42633154372](https://github.com/Florian1518/Meterwerk/actions/runs/42633154372)
+passed on the same SHA.
+
 No natural timeout cycle reached the encrypted offsite worker, so no new IONOS
 object was created or verified. No production data, real hardware, bucket
 configuration, existing object, or credential was accessed or changed.

@@ -123,5 +123,37 @@ source = source.replaceAll(
   callsite,
   `\t\telog(LOG, "PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=%d", MyProcPid);\n${callsite}`,
 );
+
+const waitCallPattern =
+  /\t\t\(void\) WaitLatch\(MyLatch,[\s\S]*?WAIT_EVENT_CHECKPOINTER_MAIN\);/g;
+assert.equal(
+  [...source.matchAll(waitCallPattern)].length,
+  1,
+  "Expected one main checkpointer wait call",
+);
+const waitLogLines = [
+  "\t\telog(LOG,",
+  '\t\t\t "PG16_TIMEOUT_DIAG phase=WAIT now=" INT64_FORMAT',
+  '\t\t\t " archive_timeout=%d last_xlog_switch_time=" INT64_FORMAT',
+  '\t\t\t " checkpointer_timeout=%d elapsed_since_switch=%d wait_seconds=%d",',
+  "\t\t\t (int64) now, XLogArchiveTimeout, (int64) last_xlog_switch_time,",
+  "\t\t\t CheckPointTimeout, now - last_xlog_switch_time, cur_timeout);",
+];
+const wakeLogLines = [
+  "\t\t{",
+  "\t\t\tpg_time_t wake_now = (pg_time_t) time(NULL);",
+  "\t\t\telog(LOG,",
+  '\t\t\t\t "PG16_TIMEOUT_DIAG phase=WAKE now=" INT64_FORMAT',
+  '\t\t\t\t " archive_timeout=%d last_xlog_switch_time=" INT64_FORMAT',
+  '\t\t\t\t " elapsed_since_switch=%d",',
+  "\t\t\t\t (int64) wake_now, XLogArchiveTimeout,",
+  "\t\t\t\t (int64) last_xlog_switch_time, wake_now - last_xlog_switch_time);",
+  "\t\t}",
+];
+source = source.replace(
+  waitCallPattern,
+  (waitCall) =>
+    `${waitLogLines.join("\n")}\n${waitCall}\n${wakeLogLines.join("\n")}`,
+);
 writeFileSync(sourcePath, source);
 console.log("Patched only the disposable PostgreSQL REL_16_15 source checkout");

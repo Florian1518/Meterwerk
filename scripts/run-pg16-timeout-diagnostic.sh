@@ -102,9 +102,23 @@ pg_waldump --path="$db/pg_wal" --start="$start_lsn" --end="$end_lsn" \
   > "$evidence/waldump.txt" 2> "$evidence/waldump.stderr"
 grep -Eq 'rmgr: Heap' "$evidence/waldump.txt"
 grep -Eq 'rmgr: Transaction.*COMMIT|COMMIT' "$evidence/waldump.txt"
-grep -c 'PG16_TIMEOUT_DIAG phase=COMPARISON' "$evidence/postgres.log" > "$evidence/comparison-count.txt"
-[[ "$(cat "$evidence/comparison-count.txt")" -ge 3 ]]
 grep 'PG16_TIMEOUT_DIAG' "$evidence/postgres.log" > "$evidence/timeout-diagnostics.log"
+for phase in CALLSITE WAIT WAKE EVALUATION COMPARISON REQUEST TIMER_UPDATED; do
+  count=$(grep -c "PG16_TIMEOUT_DIAG phase=$phase" "$evidence/timeout-diagnostics.log" || true)
+  printf '%s=%s\n' "$phase" "$count" >> "$evidence/phase-counts.txt"
+done
+comparison_count=$(awk -F= '$1 == "COMPARISON" {print $2}' "$evidence/phase-counts.txt")
+callsite_count=$(awk -F= '$1 == "CALLSITE" {print $2}' "$evidence/phase-counts.txt")
+wait_count=$(awk -F= '$1 == "WAIT" {print $2}' "$evidence/phase-counts.txt")
+grep -c 'PG16_TIMEOUT_DIAG phase=COMPARISON' "$evidence/postgres.log" > "$evidence/comparison-count.txt" || true
+[[ "$callsite_count" -ge 1 && "$wait_count" -ge 1 ]] || {
+  echo CHECKPOINTER_WAIT_DIAGNOSTICS_MISSING >&2
+  exit 1
+}
+[[ "$comparison_count" -ge 3 ]] || {
+  echo TIMEOUT_COMPARISON_COUNT_BELOW_THREE >&2
+  exit 1
+}
 
 node - "$evidence/t0.json" "$evidence/final-state.json" "$evidence/summary.json" <<'NODE'
 const { readFileSync, writeFileSync } = require("node:fs");
