@@ -24,12 +24,14 @@ conservative technical RTO envelope of **28.613 s**. The synthetic drill's
 60-second archive-timeout setting plus the accepted maximum 12.603525-second archive-to-
 verified-upload delay yields a **conditional 72.604-second RPO estimate**, not
 an observed worst-case RPO: three accepted cycles used manual WAL switches,
-and two follow-up natural-timeout probes failed closed with
-`ARCHIVE_TIMEOUT_NOT_AUTOMATIC`. Technical RTO evidence is PASSED for the
-measured synthetic scenarios; technical RPO remains conditional/pending, and
-operational/SLA RPO/RTO remains NOT PROVEN. The detector's 120-second freshness
-threshold is not a measured alert delay. See the [acceptance table, run IDs,
-measurements and limits](acceptance/TECHNICAL-RPO-RTO-20261109.md).
+and follow-up natural-timeout probes failed closed. The latest instrumented
+reproduction showed active committed WAL activity, valid runtime settings, and
+an idle checkpointer wait state, but no natural segment switch; the precise
+internal checkpointer cause remains undetermined. Technical RTO evidence is
+PASSED for the measured synthetic scenarios; technical RPO remains
+conditional/pending, and operational/SLA RPO/RTO remains NOT PROVEN. The
+detector's 120-second freshness threshold is not a measured alert delay. See
+the [acceptance table, run IDs, measurements and limits](acceptance/TECHNICAL-RPO-RTO-20261109.md).
 
 ## Host-Loss-Validation: Ergebnis vom 05.11.2026
 

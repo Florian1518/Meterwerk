@@ -22,12 +22,41 @@ Two follow-up synthetic workflow runs attempted that additional check on the
 isolated branch. Runs [42600455962](https://github.com/Florian1518/Meterwerk/actions/runs/42600455962)
 and [42601200178](https://github.com/Florian1518/Meterwerk/actions/runs/42601200178)
 both failed closed with the exact condition `ARCHIVE_TIMEOUT_NOT_AUTOMATIC`
-after their three forced-switch upload cycles had passed. The latter also
-kept generating synthetic WAL while waiting. These failed attempts are not
-positive RPO evidence; the temporary probe was reverted. No production data,
-real hardware, bucket configuration, existing object, or credential was
-accessed or changed. Continuous WAL Offsite acceptance remains independently
-PASSED within its previously accepted scope.
+after their three forced-switch upload cycles had passed. Those runs did not
+retain enough runtime state to determine retrospectively whether their timed
+segments had sufficient important WAL activity.
+
+The follow-up instrumented attempts were also non-positive. Run
+[42611695559](https://github.com/Florian1518/Meterwerk/actions/runs/42611695559)
+failed in the diagnostic JSON query before the timed observation. Run
+[42611990673](https://github.com/Florian1518/Meterwerk/actions/runs/42611990673)
+confirmed PostgreSQL 16.15, `wal_level=replica`, `archive_mode=on`, a configured
+local archive command, no `archive_library`, runtime `archive_timeout=60s`, and
+live archiver PID. Twelve small committed inserts advanced the current LSN by
+about 246 KiB in 118 seconds, while the current segment stayed at 5.52 MiB of
+16 MiB; archive/failure counters stayed 0/0. This reproduction was not caused
+by an idle database, a full segment, a missing archive command, or an observed
+archive-command failure.
+
+Run [42613286232](https://github.com/Florian1518/Meterwerk/actions/runs/42613286232)
+failed before the timed test because the diagnostic query selected checkpoint
+statistics from the wrong view. The corrected
+[run 42613659743](https://github.com/Florian1518/Meterwerk/actions/runs/42613659743)
+confirmed the timeout came from the configuration file with no pending
+restart, `inRecovery=false`, active archiver/checkpointer PIDs, and
+`CheckpointerMain`/`Activity` wait state at the initial and final samples. WAL
+records rose from 23,771 to 24,303 and LSN advanced by about 246 KiB, while the
+same 16 MiB segment remained open; archive and failure counts stayed 0/0. No
+PostgreSQL `archive_timeout` switch message was logged. The exact internal
+reason the live checkpointer did not request a switch remains undetermined;
+the artifacts do not establish whether the important-record pointer check or
+timer path was responsible. These failures are not positive evidence.
+
+No natural timeout cycle reached the encrypted offsite worker, so no new IONOS
+object was created or verified. No production data, real hardware, bucket
+configuration, existing object, or credential was accessed or changed.
+Continuous WAL Offsite acceptance remains independently PASSED within its
+previously accepted scope.
 
 **Technical RTO evidence: PASSED for the three measured synthetic scenarios.**
 **Technical RPO: CONDITIONAL ESTIMATE; cadence validation PENDING.**
@@ -72,9 +101,12 @@ demonstrate technical recovery performance in synthetic CI, but not
 representative operational conditions or an SLA.
 
 Next technical task: diagnose why the isolated PostgreSQL 16 drill did not
-archive a naturally timed segment despite `archive_timeout=60`, add a narrowly
-scoped deterministic regression check, and obtain a successful synthetic
-natural-cycle run before changing Technical RPO from CONDITIONAL / PENDING.
+resolve why PostgreSQL 16's live checkpointer does not request a natural switch
+in the isolated drill despite valid `archive_timeout=60` configuration and
+committed WAL activity. Preserve diagnostic artifacts, make only a narrowly
+scoped correction supported by evidence, and obtain three consecutive
+synthetic IONOS natural-cycle verifications before changing Technical RPO from
+CONDITIONAL / PENDING.
 Operational RPO/RTO still requires representative, authorized non-production
 operational drills and measured alert/response behavior; no production work is
 implied or authorized by this evidence.

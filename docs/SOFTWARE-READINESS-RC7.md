@@ -20,7 +20,10 @@ Technical RPO/RTO evidence update: Full Restore 7.471 s, PITR 8.068 s, and
 Host Loss 28.613 s yield a synthetic technical RTO envelope of 28.613 s.
 The 72.604 s RPO figure is conditional arithmetic (60 s synthetic test-harness
 archive-timeout setting plus 12.603525 s maximum accepted archive-to-verified-upload lag), not
-an observed worst case: two natural-timeout probes failed closed. Technical
+an observed worst case: natural-timeout probes failed closed. The latest
+instrumented PostgreSQL 16 reproduction had active WAL writes and valid runtime
+settings but no natural switch; the internal checkpointer cause is undetermined.
+Technical
 RTO is demonstrated for those scenarios; Technical RPO remains
 CONDITIONAL/PENDING and operational RPO/RTO remains PENDING. [Detailed
 acceptance table and limitations](acceptance/TECHNICAL-RPO-RTO-20261109.md).
