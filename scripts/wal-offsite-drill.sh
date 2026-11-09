@@ -47,7 +47,7 @@ settings=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'archiveLibrary',coalesce(current_setting('archive_library',true),''),
   'archiveTimeout',current_setting('archive_timeout'),
   'archiveTimeoutSeconds',extract(epoch from current_setting('archive_timeout')::interval),
-  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1)")
+  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1))")
 wal_segment_size=$(pg_controldata "$work/db" | awk -F': *' '/Bytes per WAL segment/ {print $2}')
 [[ "$wal_segment_size" =~ ^[0-9]+$ ]] || { echo WAL_SEGMENT_SIZE_UNAVAILABLE >&2; exit 1; }
 export WAL_DRILL_WORK="$work" WAL_DRILL_SETTINGS="$settings" WAL_DRILL_SEGMENT_SIZE="$wal_segment_size"
