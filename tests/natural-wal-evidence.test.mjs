@@ -22,6 +22,7 @@ function fixture() {
     archiveTimeoutSeconds: 60,
     walSegmentSize: 16777216,
     archiverPid: 33,
+    checkpointerPid: 34,
   };
   const t0 = {
     referenceAt: 0,
@@ -64,6 +65,9 @@ function fixture() {
       failedCountAfter: 0,
       lastArchivedWalAfter: wal,
       archiverPid: 33,
+      checkpointerPid: 34,
+      walRecordsBefore: 100 + number * 10,
+      walRecordsAfter: 105 + number * 10,
       currentSegmentMaxOffsetBeforeSwitch: 40000,
       lastOffsetBeforeSwitch: 40000,
       archivedWalBytes: 16777216,

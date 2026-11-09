@@ -29,6 +29,7 @@ port = 55439
 wal_level = replica
 archive_mode = on
 archive_timeout = 60
+log_min_messages = debug1
 archive_command = 'test ! -f $work/archive/%f && cp %p $work/archive/%f'
 EOF
 pg_ctl -D "$work/db" -l "$work/postgres.log" start >/dev/null
@@ -47,7 +48,8 @@ settings=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'archiveLibrary',coalesce(current_setting('archive_library',true),''),
   'archiveTimeout',current_setting('archive_timeout'),
   'archiveTimeoutSeconds',extract(epoch from current_setting('archive_timeout')::interval),
-  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1))")
+  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
+  'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1))")
 wal_segment_size=$(pg_controldata "$work/db" | awk -F': *' '/Bytes per WAL segment/ {print $2}')
 [[ "$wal_segment_size" =~ ^[0-9]+$ ]] || { echo WAL_SEGMENT_SIZE_UNAVAILABLE >&2; exit 1; }
 export WAL_DRILL_WORK="$work" WAL_DRILL_SETTINGS="$settings" WAL_DRILL_SEGMENT_SIZE="$wal_segment_size"
@@ -61,7 +63,11 @@ initial=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'lastArchivedAt',extract(epoch from last_archived_time)*1000,
   'lastFailedWal',last_failed_wal,
   'lastFailedAt',extract(epoch from last_failed_time)*1000,
-  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1)
+  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
+  'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'timedCheckpoints',checkpoints_timed,
+  'requestedCheckpoints',checkpoints_req,
+  'walRecords',(SELECT wal_records FROM pg_stat_wal)
 ) FROM pg_stat_archiver")
 printf '%s\n' "$initial" > "$work/evidence/initial-state.json"
 export WAL_DRILL_INITIAL="$initial"
@@ -72,6 +78,7 @@ node --input-type=module -e '
   if (!settings.serverVersion.startsWith("16.") || settings.walLevel !== "replica" ||
       settings.archiveMode !== "on" || !settings.archiveCommand || settings.archiveLibrary !== "" ||
       settings.archiveTimeoutSeconds !== 60 || !Number.isInteger(settings.archiverPid) ||
+      !Number.isInteger(settings.checkpointerPid) ||
       initial.archivedCount !== 0 || initial.failedCount !== 0 || !Number.isInteger(initial.archiverPid))
     throw new Error("RUNTIME_WAL_CONFIGURATION_INVALID");
   writeFileSync(process.env.WAL_DRILL_WORK+"/evidence/t0.json",JSON.stringify({
@@ -103,7 +110,11 @@ sample() {
     'lastArchivedAt',extract(epoch from last_archived_time)*1000,
     'lastFailedWal',last_failed_wal,
     'lastFailedAt',extract(epoch from last_failed_time)*1000,
-    'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1)
+    'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
+    'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+    'timedCheckpoints',checkpoints_timed,
+    'requestedCheckpoints',checkpoints_req,
+    'walRecords',(SELECT wal_records FROM pg_stat_wal)
   ) FROM pg_stat_archiver"
 }
 

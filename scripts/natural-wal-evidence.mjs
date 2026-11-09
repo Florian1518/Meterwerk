@@ -49,6 +49,10 @@ export function verifyNaturalWalEvidence({
     Number.isInteger(settings.archiverPid),
     "ARCHIVER_NOT_RUNNING",
   );
+  requireEvidence(
+    Number.isInteger(settings.checkpointerPid),
+    "CHECKPOINTER_NOT_RUNNING",
+  );
   const executableSource = drillSource.replace(/^\s*#.*$/gm, "");
   requireEvidence(
     !/\bpg_switch_wal\s*\(|\bCHECKPOINT\s*;/i.test(executableSource),
@@ -108,6 +112,13 @@ export function verifyNaturalWalEvidence({
     requireEvidence(
       cycle.failedCountAfter === 0 && cycle.lastArchivedWalAfter === cycle.wal,
       "ARCHIVE_FAILURE",
+    );
+    requireEvidence(
+      Number.isInteger(cycle.checkpointerPid) &&
+        Number.isInteger(cycle.walRecordsBefore) &&
+        Number.isInteger(cycle.walRecordsAfter) &&
+        cycle.walRecordsAfter > cycle.walRecordsBefore,
+      "IMPORTANT_WAL_ACTIVITY_NOT_CONFIRMED",
     );
     requireEvidence(
       cycle.archivedCountAfter === cycle.archivedCountBefore + 1,
@@ -204,6 +215,9 @@ export function verifyNaturalWalEvidence({
       archivedCountBefore: cycle.archivedCountBefore,
       archivedCountAfter: cycle.archivedCountAfter,
       failedCountAfter: cycle.failedCountAfter,
+      checkpointerPid: cycle.checkpointerPid,
+      walRecordsBefore: cycle.walRecordsBefore,
+      walRecordsAfter: cycle.walRecordsAfter,
       currentSegmentMaxOffsetBeforeSwitch:
         cycle.currentSegmentMaxOffsetBeforeSwitch,
       lastOffsetBeforeSwitch: cycle.lastOffsetBeforeSwitch,
