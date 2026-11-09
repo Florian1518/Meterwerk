@@ -64,6 +64,10 @@ export WAL_DRILL_TIMEOUT_START="$wal_timeout_start" WAL_DRILL_TIMEOUT_WAL="$wal_
 timed_out=false
 for attempt in $(seq 1 100); do
   kill -0 "$worker" || { echo WAL_WORKER_EXITED >&2; exit 1; }
+  # Keep this synthetic database active while waiting. archive_timeout is an
+  # upper bound after WAL activity; the heartbeat makes this independent of
+  # whether a one-off commit is followed by an idle server.
+  if (( attempt % 5 == 0 )); then psql -XAtq -v ON_ERROR_STOP=1 -c 'INSERT INTO wal_probe VALUES (4)' >/dev/null; fi
   archived=$(psql -XAt -v ON_ERROR_STOP=1 -c 'SELECT last_archived_wal FROM pg_stat_archiver')
   if [[ "$archived" == "$wal_timeout_segment" ]]; then timed_out=true; break; fi
   sleep 1
