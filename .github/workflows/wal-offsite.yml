@@ -1,6 +1,12 @@
 name: Synthetic continuous WAL offsite
 on:
   workflow_dispatch:
+  push:
+    branches: [software-completion/phase-3-wal-monitoring]
+    paths:
+      - .github/workflows/wal-offsite.yml
+      - scripts/wal-offsite*
+      - tests/wal-offsite.test.mjs
   pull_request:
     paths:
       - scripts/wal-offsite*
