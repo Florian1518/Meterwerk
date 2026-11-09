@@ -2,6 +2,11 @@
 
 ## Current Phase-3 continuation, 2026-11-09
 
+Genuine Scheduled Recovery Evidence: **PENDING**. The API audit found zero
+Recovery `schedule` runs. The existing default-branch workflow is active and
+eligible, with unchanged Monday 07:23 UTC cron; next window November 16.
+No dispatch or cron change was used. [Exact schedule audit](acceptance/SCHEDULE-RECOVERY-20261109.md).
+
 Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic
 incremental cycles against real IONOS, [run 42595934065 evidence](acceptance/WAL-OFFSITE-42595934065.md).
 This supersedes historical WAL-pending statements below. Existing CI, Full

@@ -1,5 +1,12 @@
 # Disaster Recovery
 
+## Scheduled Recovery audit, 2026-11-09
+
+Genuine Scheduled Recovery Evidence remains **PENDING**: no Recovery run with
+`event=schedule` was returned by GitHub. The active workflow and unchanged
+Monday 07:23 UTC cron are present on the default branch. No recovery checks or
+schedule were changed. [API evidence, control-run distinction and next window](acceptance/SCHEDULE-RECOVERY-20261109.md).
+
 ## Current WAL acceptance, 2026-11-09
 
 Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic

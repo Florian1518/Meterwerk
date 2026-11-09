@@ -1,0 +1,429 @@
+{
+  "gate": "Genuine Scheduled Recovery Evidence",
+  "status": "PENDING",
+  "checkedAt": "2026-11-09T10:03:45.131Z",
+  "workingBranch": "software-completion/phase-3-wal-monitoring",
+  "startingSha": "e3e5108f54de810cc9836388df650b86da48777e",
+  "qualifyingRun": null,
+  "qualifyingJobs": [],
+  "qualifyingArtifacts": [],
+  "workflow": {
+    "id": 404557168,
+    "name": "Recovery Validation",
+    "path": ".github/workflows/recovery-validation.yml",
+    "state": "active",
+    "defaultBranch": "master",
+    "defaultBranchSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+    "blobSha": "00ed474a58d6054c27f462c6235d30dcc294bffb",
+    "sha256": "0520adb6361ee8ddcab14c342791a186468559360c8201249e10efc4ac39cb2b",
+    "cron": "23 7 * * 1",
+    "timezone": "UTC",
+    "previousConfiguredWindow": "2026-11-09T07:23:00Z",
+    "nextConfiguredWindow": "2026-11-16T07:23:00Z",
+    "nextConfiguredWindowEuropeBerlin": "2026-11-16T08:23:00+01:00",
+    "scheduleSpecificExclusions": false,
+    "requiredJob": "isolated-recovery",
+    "requiredJobName": "Synthetic encrypted backup, full restore and PITR",
+    "actionsEnabled": true,
+    "repositoryArchived": false,
+    "repositoryDisabled": false
+  },
+  "queries": [
+    {
+      "path": "actions/workflows/recovery-validation.yml/runs?event=schedule&per_page=100",
+      "totalCount": 0
+    },
+    {
+      "path": "actions/runs?event=schedule&per_page=100",
+      "totalCount": 6,
+      "recoveryMatches": 0
+    }
+  ],
+  "otherWorkflowScheduleRuns": [
+    {
+      "id": 42486095576,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+      "createdAt": "2026-11-08T13:40:44Z",
+      "updatedAt": "2026-11-08T13:43:08Z",
+      "conclusion": "failure",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/42486095576"
+    },
+    {
+      "id": 42376442219,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+      "createdAt": "2026-11-07T13:19:39Z",
+      "updatedAt": "2026-11-07T13:22:24Z",
+      "conclusion": "failure",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/42376442219"
+    },
+    {
+      "id": 42233954680,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+      "createdAt": "2026-11-06T14:26:37Z",
+      "updatedAt": "2026-11-06T14:28:51Z",
+      "conclusion": "success",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/42233954680"
+    },
+    {
+      "id": 42048633274,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+      "createdAt": "2026-11-05T14:48:47Z",
+      "updatedAt": "2026-11-05T14:51:13Z",
+      "conclusion": "success",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/42048633274"
+    },
+    {
+      "id": 41850360866,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+      "createdAt": "2026-11-04T14:43:10Z",
+      "updatedAt": "2026-11-04T14:45:01Z",
+      "conclusion": "success",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/41850360866"
+    },
+    {
+      "id": 41654070558,
+      "workflowName": "Supported image vulnerabilities",
+      "workflowId": 404237428,
+      "event": "schedule",
+      "runAttempt": 1,
+      "headBranch": "master",
+      "headSha": "43cee3416778f172fbfd2f05c88bbd491ac5a070",
+      "createdAt": "2026-11-03T14:28:45Z",
+      "updatedAt": "2026-11-03T14:31:08Z",
+      "conclusion": "success",
+      "url": "https://github.com/Florian1518/Meterwerk/actions/runs/41654070558"
+    }
+  ],
+  "nonQualifyingControl": {
+    "id": 41791165665,
+    "workflowName": "Recovery Validation",
+    "workflowId": 404557168,
+    "event": "push",
+    "runAttempt": 1,
+    "headBranch": "master",
+    "headSha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe",
+    "createdAt": "2026-11-04T07:16:54Z",
+    "updatedAt": "2026-11-04T07:19:13Z",
+    "conclusion": "success",
+    "url": "https://github.com/Florian1518/Meterwerk/actions/runs/41791165665",
+    "reason": "push, not schedule; cannot satisfy this gate",
+    "jobs": [
+      {
+        "id": 126444635633,
+        "name": "Synthetic encrypted backup, full restore and PITR",
+        "conclusion": "success",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:16:59Z",
+            "completedAt": "2026-11-04T07:17:00Z"
+          },
+          {
+            "number": 2,
+            "name": "Initialize containers",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:00Z",
+            "completedAt": "2026-11-04T07:17:22Z"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:22Z",
+            "completedAt": "2026-11-04T07:17:23Z"
+          },
+          {
+            "number": 4,
+            "name": "Run pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:23Z",
+            "completedAt": "2026-11-04T07:17:26Z"
+          },
+          {
+            "number": 5,
+            "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:26Z",
+            "completedAt": "2026-11-04T07:17:32Z"
+          },
+          {
+            "number": 6,
+            "name": "Install PostgreSQL 16 client and age",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:32Z",
+            "completedAt": "2026-11-04T07:17:45Z"
+          },
+          {
+            "number": 7,
+            "name": "Run pnpm install --frozen-lockfile",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:45Z",
+            "completedAt": "2026-11-04T07:17:53Z"
+          },
+          {
+            "number": 8,
+            "name": "Run pnpm db:generate",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:53Z",
+            "completedAt": "2026-11-04T07:17:56Z"
+          },
+          {
+            "number": 9,
+            "name": "Run pnpm test:recovery",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:56Z",
+            "completedAt": "2026-11-04T07:17:57Z"
+          },
+          {
+            "number": 10,
+            "name": "Run synthetic PostgreSQL PITR drill",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:17:57Z",
+            "completedAt": "2026-11-04T07:18:11Z"
+          },
+          {
+            "number": 11,
+            "name": "Run pnpm exec prisma migrate deploy",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:11Z",
+            "completedAt": "2026-11-04T07:18:12Z"
+          },
+          {
+            "number": 12,
+            "name": "Run pnpm db:seed",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:12Z",
+            "completedAt": "2026-11-04T07:18:22Z"
+          },
+          {
+            "number": 13,
+            "name": "Create ephemeral age identity",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:22Z",
+            "completedAt": "2026-11-04T07:18:22Z"
+          },
+          {
+            "number": 14,
+            "name": "Create and verify encrypted database backup",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:22Z",
+            "completedAt": "2026-11-04T07:18:23Z"
+          },
+          {
+            "number": 15,
+            "name": "Restore into a new isolated database",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:23Z",
+            "completedAt": "2026-11-04T07:18:24Z"
+          },
+          {
+            "number": 16,
+            "name": "Verify recovery failures fail closed",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:24Z",
+            "completedAt": "2026-11-04T07:18:26Z"
+          },
+          {
+            "number": 17,
+            "name": "Run pnpm build",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:26Z",
+            "completedAt": "2026-11-04T07:18:57Z"
+          },
+          {
+            "number": 18,
+            "name": "Start application against restored database",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:57Z",
+            "completedAt": "2026-11-04T07:18:59Z"
+          },
+          {
+            "number": 19,
+            "name": "Reconstruct synthetic MQTT and ingestion worker after host loss",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:18:59Z",
+            "completedAt": "2026-11-04T07:19:03Z"
+          },
+          {
+            "number": 20,
+            "name": "Verify restore schema, migrations, data and application",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:03Z",
+            "completedAt": "2026-11-04T07:19:06Z"
+          },
+          {
+            "number": 21,
+            "name": "Simulate failed migration and recovery from verified backup",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:06Z",
+            "completedAt": "2026-11-04T07:19:07Z"
+          },
+          {
+            "number": 22,
+            "name": "Require complete recovery evidence",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:07Z",
+            "completedAt": "2026-11-04T07:19:07Z"
+          },
+          {
+            "number": 23,
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:07Z",
+            "completedAt": "2026-11-04T07:19:08Z"
+          },
+          {
+            "number": 24,
+            "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "conclusion": "skipped",
+            "startedAt": "2026-11-04T07:19:08Z",
+            "completedAt": "2026-11-04T07:19:08Z"
+          },
+          {
+            "number": 25,
+            "name": "Run if [[ -f \"$RUNNER_TEMP/recovery-app.pid\" ]]; then kill \"$(cat \"$RUNNER_TEMP/recovery-app.pid\")\" 2>/dev/null || true; fi",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:08Z",
+            "completedAt": "2026-11-04T07:19:08Z"
+          },
+          {
+            "number": 47,
+            "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:08Z",
+            "completedAt": "2026-11-04T07:19:08Z"
+          },
+          {
+            "number": 48,
+            "name": "Post Run pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:08Z",
+            "completedAt": "2026-11-04T07:19:09Z"
+          },
+          {
+            "number": 49,
+            "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:09Z",
+            "completedAt": "2026-11-04T07:19:09Z"
+          },
+          {
+            "number": 50,
+            "name": "Stop containers",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:09Z",
+            "completedAt": "2026-11-04T07:19:09Z"
+          },
+          {
+            "number": 51,
+            "name": "Complete job",
+            "conclusion": "success",
+            "startedAt": "2026-11-04T07:19:09Z",
+            "completedAt": "2026-11-04T07:19:09Z"
+          }
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 13303666760,
+        "name": "synthetic-recovery-evidence",
+        "expired": false,
+        "sizeInBytes": 3995,
+        "createdAt": "2026-11-04T07:19:08Z",
+        "updatedAt": "2026-11-04T07:19:08Z",
+        "workflowRun": {
+          "id": 41791165665,
+          "repository_id": 1401471790,
+          "head_repository_id": 1401471790,
+          "head_branch": "master",
+          "head_sha": "9c04c2ebaf39227189ff586d5fd8df6f249054fe"
+        }
+      }
+    ],
+    "artifactHashes": [
+      {
+        "file": "host-loss-evidence.json",
+        "sha256": "e7aa021fe4c91a92163848029101faa63edc0e94d551755471e726eb60be7c09"
+      },
+      {
+        "file": "meterwerk-9c04c2ebaf39227189ff586d5fd8df6f249054fe-20261104T071822Z.age.manifest.json",
+        "sha256": "72def936448f62edc46eeebda56b24fb8f37abb33caeb480737c3445dd788d55"
+      },
+      {
+        "file": "meterwerk-pitr-evidence/archive.json",
+        "sha256": "970aef07bfc565c0718e77e5e4096f8f25fbab4349470ffb640c9aec5690f79d"
+      },
+      {
+        "file": "meterwerk-pitr-evidence/incomplete-base.json",
+        "sha256": "4d2bac2d7a0f8d633cedc602656b04d9febe495345ebad00366b71e61f8e2dd2"
+      },
+      {
+        "file": "meterwerk-pitr-evidence/missing-wal.json",
+        "sha256": "c08514ab41eb3ef6a74763703fe326b4ebed5a2149c9a1c8d088b1c0ef24e6d1"
+      },
+      {
+        "file": "meterwerk-pitr-evidence/positive-pitr.json",
+        "sha256": "c1e78a0a04ce9beca11df817d7fc058a4ff9f659b3961ae7cd5028ac8df814f3"
+      },
+      {
+        "file": "recovery-evidence.json",
+        "sha256": "7d420d6e893252c4961ead0461d8db9fa4d8e585c456ef4b0e012cd854b7db27"
+      }
+    ],
+    "offlineEvidenceVerifier": "PASSED: Recovery evidence complete and secret-free"
+  },
+  "changes": {
+    "code": false,
+    "workflow": false,
+    "cron": false,
+    "dispatch": false,
+    "rerun": false,
+    "bucket": false,
+    "production": false
+  },
+  "absenceCause": "Not established from available API metadata; no configuration blocker found",
+  "nextTask": "Re-query for a delayed genuine 2026-11-09 schedule event; otherwise inspect the next unchanged cron window on 2026-11-16 at 07:23 UTC. Require attempt 1, success, all required jobs and run-bound artifacts before PASSED.",
+  "remainingBlockers": [
+    "Genuine scheduled Recovery evidence PENDING",
+    "IAM Least Privilege BLOCKED: real IONOS ContractUserId pending",
+    "Staging Recovery BLOCKED: approved read-only source/principal pending",
+    "Operational RPO/RTO NOT PROVEN"
+  ],
+  "preservedEvidence": {
+    "fullRestoreSeconds": 7.471,
+    "pitrSeconds": 8.068,
+    "hostLossSeconds": 28.613,
+    "hostLossRun": 42040140763,
+    "walRun": 42595934065,
+    "ciRun": 42595857254,
+    "recoveryRun": 42595857268
+  }
+}
