@@ -1,0 +1,50 @@
+name: PostgreSQL 16 archive-timeout source diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [software-completion/phase-3-wal-monitoring]
+    paths:
+      - .github/workflows/postgres-archive-timeout-diagnostic.yml
+      - scripts/patch-pg16-timeout-diagnostic.mjs
+      - scripts/run-pg16-timeout-diagnostic.sh
+permissions:
+  contents: read
+concurrency:
+  group: pg16-archive-timeout-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 22 }
+      - name: Install PostgreSQL build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential flex bison libreadline-dev zlib1g-dev
+      - name: Fetch and build disposable PostgreSQL REL_16_15 source
+        run: |
+          git clone --depth 1 --branch REL_16_15 https://github.com/postgres/postgres.git "$RUNNER_TEMP/postgres-source"
+          git -C "$RUNNER_TEMP/postgres-source" rev-parse HEAD | tee artifacts-pg16-source-sha.txt
+          node scripts/patch-pg16-timeout-diagnostic.mjs "$RUNNER_TEMP/postgres-source"
+          cd "$RUNNER_TEMP/postgres-source"
+          ./configure --prefix="$RUNNER_TEMP/postgres-diagnostic" --without-readline --without-zlib
+          make -j2
+          make install
+          "$RUNNER_TEMP/postgres-diagnostic/bin/postgres" --version | tee "$GITHUB_WORKSPACE/artifacts-pg16-version.txt"
+      - name: Diagnose PostgreSQL archive timeout condition
+        run: |
+          bash scripts/run-pg16-timeout-diagnostic.sh "$RUNNER_TEMP/postgres-source" "$RUNNER_TEMP/postgres-diagnostic"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: postgres-16-timeout-diagnostic-${{ github.run_id }}
+          path: |
+            artifacts/pg16-timeout-diagnostic/*
+            artifacts-pg16-source-sha.txt
+            artifacts-pg16-version.txt
+          if-no-files-found: warn
+          retention-days: 30
