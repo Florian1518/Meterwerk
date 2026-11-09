@@ -1,10 +1,13 @@
 # Continuous WAL Offsite: synthetic implementation and acceptance
 
-Status on 2026-11-09: **IMPLEMENTED / EXTERNAL VALIDATION PENDING**, not PASSED.
+Status on 2026-11-09: **PASSED** for Phase-3 synthetic continuous WAL operation
+and monitoring against real IONOS storage. This is not production deployment
+or operational RPO/RTO acceptance. [External evidence](acceptance/WAL-OFFSITE-42595934065.md).
 This work continues accepted baseline `91e57a5bdfe8cfa17795b27a4ea4549bbc029063`.
 It does not restart Phase 3. Existing Full Restore 7.471 s, PITR 8.068 s,
 Host Loss 28.613 s and runs 42041884271, 42040140763, 41791165665 remain
-accepted historical evidence. No new IONOS run has been executed for this change.
+accepted historical evidence. Manual run `42595934065` independently verified
+three incremental encrypted WAL cycles on `ddc8518f006c8c1aa2e152db37524321c098b643`.
 
 ## Audit and design
 
@@ -49,7 +52,8 @@ production service installed by this change.
 
 ## Synthetic runner
 
-`.github/workflows/wal-offsite.yml` runs deterministic tests on relevant PRs.
+`.github/workflows/wal-offsite.yml` runs deterministic tests on relevant PRs
+and scoped pushes to the WAL branch, using Ubuntu 24.04 runners.
 Manual dispatch additionally prepares an isolated PostgreSQL 16 instance,
 runner-owned Unix socket and archive directory, fresh age identity and one
 persistent worker across three successive synthetic write/switch/archive/
@@ -61,9 +65,9 @@ Only explicitly selected JSON evidence is uploaded, never identity or logs.
 
 Required existing GitHub secrets: `IONOS_S3_ACCESS_KEY`, `IONOS_S3_SECRET_KEY`;
 variables: `IONOS_S3_BUCKET`, `IONOS_S3_REGION`, `IONOS_S3_ENDPOINT`.
-The new workflow is prepared locally and cannot run until this commit is
-available on GitHub and dispatchable. No push or merge was performed.
-Its eventual dispatch must not be described as `event=schedule` evidence.
+The workflow was published only on `software-completion/phase-3-wal-monitoring`
+and manually dispatched successfully. No merge or tag was performed.
+Its `workflow_dispatch` event is not `event=schedule` evidence.
 
 ## Local verification
 
@@ -97,9 +101,11 @@ synthetic URL fixed it without connecting to a database.
 
 Python/age/PostgreSQL end-to-end transport was **not executed locally**:
 Python/age were unavailable on PATH and the Docker Linux engine was not
-running. Python compilation and existing storage tests are prepared in CI.
+running. Python compilation and all eight existing storage tests passed in
+the external WAL workflow, including the real age/PostgreSQL/IONOS drill.
 No full application build or database integration suite was run for this
-standalone scripts/docs change. No new external latency or RPO/RTO is claimed.
+standalone scripts/docs change. Measured synthetic archive-to-upload latency
+is recorded separately in the external evidence; no operational RPO/RTO is claimed.
 
 Read-only GitHub baseline verification returned run `42041884271`, conclusion
 `success`, SHA `91e57a5bdfe8cfa17795b27a4ea4549bbc029063`, event `push`.
@@ -122,11 +128,9 @@ intentionally trigger the freshness alarm. Recovery still needs an appropriate
 base backup and separately recoverable age key; the ephemeral drill key is
 not an operational key-management solution. Operative RPO/RTO remains open.
 
-**Next:** make this reviewed commit available through the authorized repository
-publication process, dispatch `wal-offsite.yml`, inspect all three cycle
-artifacts and exact object versions/hashes, and record the actual run ID,
-source SHA and measured duration. Only then assess synthetic WAL acceptance;
-do not promote an unexecuted workflow or mocked transport test to PASSED.
+**Next:** obtain and verify genuine `event=schedule` evidence for the existing
+recovery workflow. Inspect existing runs first; manual dispatch cannot satisfy
+that requirement. Keep the WAL scope and operational RPO/RTO limits separate.
 
 IAM Least Privilege remains **BLOCKED** until IONOS supplies the real
 ContractUserId; do not derive it or create/apply a policy. Staging Recovery

@@ -1,0 +1,182 @@
+{
+  "status": "PASSED",
+  "encryptionValidation": {
+    "clientSide": "age",
+    "serverSide": "SSE-S3/AES256",
+    "requiredBeforeVerifiedReceipt": [
+      "age encryption subprocess success",
+      "age v1 ciphertext header before put",
+      "version-pinned IONOS download and ciphertext SHA-256 equality",
+      "age decryption subprocess success",
+      "decrypted plaintext SHA-256 equality with unchanged source"
+    ],
+    "verifiedCycles": 3,
+    "plaintextUploaded": false
+  },
+  "scope": "real IONOS transfer of synthetic WAL; bounded single-timeline operation, not production RPO/RTO",
+  "runId": 42595934065,
+  "workflowUrl": "https://github.com/Florian1518/Meterwerk/actions/runs/42595934065",
+  "branch": "software-completion/phase-3-wal-monitoring",
+  "executedSha": "ddc8518f006c8c1aa2e152db37524321c098b643",
+  "event": "workflow_dispatch",
+  "candidateCi": {
+    "runId": 42595857254,
+    "conclusion": "success",
+    "sha": "ddc8518f006c8c1aa2e152db37524321c098b643"
+  },
+  "candidateRecovery": {
+    "runId": 42595857268,
+    "conclusion": "success",
+    "sha": "ddc8518f006c8c1aa2e152db37524321c098b643"
+  },
+  "runStartedAt": "2026-11-09T09:46:13Z",
+  "runCompletedAt": "2026-11-09T09:47:28Z",
+  "workflowElapsedSeconds": 75,
+  "drillDurationSeconds": 31,
+  "bucket": "meterwerk-offsite-backup-fesch",
+  "region": "eu-central-3",
+  "prefix": "phase3-acceptance/42595934065-1/continuous-wal/",
+  "cycles": [
+    {
+      "cycle": 1,
+      "wal": "000000010000000000000001",
+      "archivedAt": "2026-11-09T09:46:52.110Z",
+      "verifiedUploadAt": "2026-11-09T09:46:58.782Z",
+      "checkedAt": "2026-11-09T09:46:58.789Z",
+      "archiveToVerifiedUploadMs": 6671.364,
+      "receipt": {
+        "status": "VERIFIED",
+        "wal": "000000010000000000000001",
+        "plainSha256": "f0ef37206f8c9d76cc10d38a63934322a44f6bdba4c4940f9e0967a79c14ff64",
+        "object": {
+          "key": "phase3-acceptance/42595934065-1/continuous-wal/000000010000000000000001.age",
+          "version": "0PJHB1Nxd6c29mit2erUxnl3zLGfMCh",
+          "sha256": "ec9546a92b8710a511773499c29df493fd99c5ad2b02a14e98b4c7df9ba0d825",
+          "bytes": 16781496,
+          "sse": "AES256",
+          "downloadSeconds": 1.8363189697265625,
+          "hashSeconds": 0.011564493179321289
+        },
+        "verifiedAt": 1794217618782
+      },
+      "result": "PASSED"
+    },
+    {
+      "cycle": 2,
+      "wal": "000000010000000000000002",
+      "archivedAt": "2026-11-09T09:46:59.420Z",
+      "verifiedUploadAt": "2026-11-09T09:47:09.430Z",
+      "checkedAt": "2026-11-09T09:47:09.436Z",
+      "archiveToVerifiedUploadMs": 10009.763,
+      "receipt": {
+        "status": "VERIFIED",
+        "wal": "000000010000000000000002",
+        "plainSha256": "df5b24a88e1a1d35a9ca1294a65b6bf2901f7cf09919edf95a0e9ba4b6d1e78a",
+        "object": {
+          "key": "phase3-acceptance/42595934065-1/continuous-wal/000000010000000000000002.age",
+          "version": "H-9Fnc04OCpzY2PZ6P.d.m.jT7C9QD8",
+          "sha256": "26668a73820caf4f044725f7f436ef9d9eb84a3996785dee5cfa1546d2944be0",
+          "bytes": 16781496,
+          "sse": "AES256",
+          "downloadSeconds": 1.8326053619384766,
+          "hashSeconds": 0.011531591415405273
+        },
+        "verifiedAt": 1794217629430
+      },
+      "result": "PASSED"
+    },
+    {
+      "cycle": 3,
+      "wal": "000000010000000000000003",
+      "archivedAt": "2026-11-09T09:47:09.808Z",
+      "verifiedUploadAt": "2026-11-09T09:47:22.412Z",
+      "checkedAt": "2026-11-09T09:47:22.415Z",
+      "archiveToVerifiedUploadMs": 12603.525,
+      "receipt": {
+        "status": "VERIFIED",
+        "wal": "000000010000000000000003",
+        "plainSha256": "0c379cac8682e284210f92a49bf28dfa1c1e39c0e60534a16716cdb6e8153e68",
+        "object": {
+          "key": "phase3-acceptance/42595934065-1/continuous-wal/000000010000000000000003.age",
+          "version": "2bRqbBwwQJC6IimhWDSgKxk7H2yoMrp",
+          "sha256": "aea7c161d0aaed55005e5c4081db89fc3539f1b703782e0e5741a8349e02448f",
+          "bytes": 16781496,
+          "sse": "AES256",
+          "downloadSeconds": 1.8894824981689453,
+          "hashSeconds": 0.01174020767211914
+        },
+        "verifiedAt": 1794217642412
+      },
+      "result": "PASSED"
+    }
+  ],
+  "monitoring": {
+    "healthyCliChecks": 3,
+    "deterministicTests": 70,
+    "exactNegativeTests": [
+      "independent watchdog detects dead uploader and failed pipeline",
+      "healthy bounded range reports archive and upload times",
+      "archive failure",
+      "stale observation",
+      "stale archive",
+      "missing expected receipt is exactly WAL_GAP",
+      "stale offsite pipeline",
+      "collector failure cannot pass",
+      "remote verification failure cannot pass cached receipts",
+      "shipping fault: upload",
+      "shipping fault: cipher",
+      "shipping fault: plain",
+      "shipping fault: unencrypted"
+    ],
+    "negativeScope": "deterministic fault injection in CI; not live IAM denial or destructive remote tests"
+  },
+  "secretReview": {
+    "checkedFiles": 28,
+    "maskedCredentialAssignments": 4,
+    "recognizableSecretSignatures": 0,
+    "scope": "signature scan plus credential assignment masking and allowlisted JSON review; no claim to know encrypted GitHub secret values"
+  },
+  "artifactHashes": [
+    {
+      "name": "cycle-1.json",
+      "sha256": "0fb6985143dff664c65624916dda51ca3c9b4addbde310621e4b1e5c7328d501"
+    },
+    {
+      "name": "cycle-2.json",
+      "sha256": "1c12861a7be743c0deeb417baafbba9481ca74dccbb4c62decfa7d366d7fd988"
+    },
+    {
+      "name": "cycle-3.json",
+      "sha256": "7ad8b2a50dd4d43aa04f906924f09c915761b2862cef34c63211a1807dbb3183"
+    },
+    {
+      "name": "state.json",
+      "sha256": "7ad8b2a50dd4d43aa04f906924f09c915761b2862cef34c63211a1807dbb3183"
+    },
+    {
+      "name": "summary.json",
+      "sha256": "9c3fd6a3949b1a79be5d41ae367828ec26bb0bcc02e436fba625c5c4fbcf7d71"
+    }
+  ],
+  "remoteSafety": {
+    "codePath": "wal-offsite-transport.py -> Store.put/get; preflight is not invoked",
+    "operations": [
+      "get-bucket-versioning",
+      "put-object (new run prefix only)",
+      "head-object",
+      "get-object-acl",
+      "get-object (version pinned)"
+    ],
+    "bucketConfigurationMutations": false,
+    "remoteDeletes": false,
+    "existingKeysModified": false
+  },
+  "preservedEvidence": {
+    "ciRun": 42041884271,
+    "fullRestoreSeconds": 7.471,
+    "pitrSeconds": 8.068,
+    "hostLossSeconds": 28.613,
+    "hostLossRun": 42040140763,
+    "recoveryRun": 41791165665
+  }
+}

@@ -1,6 +1,16 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
-## Aktueller Phase-3-Status vom 05.11.2026
+## Current Phase-3 continuation, 2026-11-09
+
+Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic
+incremental cycles against real IONOS, [run 42595934065 evidence](acceptance/WAL-OFFSITE-42595934065.md).
+This supersedes historical WAL-pending statements below. Existing CI, Full
+Restore, PITR and Host Loss evidence remains valid. IAM Least Privilege remains
+**BLOCKED** on the real ContractUserId; Staging Recovery remains **BLOCKED**.
+Genuine schedule-trigger evidence and operational RPO/RTO remain pending.
+**READY FOR SOFTWARE COMPLETION PHASE 4: NO.** Production remains untouched.
+
+## Historischer Phase-3-Status vom 05.11.2026
 
 **METERWERK SOFTWARE COMPLETION PHASE 3: PARTIAL.** Host-Loss-Validation im synthetischen, leeren isolierten Docker-Daemon: **PASSED**, [Run 42040140763](https://github.com/Florian1518/Meterwerk/actions/runs/42040140763), Kandidaten-SHA `1120e7cfec11ae81374ed0745136138218cf4ae6`; gemessene Dauer **28,613 s**. Persistence-Gate `42034092512` blieb PASSED und wurde im Fortsetzungsrun verifiziert, nicht wiederholt. Offsite Full Restore `7,471 s` und PITR `8,068 s` bleiben gültige bestehende Evidence.
 
@@ -635,8 +645,8 @@ Dies ist eine Repository-/Evidence-basierte Readinessanalyse, keine Produktionsf
 
 ## WAL continuation, 2026-11-09
 
-Continuous WAL Offsite: implementation and local regression tests available;
-**external acceptance still pending**, no new PASSED claim or workflow run.
+Continuous WAL Offsite: **PASSED** in real-IONOS synthetic run `42595934065`;
+three incremental cycles and positive/negative monitoring checks verified.
 See [commands, evidence limits and next task](WAL-OFFSITE-MONITORING.md).
 IAM Least Privilege **BLOCKED** (ContractUserId pending); Staging Recovery
 **BLOCKED** (approved read-only source/principal pending). Existing accepted

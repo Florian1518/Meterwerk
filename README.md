@@ -252,5 +252,5 @@ WAL-Shipping und keine Staging-Abnahme. Betriebsgrenzen und Least Privilege sieh
 ## Phase-3 WAL monitoring continuation
 
 The synthetic continuous WAL uploader and independent fail-closed watchdog
-are prepared; external acceptance is still pending. Setup, exact local test
+passed real IONOS validation in run `42595934065`. Setup, exact local test
 commands and remaining blockers: [WAL Offsite Monitoring](docs/WAL-OFFSITE-MONITORING.md).

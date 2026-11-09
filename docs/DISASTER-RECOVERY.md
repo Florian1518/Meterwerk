@@ -1,5 +1,15 @@
 # Disaster Recovery
 
+## Current WAL acceptance, 2026-11-09
+
+Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic
+incremental cycles against real IONOS storage, run `42595934065`, executed SHA
+`ddc8518f006c8c1aa2e152db37524321c098b643`. [Exact evidence and limits](acceptance/WAL-OFFSITE-42595934065.md).
+This supersedes historical WAL-pending statements below. Existing Full Restore,
+PITR and Host Loss acceptance remains unchanged. IAM Least Privilege and
+Staging Recovery remain **BLOCKED**; genuine schedule and operational RPO/RTO
+evidence remain pending. No production deployment or operational SLA is claimed.
+
 ## Host-Loss-Validation: Ergebnis vom 05.11.2026
 
 Der isolierte Host-Loss-Drill bestand im [Workflow-Run 42040140763](https://github.com/Florian1518/Meterwerk/actions/runs/42040140763) auf Kandidaten-SHA `1120e7cfec11ae81374ed0745136138218cf4ae6`. Das Persistence-Gate aus Run `42034092512` war zuvor erfolgreich; der Fortsetzungsrun verifizierte es und übersprang eine Wiederholung. Aus einer leeren isolierten Docker-Umgebung wurden die unveränderlichen Images geladen, ein verschlüsseltes synthetisches Backup ausschließlich aus IONOS Object Storage bezogen, SHA-256 validiert, mit age entschlüsselt, PostgreSQL wiederhergestellt und Restore Verifier sowie App Readiness bestanden. Mosquitto war READY, der MQTT-Worker subscribed und Web/App Readiness war erfolgreich.
@@ -461,7 +471,7 @@ rechtfertigt dafür kein DONE.
 
 ## WAL monitoring continuation, 2026-11-09
 
-Continuous WAL Offsite remains **EXTERNAL VALIDATION PENDING**, not PASSED.
+Continuous WAL Offsite is **PASSED** within the synthetic real-IONOS scope above.
 The incremental encrypted worker, fail-closed watchdog and synthetic CI drill
 are described in [WAL Offsite Monitoring](WAL-OFFSITE-MONITORING.md).
 Existing accepted restore/PITR/Host-Loss evidence below is preserved.

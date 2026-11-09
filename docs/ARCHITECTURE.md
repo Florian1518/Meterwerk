@@ -545,5 +545,6 @@ The Phase-3 acceptance worker archives individual WAL segments with client-side
 age encryption and reuses the existing version-pinned IONOS transport without
 its bucket-mutating preflight. Live PostgreSQL observations, verified remote
 hashes and a separately checked heartbeat are required for success. No product
-data path or production service is changed. Scope and acceptance limits:
+data path or production service is changed. The three-cycle real IONOS
+acceptance passed in run `42595934065`. Scope and acceptance limits:
 [WAL Offsite Monitoring](WAL-OFFSITE-MONITORING.md).
