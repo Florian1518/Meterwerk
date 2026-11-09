@@ -52,6 +52,21 @@ reason the live checkpointer did not request a switch remains undetermined;
 the artifacts do not establish whether the important-record pointer check or
 timer path was responsible. These failures are not positive evidence.
 
+The disposable PostgreSQL 16.15 source diagnostic was attempted in workflow
+[42621101392](https://github.com/Florian1518/Meterwerk/actions/runs/42621101392)
+at SHA `2b7fdb01b4ca0399af048d68c4fa0b4817deb808`. The temporary build and
+`pg_waldump` checks completed, but the run failed because it captured zero
+instrumented timeout comparisons. Review of the compiler output found that
+the diagnostic C strings incorrectly prefixed PostgreSQL's `INT64_FORMAT`
+macro with `%`; the run therefore supplies no internal comparison values and
+does not establish the root cause. Its synthetic WAL records were durable
+Heap/COMMIT records, WAL grew from 5,275,718 to 5,560,984 bytes (about 280 KiB),
+the segment stayed `000000010000000000000001`, and archiver counts remained
+0/0. This diagnostic failure is not positive evidence. The harness has been
+corrected to use the PostgreSQL format macros correctly and to check that the
+instrumented binary is actually used; a successful source-level diagnostic is
+still required before any stock-binary natural-cycle acceptance attempt.
+
 No natural timeout cycle reached the encrypted offsite worker, so no new IONOS
 object was created or verified. No production data, real hardware, bucket
 configuration, existing object, or credential was accessed or changed.
@@ -100,13 +115,11 @@ operational failure handling remain unproven. Accepted restore timings do
 demonstrate technical recovery performance in synthetic CI, but not
 representative operational conditions or an SLA.
 
-Next technical task: diagnose why the isolated PostgreSQL 16 drill did not
-resolve why PostgreSQL 16's live checkpointer does not request a natural switch
-in the isolated drill despite valid `archive_timeout=60` configuration and
-committed WAL activity. Preserve diagnostic artifacts, make only a narrowly
-scoped correction supported by evidence, and obtain three consecutive
-synthetic IONOS natural-cycle verifications before changing Technical RPO from
-CONDITIONAL / PENDING.
+Next technical task: obtain the internal timeout comparison values from the
+corrected disposable PostgreSQL 16.15 source diagnostic, classify why the live
+checkpointer did not request a natural switch, then use stock PostgreSQL 16.15
+for three consecutive synthetic IONOS natural-cycle verifications before
+changing Technical RPO from CONDITIONAL / PENDING.
 Operational RPO/RTO still requires representative, authorized non-production
 operational drills and measured alert/response behavior; no production work is
 implied or authorized by this evidence.

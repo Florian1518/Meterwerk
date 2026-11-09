@@ -8,6 +8,10 @@ evidence=${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}/artifacts/pg16-timeou
 db="$work/data"
 mkdir -p "$work" "$evidence" "$work/archive"
 export PATH="$prefix/bin:$PATH" PGHOST="$work/socket" PGPORT=55441 PGUSER="$(id -un)" PGDATABASE=postgres
+strings "$prefix/bin/postgres" | grep -Fq 'PG16_TIMEOUT_DIAG phase=EVALUATION' || {
+  echo DIAGNOSTIC_INSTRUMENTATION_MISSING >&2
+  exit 1
+}
 mkdir "$PGHOST"
 
 cleanup() {
@@ -47,6 +51,7 @@ psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'walLevel',current_setting('wal_level'),
   'archiveCommandConfigured',(current_setting('archive_command')<>''),
   'archiveLibrary',coalesce(current_setting('archive_library',true),''),
+  'logMinMessages',current_setting('log_min_messages'),
   'inRecovery',pg_is_in_recovery(),
   'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
   'checkpointerStartTime',(SELECT extract(epoch from backend_start)*1000 FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
@@ -109,7 +114,7 @@ const final = JSON.parse(readFileSync(finalPath, "utf8"));
 if (!t0.serverVersion.startsWith("16.15") || t0.archiveTimeout !== "1min" ||
     t0.archiveTimeoutSource !== "configuration file" || t0.archiveMode !== "on" ||
     t0.walLevel !== "replica" || !t0.archiveCommandConfigured ||
-    t0.archiveLibrary !== "" || t0.inRecovery || !t0.checkpointerPid ||
+    t0.archiveLibrary !== "" || t0.logMinMessages !== "log" || t0.inRecovery || !t0.checkpointerPid ||
     !t0.checkpointerStartTime || !final.checkpointerPid || final.inRecovery)
   throw new Error("PG16_DIAGNOSTIC_RUNTIME_INVALID");
 writeFileSync(outputPath, JSON.stringify({

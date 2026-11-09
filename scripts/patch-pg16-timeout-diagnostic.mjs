@@ -43,8 +43,8 @@ CheckArchiveTimeout(void)
   now = (pg_time_t) time(NULL);
   last_xlog_switch_time_before = last_xlog_switch_time;
   elog(LOG,
-       "PG16_TIMEOUT_DIAG phase=EVALUATION now=%" INT64_FORMAT
-       " timeout=%d checkpointer_pid=%d last_xlog_switch_time_before=%"
+       "PG16_TIMEOUT_DIAG phase=EVALUATION now=" INT64_FORMAT
+       " timeout=%d checkpointer_pid=%d last_xlog_switch_time_before="
        INT64_FORMAT " recovery=%d",
        (int64) now, XLogArchiveTimeout, MyProcPid,
        (int64) last_xlog_switch_time_before, RecoveryInProgress());
@@ -63,10 +63,10 @@ CheckArchiveTimeout(void)
   XLogFileName(segment_name, 1, segno, wal_segment_size);
 
   elog(LOG,
-       "PG16_TIMEOUT_DIAG phase=COMPARISON now=%" INT64_FORMAT
-       " timeout=%d checkpointer_pid=%d last_xlog_switch_time_before=%"
-       INT64_FORMAT " get_last_seg_switch_data_time=%" INT64_FORMAT
-       " last_xlog_switch_time_after_refresh=%" INT64_FORMAT
+       "PG16_TIMEOUT_DIAG phase=COMPARISON now=" INT64_FORMAT
+       " timeout=%d checkpointer_pid=%d last_xlog_switch_time_before="
+       INT64_FORMAT " get_last_seg_switch_data_time=" INT64_FORMAT
+       " last_xlog_switch_time_after_refresh=" INT64_FORMAT
        " last_switch_lsn=%X/%08X important_lsn=%X/%08X important_wal=%d"
        " insert_lsn=%X/%08X segment_before=%s",
        (int64) now, XLogArchiveTimeout, MyProcPid,
@@ -105,7 +105,7 @@ CheckArchiveTimeout(void)
     last_xlog_switch_time = now;
     elog(LOG,
          "PG16_TIMEOUT_DIAG phase=TIMER_UPDATED"
-         " last_xlog_switch_time_after=%" INT64_FORMAT
+         " last_xlog_switch_time_after=" INT64_FORMAT
          " checkpointer_pid=%d",
          (int64) last_xlog_switch_time, MyProcPid);
   }
@@ -113,5 +113,15 @@ CheckArchiveTimeout(void)
 `;
 
 source = source.slice(0, start) + diagnosticFunction + source.slice(end);
+
+const callsite = "\t\tCheckArchiveTimeout();";
+assert(
+  source.includes(callsite),
+  "Expected CheckArchiveTimeout call sites in checkpointer source",
+);
+source = source.replaceAll(
+  callsite,
+  `\t\telog(LOG, "PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=%d", MyProcPid);\n${callsite}`,
+);
 writeFileSync(sourcePath, source);
 console.log("Patched only the disposable PostgreSQL REL_16_15 source checkout");
