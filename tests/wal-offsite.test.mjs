@@ -16,6 +16,8 @@ import {
   ship,
   tick,
   watchdog,
+  failedState,
+  WalFailure,
 } from "../scripts/wal-offsite.mjs";
 
 const first = "000000010000000000000001",
@@ -43,6 +45,26 @@ const receipt = (wal) => ({
 const records = () => ({ [first]: receipt(first), [last]: receipt(last) });
 const exact = (fn, message) =>
   assert.throws(fn, (error) => error.message === message);
+test("worker failure report preserves exact classification and closes health", () => {
+  assert.deepEqual(
+    failedState(new Error("upload unavailable"), {}, () => 123),
+    {
+      status: "FAILED",
+      code: "INFRASTRUCTURE_FAILURE",
+      checkedAt: 123,
+      receipts: {},
+    },
+  );
+  assert.deepEqual(
+    failedState(new WalFailure("WAL_GAP"), { partial: true }, () => 456),
+    {
+      status: "FAILED",
+      code: "WAL_GAP",
+      checkedAt: 456,
+      receipts: { partial: true },
+    },
+  );
+});
 test("independent watchdog detects dead uploader and failed pipeline", () => {
   assert.equal(
     watchdog({ status: "PASSED", checkedAt: 990 }, 1000, 100).status,

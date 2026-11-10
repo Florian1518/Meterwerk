@@ -18,6 +18,7 @@ import {
   tick,
   watchdog,
   WalFailure,
+  failedState,
 } from "../scripts/wal-offsite.mjs";
 
 type Incident = {
@@ -116,7 +117,9 @@ describe("synthetic WAL and recovery alert/response drill", () => {
             },
           );
         } catch (error) {
-          return error instanceof Error ? error.message : "UNKNOWN";
+          const report = failedState(error, {}, Date.now);
+          expect(report.status).toBe("FAILED");
+          return report.code;
         }
         return "FALSE_HEALTHY";
       },
@@ -155,7 +158,9 @@ describe("synthetic WAL and recovery alert/response drill", () => {
           health(plan, sample, { [last]: receipt(last) }, Date.now(), 120000);
           return "FALSE_HEALTHY";
         } catch (error) {
-          return error instanceof Error ? error.message : "UNKNOWN";
+          const report = failedState(error, {}, Date.now);
+          expect(report.status).toBe("FAILED");
+          return report.code;
         }
       },
       "worker FAILED state JSON + stderr/nonzero exit",
@@ -194,7 +199,9 @@ describe("synthetic WAL and recovery alert/response drill", () => {
             );
             return "FALSE_HEALTHY";
           } catch (error) {
-            return error instanceof Error ? error.message : "UNKNOWN";
+            const report = failedState(error, {}, Date.now);
+            expect(report.status).toBe("FAILED");
+            return report.code;
           }
         },
         "worker FAILED state JSON + stderr/nonzero exit",

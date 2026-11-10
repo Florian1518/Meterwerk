@@ -13,6 +13,15 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 export class WalFailure extends Error {}
+export function failedState(error, receipts, now = Date.now) {
+  return {
+    status: "FAILED",
+    code:
+      error instanceof WalFailure ? error.message : "INFRASTRUCTURE_FAILURE",
+    checkedAt: now(),
+    receipts,
+  };
+}
 const requireValue = (ok, code) => {
   if (!ok) throw new WalFailure(code);
 };
@@ -291,15 +300,7 @@ async function main() {
       atomic(statePath, { ...result, receipts });
       console.log(JSON.stringify(result));
     } catch (error) {
-      atomic(statePath, {
-        status: "FAILED",
-        code:
-          error instanceof WalFailure
-            ? error.message
-            : "INFRASTRUCTURE_FAILURE",
-        checkedAt: Date.now(),
-        receipts,
-      });
+      atomic(statePath, failedState(error, receipts));
       throw error;
     }
     if (process.env.WAL_OFFSITE_ONCE === "1") break;
