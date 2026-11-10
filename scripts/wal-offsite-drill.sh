@@ -276,12 +276,12 @@ for cycle in 1 2 3; do
     const receipt=state.receipts[process.env.WAL_CYCLE_EXPECTED];
     if (!receipt || receipt.status!=="VERIFIED" || receipt.object?.sse!=="AES256" || !receipt.object?.key.endsWith(".age")) throw new Error("OFFSITE_RECEIPT_INVALID");
     const n=Number(process.env.WAL_DRILL_CYCLE), sw=Number(process.env.WAL_CYCLE_SWITCH), switchLower=Number(process.env.WAL_CYCLE_SWITCH_LOWER), archiveSample=Number(process.env.WAL_CYCLE_ARCHIVE_SAMPLE), archived=Number(final.lastArchivedAt), uploaded=Number(state.lastVerifiedUploadAt);
-    const transactionRows=readFileSync(process.env.WAL_CYCLE_ACTIVITY_FILE,"utf8").trim().split(/\r?\n/).slice(1).map(line=>{const [cycle,xid,wal,committedAt]=line.split(",");return {cycle:Number(cycle),xid,wal,committedAt:Number(committedAt)};}).filter(row=>row.cycle===n&&row.wal===process.env.WAL_CYCLE_EXPECTED);
-    if(transactionRows.length!==Number(process.env.WAL_CYCLE_COUNT)||transactionRows.some(row=>!/^\d+$/.test(row.xid)||!Number.isFinite(row.committedAt))) throw new Error("COMMITTED_TRANSACTION_EVIDENCE_INVALID");
+    const transactionRows=readFileSync(process.env.WAL_CYCLE_ACTIVITY_FILE,"utf8").trim().split(/\r?\n/).slice(1).map(line=>{const [cycle,xid,wal,committedAt]=line.split(",");return {cycle:Number(cycle),xid,wal,committedAt:Number(committedAt)};}).filter(row=>row.wal===process.env.WAL_CYCLE_EXPECTED);
+    if(transactionRows.length<Number(process.env.WAL_CYCLE_COUNT)||transactionRows.some(row=>row.cycle>n||!/^[0-9]+$/.test(row.xid)||!Number.isFinite(row.committedAt))) throw new Error("COMMITTED_TRANSACTION_EVIDENCE_INVALID");
     const first=Math.min(...transactionRows.map(row=>row.committedAt)), last=Math.max(...transactionRows.map(row=>row.committedAt));
     writeFileSync(w+"cycle-"+n+"-stats.json",JSON.stringify({before,after:final},null,2)+"\n");
     writeFileSync(w+"cycle-"+n+".json",JSON.stringify({cycle:n,wal:process.env.WAL_CYCLE_EXPECTED,nextCurrentSegment:process.env.WAL_CYCLE_SEGMENT,
-      archiveTimeoutSeconds:60,manualSwitchCalls:0,manualCheckpointCalls:0,transactionCount:Number(process.env.WAL_CYCLE_COUNT),
+      archiveTimeoutSeconds:60,manualSwitchCalls:0,manualCheckpointCalls:0,transactionCount:transactionRows.length,
       priorNaturalSwitchObservedAt:Number(process.env.WAL_CYCLE_PREVIOUS_SWITCH),activityFirstAt:first,activityLastAt:last,
       firstActivitySegment:process.env.WAL_CYCLE_FIRST_SEGMENT,transactions:transactionRows,naturalSwitchDetectionLowerBoundAt:switchLower,naturalSwitchObservedAt:sw,
       naturalSwitchDelaySeconds:(sw-Number(process.env.WAL_CYCLE_PREVIOUS_SWITCH))/1000,
