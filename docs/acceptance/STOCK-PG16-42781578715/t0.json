@@ -1,0 +1,25 @@
+{
+  "referenceAt": 1794298743764.339,
+  "initialSegment": "000000010000000000000001",
+  "initialLsn": "0/1506C40",
+  "initialArchiver": {
+    "sampledAt": 1794298743764.339,
+    "currentLsn": "0/1506C40",
+    "currentSegment": "000000010000000000000001",
+    "currentOffset": 5270592,
+    "archivedCount": 0,
+    "failedCount": 0,
+    "lastArchivedWal": null,
+    "lastArchivedAt": null,
+    "lastFailedWal": null,
+    "lastFailedAt": null,
+    "archiverPid": 4408,
+    "checkpointerPid": 4403,
+    "timedCheckpoints": 0,
+    "requestedCheckpoints": 0,
+    "walRecords": 23772,
+    "checkpointerWaitEvent": "CheckpointerMain",
+    "checkpointerWaitEventType": "Activity",
+    "inRecovery": false
+  }
+}

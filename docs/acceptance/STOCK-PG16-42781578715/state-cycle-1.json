@@ -1,0 +1,26 @@
+{
+  "status": "PASSED",
+  "scope": "synthetic-bounded-single-timeline",
+  "expectedSegments": 1,
+  "lastArchivedWal": "000000010000000000000001",
+  "lastArchiveAt": 1794299043733.754,
+  "lastVerifiedUploadAt": 1794299051860,
+  "checkedAt": 1794299051865,
+  "receipts": {
+    "000000010000000000000001": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000001",
+      "plainSha256": "cdfb5c1689a26b95a309729db9095e49243419dcbafc747658df93a9108a2c19",
+      "object": {
+        "key": "phase3-acceptance/42781578715-1/continuous-wal/000000010000000000000001.age",
+        "version": "h4LzZNexnWJII8pVLnPXWS.1ESXHYf0",
+        "sha256": "7031cb63b956971b8b3687bf80f1ae595ace4d13f4467b5e779b26e0e59c3951",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.9797275066375732,
+        "hashSeconds": 0.014847278594970703
+      },
+      "verifiedAt": 1794299051860
+    }
+  }
+}

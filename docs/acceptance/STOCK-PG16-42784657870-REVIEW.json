@@ -1,0 +1,138 @@
+{
+  "runId": 42784657870,
+  "sourceSha": "9bfabdb7456d57946edd9d3d6ec1c022232c2b98",
+  "event": "workflow_dispatch",
+  "workflowConclusion": "failure",
+  "workflowArtifactZipSha256": "e4b425e8e4880679022a93fb33423782f699969fb2f89fe785e18b8157df2125",
+  "serverVersion": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "archiveTimeoutSeconds": 60,
+  "transactionTimestampSource": "pg_xact_commit_timestamp with track_commit_timestamp=on",
+  "cycles": [
+    {
+      "cycle": 1,
+      "wal": "000000010000000000000001",
+      "transactionCount": 28,
+      "observedWorstTransactionToVerifiedOffsiteSeconds": 305.6299479980469,
+      "naturalSwitchDelaySeconds": 300.379375,
+      "archiveToVerifiedOffsiteSeconds": 5.838951904296875,
+      "isolatedPrefix": "phase3-acceptance/42784657870-1/continuous-wal",
+      "encryptedAgeObjectVerified": true,
+      "sha256CiphertextVerified": true,
+      "sha256PlaintextVerified": true,
+      "sseS3AES256Verified": true
+    },
+    {
+      "cycle": 2,
+      "wal": "000000010000000000000002",
+      "transactionCount": 5,
+      "observedWorstTransactionToVerifiedOffsiteSeconds": 62.137863037109376,
+      "naturalSwitchDelaySeconds": 59.11806494140625,
+      "archiveToVerifiedOffsiteSeconds": 9.51610693359375,
+      "isolatedPrefix": "phase3-acceptance/42784657870-1/continuous-wal",
+      "encryptedAgeObjectVerified": true,
+      "sha256CiphertextVerified": true,
+      "sha256PlaintextVerified": true,
+      "sseS3AES256Verified": true
+    },
+    {
+      "cycle": 3,
+      "wal": "000000010000000000000003",
+      "transactionCount": 5,
+      "observedWorstTransactionToVerifiedOffsiteSeconds": 61.9704619140625,
+      "naturalSwitchDelaySeconds": 60.04997705078125,
+      "archiveToVerifiedOffsiteSeconds": 12.580662109375,
+      "isolatedPrefix": "phase3-acceptance/42784657870-1/continuous-wal",
+      "encryptedAgeObjectVerified": true,
+      "sha256CiphertextVerified": true,
+      "sha256PlaintextVerified": true,
+      "sseS3AES256Verified": true
+    }
+  ],
+  "observedWorstTransactionToVerifiedOffsiteSeconds": 305.6299479980469,
+  "targetSeconds": 300,
+  "technicalRpoTargetMet": false,
+  "status": "FAILED",
+  "failureCode": "TECHNICAL_RPO_TARGET_EXCEEDED",
+  "artifactHashes": [
+    {
+      "name": "cycle-1-stats.json",
+      "sha256": "60c1c20678deb233a912a7c5c2f449371b373bfe701f59964dfd3bd55f85ae18"
+    },
+    {
+      "name": "cycle-1.json",
+      "sha256": "8063e46df9579249670660ee62cd15d1831e67366ae9095099f66179cad2812b"
+    },
+    {
+      "name": "cycle-2-stats.json",
+      "sha256": "bc91a129cfb5c80f248525b6dbc806a875c1a87a645db1d850c193a3961710a8"
+    },
+    {
+      "name": "cycle-2.json",
+      "sha256": "3dc1be703e2d5ce9589cf1f80d8c5ac4566b000d0e03ee07bc5436213c36fda7"
+    },
+    {
+      "name": "cycle-3-stats.json",
+      "sha256": "013f574c9f211e7957a40b1b29669d93000a41fae15f83d9128ef913a00ab38c"
+    },
+    {
+      "name": "cycle-3.json",
+      "sha256": "1c8a7b36524054c04cf54ea0bfd58f67578ae149b4805ba219f180a92baf9a09"
+    },
+    {
+      "name": "initial-state.json",
+      "sha256": "5f2d62763582c9323da2ae114861749a3b5e37072276e606042f5de294d5f594"
+    },
+    {
+      "name": "postgres.log",
+      "sha256": "7127e6f1537483c84aaa28c0b1ac095e942f5ed0519e4d8724629eae84159138"
+    },
+    {
+      "name": "progress.json",
+      "sha256": "f7d8d244049d2c27329a7c8f3dbf610d7f29e7689ff42c0b604226637b717a7d"
+    },
+    {
+      "name": "runtime-settings.txt",
+      "sha256": "92cb3886bdf20b7ff2ee0a2f47e5bdb8390171feb9640c31ae20087ec8dc35b0"
+    },
+    {
+      "name": "settings.json",
+      "sha256": "77ad580e3ba8d8816e58d1ee1e0f45193d19db787f34680d0cf61f493a89939b"
+    },
+    {
+      "name": "state-cycle-1.json",
+      "sha256": "def77f3d7bcac4d337662fed7b8693b6b07c5a4935d647a026d0204b3a3db523"
+    },
+    {
+      "name": "state-cycle-2.json",
+      "sha256": "18cc7e491944874762fa91ecb5fd55aca0286fa8f56c04f8dcc0d43e09c31ab4"
+    },
+    {
+      "name": "state-cycle-3.json",
+      "sha256": "0f3369e08b0c1f1a834388e7deaee552be5571a8cc38443b7881cbf9c3402c74"
+    },
+    {
+      "name": "state.json",
+      "sha256": "0f3369e08b0c1f1a834388e7deaee552be5571a8cc38443b7881cbf9c3402c74"
+    },
+    {
+      "name": "stock-binary.sha256",
+      "sha256": "71e99ef4e59972db7113ae78f183dd83d9d1f38f48db62447b7496a9c5f252c5"
+    },
+    {
+      "name": "stock-packages.txt",
+      "sha256": "5a6b2fe37f719b60acc8a0d467e900b7b0d58d60cb9cc6dca276e6d5e70bedc4"
+    },
+    {
+      "name": "summary.json",
+      "sha256": "6a2f6b0be898df53213c32b55c1bd0c89c196fbed4996095d9b0618a906beb40"
+    },
+    {
+      "name": "t0.json",
+      "sha256": "6ab7c7d980b44a0961bd8cd2fb0d862be97c5a9b284b665e86d83e64aa82badc"
+    },
+    {
+      "name": "transactions.csv",
+      "sha256": "ce2f79503cd56017dc643d43e3475b4699bcd57e0066bb390b485b8331143e84"
+    }
+  ]
+}

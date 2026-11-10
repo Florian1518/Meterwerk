@@ -1,0 +1,224 @@
+{
+  "cycle": 1,
+  "wal": "000000010000000000000001",
+  "nextCurrentSegment": "000000010000000000000002",
+  "archiveTimeoutSeconds": 60,
+  "manualSwitchCalls": 0,
+  "manualCheckpointCalls": 0,
+  "transactionCount": 28,
+  "priorNaturalSwitchObservedAt": 1794300187065.335,
+  "activityFirstAt": 1794300187215.052,
+  "activityLastAt": 1794300477762.258,
+  "firstActivitySegment": "000000010000000000000001",
+  "transactions": [
+    {
+      "cycle": 1,
+      "xid": "731",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300187215.052
+    },
+    {
+      "cycle": 1,
+      "xid": "732",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300197974.63
+    },
+    {
+      "cycle": 1,
+      "xid": "733",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300208728.215
+    },
+    {
+      "cycle": 1,
+      "xid": "734",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300219485.117
+    },
+    {
+      "cycle": 1,
+      "xid": "735",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300230246.021
+    },
+    {
+      "cycle": 1,
+      "xid": "736",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300241004.474
+    },
+    {
+      "cycle": 1,
+      "xid": "737",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300251761.26
+    },
+    {
+      "cycle": 1,
+      "xid": "738",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300262514.123
+    },
+    {
+      "cycle": 1,
+      "xid": "739",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300273264.696
+    },
+    {
+      "cycle": 1,
+      "xid": "751",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300284018.237
+    },
+    {
+      "cycle": 1,
+      "xid": "752",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300294775.945
+    },
+    {
+      "cycle": 1,
+      "xid": "753",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300305539.783
+    },
+    {
+      "cycle": 1,
+      "xid": "754",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300316313.68
+    },
+    {
+      "cycle": 1,
+      "xid": "755",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300327097.188
+    },
+    {
+      "cycle": 1,
+      "xid": "756",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300337861.346
+    },
+    {
+      "cycle": 1,
+      "xid": "757",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300348628.264
+    },
+    {
+      "cycle": 1,
+      "xid": "758",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300359388.198
+    },
+    {
+      "cycle": 1,
+      "xid": "759",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300370151.918
+    },
+    {
+      "cycle": 1,
+      "xid": "760",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300380911.931
+    },
+    {
+      "cycle": 1,
+      "xid": "761",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300391689.222
+    },
+    {
+      "cycle": 1,
+      "xid": "762",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300402452.303
+    },
+    {
+      "cycle": 1,
+      "xid": "763",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300413218.578
+    },
+    {
+      "cycle": 1,
+      "xid": "764",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300423975.976
+    },
+    {
+      "cycle": 1,
+      "xid": "765",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300434741.408
+    },
+    {
+      "cycle": 1,
+      "xid": "766",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300445497.92
+    },
+    {
+      "cycle": 1,
+      "xid": "767",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300456254.291
+    },
+    {
+      "cycle": 1,
+      "xid": "768",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300467013.989
+    },
+    {
+      "cycle": 1,
+      "xid": "769",
+      "wal": "000000010000000000000001",
+      "committedAt": 1794300477762.258
+    }
+  ],
+  "naturalSwitchDetectionLowerBoundAt": 1794300486372.1,
+  "naturalSwitchObservedAt": 1794300487444.71,
+  "naturalSwitchDelaySeconds": 300.379375,
+  "firstActivityToSwitchUpperBoundSeconds": 300.2296579589844,
+  "archiveConfirmedAt": 1794300487006.048,
+  "archiveConfirmationObservedAt": 1794300487444.71,
+  "switchToArchiveSeconds": 0.633947998046875,
+  "uploadedVerifiedAt": 1794300492845,
+  "archiveToUploadSeconds": 5.838951904296875,
+  "firstActivityToOffsiteSeconds": 305.6299479980469,
+  "lastActivityToOffsiteSeconds": 15.082741943359375,
+  "archivedCountBefore": 0,
+  "archivedCountAfter": 1,
+  "failedCountAfter": 0,
+  "lastArchivedWalAfter": "000000010000000000000001",
+  "archiverPid": 4421,
+  "checkpointerPid": 4416,
+  "walRecordsBefore": 23772,
+  "walRecordsAfter": 24411,
+  "checkpointerWaitEventAfter": "CheckpointWriteDelay",
+  "checkpointerWaitEventTypeAfter": "Timeout",
+  "inRecoveryAfter": false,
+  "archivedWalBytes": 16777216,
+  "currentSegmentMaxOffsetBeforeSwitch": 5541640,
+  "lastOffsetBeforeSwitch": 5541640,
+  "walSegmentSize": 16777216,
+  "receipt": {
+    "status": "VERIFIED",
+    "wal": "000000010000000000000001",
+    "plainSha256": "f1dc69280ec07c8f1ef7b437a7950af894090623a8df3acd356452d10ea7ae5e",
+    "object": {
+      "key": "phase3-acceptance/42784657870-1/continuous-wal/000000010000000000000001.age",
+      "version": "s7V56Q.LYQtoxIQhFERIwLaZLFaycQA",
+      "sha256": "2e7d2a85d6447dee86ab1479d7d6e1609a5fe26ecf1bd78304a6eb0930bc39e9",
+      "bytes": 16781496,
+      "sse": "AES256",
+      "downloadSeconds": 1.4171392917633057,
+      "hashSeconds": 0.012173891067504883
+    },
+    "verifiedAt": 1794300492845
+  }
+}

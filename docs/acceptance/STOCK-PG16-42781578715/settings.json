@@ -1,0 +1,17 @@
+{
+  "serverVersion": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "serverVersionNum": 160015,
+  "postmasterStartTime": 1794298743635.392,
+  "walLevel": "replica",
+  "archiveMode": "on",
+  "archiveCommand": "test ! -f /home/runner/work/_temp/meterwerk-wal-natural.MMeDIE/archive/%f && cp %p /home/runner/work/_temp/meterwerk-wal-natural.MMeDIE/archive/%f",
+  "archiveLibrary": "",
+  "archiveTimeout": "1min",
+  "archiveTimeoutSeconds": 60,
+  "archiveTimeoutSource": "configuration file",
+  "archiveTimeoutPendingRestart": false,
+  "trackCommitTimestamp": "on",
+  "archiverPid": 4408,
+  "checkpointerPid": 4403,
+  "walSegmentSize": 16777216
+}

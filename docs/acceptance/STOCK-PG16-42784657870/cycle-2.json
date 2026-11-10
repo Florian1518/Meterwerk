@@ -1,0 +1,86 @@
+{
+  "cycle": 2,
+  "wal": "000000010000000000000002",
+  "nextCurrentSegment": "000000010000000000000003",
+  "archiveTimeoutSeconds": 60,
+  "manualSwitchCalls": 0,
+  "manualCheckpointCalls": 0,
+  "transactionCount": 5,
+  "priorNaturalSwitchObservedAt": 1794300487444.71,
+  "activityFirstAt": 1794300493854.137,
+  "activityLastAt": 1794300536887.521,
+  "firstActivitySegment": "000000010000000000000002",
+  "transactions": [
+    {
+      "cycle": 2,
+      "xid": "770",
+      "wal": "000000010000000000000002",
+      "committedAt": 1794300493854.137
+    },
+    {
+      "cycle": 2,
+      "xid": "771",
+      "wal": "000000010000000000000002",
+      "committedAt": 1794300504619.561
+    },
+    {
+      "cycle": 2,
+      "xid": "772",
+      "wal": "000000010000000000000002",
+      "committedAt": 1794300515380.275
+    },
+    {
+      "cycle": 2,
+      "xid": "773",
+      "wal": "000000010000000000000002",
+      "committedAt": 1794300526127.384
+    },
+    {
+      "cycle": 2,
+      "xid": "774",
+      "wal": "000000010000000000000002",
+      "committedAt": 1794300536887.521
+    }
+  ],
+  "naturalSwitchDetectionLowerBoundAt": 1794300545492.015,
+  "naturalSwitchObservedAt": 1794300546562.775,
+  "naturalSwitchDelaySeconds": 59.11806494140625,
+  "firstActivityToSwitchUpperBoundSeconds": 52.708637939453126,
+  "archiveConfirmedAt": 1794300546475.893,
+  "archiveConfirmationObservedAt": 1794300546562.775,
+  "switchToArchiveSeconds": 0.983878173828125,
+  "uploadedVerifiedAt": 1794300555992,
+  "archiveToUploadSeconds": 9.51610693359375,
+  "firstActivityToOffsiteSeconds": 62.137863037109376,
+  "lastActivityToOffsiteSeconds": 19.10447900390625,
+  "archivedCountBefore": 1,
+  "archivedCountAfter": 2,
+  "failedCountAfter": 0,
+  "lastArchivedWalAfter": "000000010000000000000002",
+  "archiverPid": 4421,
+  "checkpointerPid": 4416,
+  "walRecordsBefore": 24415,
+  "walRecordsAfter": 24428,
+  "checkpointerWaitEventAfter": "CheckpointerMain",
+  "checkpointerWaitEventTypeAfter": "Activity",
+  "inRecoveryAfter": false,
+  "archivedWalBytes": 16777216,
+  "currentSegmentMaxOffsetBeforeSwitch": 2232,
+  "lastOffsetBeforeSwitch": 2232,
+  "walSegmentSize": 16777216,
+  "receipt": {
+    "status": "VERIFIED",
+    "wal": "000000010000000000000002",
+    "plainSha256": "bbc63e498e4e9ac145d169319a22a7c8330c86acf083e1616fbcd0d94552ec4a",
+    "object": {
+      "key": "phase3-acceptance/42784657870-1/continuous-wal/000000010000000000000002.age",
+      "version": "I8oU0dOrQJEfx9LnP9ZlVA0GmuOCfpR",
+      "sha256": "c935e9e9a4312397f35b14808c1280dfaf6010527437b94ab88c5b0cf8e058ce",
+      "bytes": 16781496,
+      "sse": "AES256",
+      "downloadSeconds": 1.4302527904510498,
+      "hashSeconds": 0.012027502059936523
+    },
+    "verifiedAt": 1794300555992
+  }
+}

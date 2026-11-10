@@ -1,0 +1,12 @@
+{
+  "id": 42784657870,
+  "head_sha": "9bfabdb7456d57946edd9d3d6ec1c022232c2b98",
+  "event": "workflow_dispatch",
+  "run_attempt": 1,
+  "status": "completed",
+  "conclusion": "failure",
+  "html_url": "https://github.com/Florian1518/Meterwerk/actions/runs/42784657870",
+  "created_at": "2026-11-10T08:41:52Z",
+  "updated_at": "2026-11-10T08:50:23Z",
+  "artifact_zip_sha256": "e4b425e8e4880679022a93fb33423782f699969fb2f89fe785e18b8157df2125"
+}

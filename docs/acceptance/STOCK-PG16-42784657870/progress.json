@@ -1,0 +1,28 @@
+{
+  "cycle": 3,
+  "expectedWal": "000000010000000000000003",
+  "firstActivityAt": "1794300557100.538000",
+  "lastActivityAt": "1794300600140.940000",
+  "naturalSwitchObservedAt": null,
+  "maxObservedWalOffset": 768,
+  "sample": {
+    "sampledAt": 1794300606612.752,
+    "currentLsn": "0/4000000",
+    "currentSegment": "000000010000000000000004",
+    "currentOffset": 0,
+    "archivedCount": 3,
+    "failedCount": 0,
+    "lastArchivedWal": "000000010000000000000003",
+    "lastArchivedAt": 1794300606490.338,
+    "lastFailedWal": null,
+    "lastFailedAt": null,
+    "archiverPid": 4421,
+    "checkpointerPid": 4416,
+    "timedCheckpoints": 1,
+    "requestedCheckpoints": 0,
+    "walRecords": 24442,
+    "checkpointerWaitEvent": "CheckpointerMain",
+    "checkpointerWaitEventType": "Activity",
+    "inRecovery": false
+  }
+}
