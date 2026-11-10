@@ -1,0 +1,38 @@
+2026-11-10 07:26:51.002 UTC [4224] DEBUG:  registering background worker "logical replication launcher"
+2026-11-10 07:26:51.002 UTC [4224] DEBUG:  mmap(150994944) with MAP_HUGETLB failed, huge pages disabled: Cannot allocate memory
+2026-11-10 07:26:51.010 UTC [4224] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-11-10 07:26:51.010 UTC [4224] LOG:  listening on Unix socket "/home/runner/work/_temp/meterwerk-wal-natural.w3o9dF/.s.PGSQL.55439"
+2026-11-10 07:26:51.013 UTC [4227] LOG:  database system was shut down at 2026-11-10 07:26:50 UTC
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  checkpoint record is at 0/14EF660
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  redo record is at 0/14EF660; shutdown true
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  next transaction ID: 730; next OID: 13623
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  next MultiXactId: 1; next MultiXactOffset: 0
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  oldest unfrozen transaction ID: 722, in database 1
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  oldest MultiXactId: 1, in database 1
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  commit timestamp Xid oldest/newest: 0/0
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  transaction ID wrap limit is 2147484369, limited by database with OID 1
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  starting up replication slots
+2026-11-10 07:26:51.013 UTC [4227] DEBUG:  xmin required by slots: data 0, catalog 0
+2026-11-10 07:26:51.014 UTC [4227] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-11-10 07:26:51.014 UTC [4227] DEBUG:  MultiXact member stop limit is now 4294914944 based on MultiXact 1
+2026-11-10 07:26:51.019 UTC [4229] DEBUG:  autovacuum launcher started
+2026-11-10 07:26:51.019 UTC [4224] DEBUG:  starting background worker process "logical replication launcher"
+2026-11-10 07:26:51.019 UTC [4224] LOG:  database system is ready to accept connections
+2026-11-10 07:26:51.020 UTC [4231] DEBUG:  logical replication launcher started
+2026-11-10 07:27:51.079 UTC [5291] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 07:28:21.106 UTC [5786] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 07:28:21.134 UTC [5786] DEBUG:  rehashing catalog cache id 7 for pg_attribute; 257 tups, 128 buckets
+2026-11-10 07:28:51.109 UTC [6296] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 07:29:21.126 UTC [6790] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 07:29:51.138 UTC [7280] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 07:30:21.154 UTC [7794] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 07:30:51.168 UTC [8286] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 07:31:21.182 UTC [8782] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 07:31:51.032 UTC [4225] LOG:  checkpoint starting: time
+2026-11-10 07:31:51.032 UTC [4225] DEBUG:  performing replication slot checkpoint
+2026-11-10 07:31:51.069 UTC [4225] DEBUG:  write-ahead log switch forced (archive_timeout=60)
+2026-11-10 07:31:51.075 UTC [4230] DEBUG:  archived write-ahead log file "000000010000000000000001"
+2026-11-10 07:31:51.183 UTC [9321] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 07:31:51.995 UTC [4224] LOG:  received immediate shutdown request
+2026-11-10 07:31:52.000 UTC [4224] LOG:  database system is shut down

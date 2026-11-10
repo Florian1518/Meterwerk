@@ -1,0 +1,3 @@
+# Preserve downloaded evidence bytes for reproducible artifact hash checks.
+STOCK-PG16-42775271308/** -text
+STOCK-PG16-42776171861/** -text

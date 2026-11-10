@@ -4,7 +4,9 @@ Phase-3 WAL recovery proof requires stock PostgreSQL **16.15**. The synthetic
 workflow pins that package version and includes startup exposure in the
 unchanged 300-second RPO target. The diagnosed initial checkpointer sleep can
 delay the first switch by 300 seconds; the technical RPO remains pending.
-See [diagnosis and retained evidence](docs/acceptance/PG16-TIMEOUT-42637704239.md).
+Stock proof observed **306.366 seconds** for the first activity-to-offsite cycle,
+exceeding the target. See [stock results and remaining work](docs/acceptance/STOCK-PG16-20261110.md)
+and [internal diagnosis](docs/acceptance/PG16-TIMEOUT-42637704239.md).
 
 ## Phase 2: Release Supply Chain
 

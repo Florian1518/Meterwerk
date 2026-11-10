@@ -1,0 +1,56 @@
+{
+  "status": "PASSED",
+  "scope": "synthetic-bounded-single-timeline",
+  "expectedSegments": 3,
+  "lastArchivedWal": "000000010000000000000003",
+  "lastArchiveAt": 1794296534018.131,
+  "lastVerifiedUploadAt": 1794296547462,
+  "checkedAt": 1794296547464,
+  "receipts": {
+    "000000010000000000000001": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000001",
+      "plainSha256": "b3fe2713a6b4749ea16d20f3b4b9b7593c65f0524f7d01871ce3f6415327c02c",
+      "object": {
+        "key": "phase3-acceptance/42776171861-1/continuous-wal/000000010000000000000001.age",
+        "version": "22ldQiPX2akiEoX.sIzBs.YRQ2yw4Ow",
+        "sha256": "bb87ea447341659e8fdbcbfecb9914e51f968a6f8a1d602f240841d77a3dbafd",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.5027906894683838,
+        "hashSeconds": 0.014753341674804688
+      },
+      "verifiedAt": 1794296420012
+    },
+    "000000010000000000000002": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000002",
+      "plainSha256": "c0c45336abb56b4318c054737c802532bdd6156d2a4684327044ae63d9251aaa",
+      "object": {
+        "key": "phase3-acceptance/42776171861-1/continuous-wal/000000010000000000000002.age",
+        "version": "HvqL.fsgyXdob45eHJmT1y4ufNmPvHG",
+        "sha256": "bb817efabe03f7862830ef38cf91509151d1beafba2bba445f8594821cb3f397",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.5107192993164062,
+        "hashSeconds": 0.01472020149230957
+      },
+      "verifiedAt": 1794296481903
+    },
+    "000000010000000000000003": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000003",
+      "plainSha256": "20c8d65b126af4d4f54cc0586fed814125e81052de78c26b06ce67af388cfdee",
+      "object": {
+        "key": "phase3-acceptance/42776171861-1/continuous-wal/000000010000000000000003.age",
+        "version": "rnboCe3NgBIGRInr0SmNrxUbKK2ClU2",
+        "sha256": "e87a7084a4b9a97cd0449f64c4a0b308a35f819957a28d73d7538f55d08a28d4",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.4989502429962158,
+        "hashSeconds": 0.01467752456665039
+      },
+      "verifiedAt": 1794296547462
+    }
+  }
+}

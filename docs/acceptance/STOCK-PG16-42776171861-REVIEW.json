@@ -1,0 +1,122 @@
+{
+  "status": "FAILED",
+  "failureCode": "TECHNICAL_RPO_TARGET_EXCEEDED",
+  "workflowFailureCode": "NATURAL_WAL_TIMESTAMPS_INVALID",
+  "runId": 42776171861,
+  "sourceSha": "13ee26245b6760be7455ffb5ad30b1e3a4eeb94f",
+  "event": "workflow_dispatch",
+  "serverVersion": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "cycles": [
+    {
+      "cycle": 1,
+      "wal": "000000010000000000000001",
+      "firstActivityToOffsiteSeconds": 306.36631591796873,
+      "naturalSwitchDelaySeconds": 300.504837890625,
+      "archiveToUploadSeconds": 6.52376806640625,
+      "lastActivityWithinPreSwitchBound": false,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": false
+    },
+    {
+      "cycle": 2,
+      "wal": "000000010000000000000002",
+      "firstActivityToOffsiteSeconds": 61.48537890625,
+      "naturalSwitchDelaySeconds": 60.02255200195312,
+      "archiveToUploadSeconds": 7.9525380859375,
+      "lastActivityWithinPreSwitchBound": false,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": true
+    },
+    {
+      "cycle": 3,
+      "wal": "000000010000000000000003",
+      "firstActivityToOffsiteSeconds": 64.92085400390626,
+      "naturalSwitchDelaySeconds": 60.02402905273438,
+      "archiveToUploadSeconds": 13.443868896484375,
+      "lastActivityWithinPreSwitchBound": true,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": true
+    }
+  ],
+  "worstFirstActivityToVerifiedOffsiteSeconds": 306.36631591796873,
+  "targetSeconds": 300,
+  "limitations": [
+    "Independent artifact consistency review; no new external download performed here.",
+    "Last-activity samples in cycles 1 and 2 may belong to the following segment and are not accepted.",
+    "First activity timestamps are sampled after commit, not exact transaction commit timestamps.",
+    "This failed stock run is not final positive Technical RPO acceptance."
+  ],
+  "artifactHashes": [
+    {
+      "name": "cycle-1-stats.json",
+      "sha256": "1bf2c9f253d83104c6e10142d4a02bbbca0e630f2a8333795d9f5fcc859fd0ea"
+    },
+    {
+      "name": "cycle-1.json",
+      "sha256": "34ebdc465596c7e15b27e387f4cb0be2044ca73f8e22b95456a4ad59e24ddc10"
+    },
+    {
+      "name": "cycle-2-stats.json",
+      "sha256": "e4104fc86bf1482de3723c4e3dd21471076475af314b182ba78b555e4fc5550e"
+    },
+    {
+      "name": "cycle-2.json",
+      "sha256": "00066174f8b9e1c393e4b42b51237a367247a519e50f9c2b764fe910695f7b05"
+    },
+    {
+      "name": "cycle-3-stats.json",
+      "sha256": "f22c10fd487d43b0ac9be94fcb02c7301e59088cc62553a851d7243962efdd81"
+    },
+    {
+      "name": "cycle-3.json",
+      "sha256": "9e45d89db27beb6a24c7a0e8325ac3c718a9c281eac7ca1d138145814352b112"
+    },
+    {
+      "name": "initial-state.json",
+      "sha256": "bd2b8be633fd48e2d5e90796fd5c94cae2b9954435c4e1686a9ac7ae04ab264c"
+    },
+    {
+      "name": "postgres.log",
+      "sha256": "cd07b68164ab91244e406cb45a6b665505ca41a61f6d43b57c86defba3baa049"
+    },
+    {
+      "name": "progress.json",
+      "sha256": "76a47572a4cc7913d9acf02f06b78ad8b5ff94b295f22e6b8a4debd680b722d6"
+    },
+    {
+      "name": "settings.json",
+      "sha256": "c77f596472345610ebf35f994e78eb300cf305d51d691e22f76769419b049b3c"
+    },
+    {
+      "name": "state-cycle-1.json",
+      "sha256": "1d23320f71df8590636af1af7f9c1fea03ce621a7dc9055b6555a55b6a9c2850"
+    },
+    {
+      "name": "state-cycle-2.json",
+      "sha256": "7a9f60bfb266bfc2e45d14cc367b1fb94ad690ce75d3597fa0000c19a0549bbd"
+    },
+    {
+      "name": "state-cycle-3.json",
+      "sha256": "98fd84975c12702d0a519541036e006ea3d550419abd913fed25d89ef7c19aa6"
+    },
+    {
+      "name": "state.json",
+      "sha256": "98fd84975c12702d0a519541036e006ea3d550419abd913fed25d89ef7c19aa6"
+    },
+    {
+      "name": "stock-binary.sha256",
+      "sha256": "71e99ef4e59972db7113ae78f183dd83d9d1f38f48db62447b7496a9c5f252c5"
+    },
+    {
+      "name": "stock-packages.txt",
+      "sha256": "5a6b2fe37f719b60acc8a0d467e900b7b0d58d60cb9cc6dca276e6d5e70bedc4"
+    },
+    {
+      "name": "t0.json",
+      "sha256": "9a372abe8e78e58d2e8ceafdaa6fbe6b58a9d8eaf359801f866fe4ee2358a8ad"
+    }
+  ]
+}

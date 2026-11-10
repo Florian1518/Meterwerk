@@ -2,6 +2,14 @@
 
 ## Outcome
 
+Stock follow-up (2026-11-10): [three natural cycles on stock PostgreSQL 16.15](STOCK-PG16-20261110.md)
+reproduced the startup delay. First confirmed activity to verified IONOS upload
+was **306.366 s**, exceeding the unchanged 300-second target; later cycles were
+61.485 s and 64.921 s. The run failed its last-activity timestamp validation,
+so final Technical RPO acceptance remains pending, with a demonstrated
+startup-inclusive target violation. The historical 72.604-second conditional
+estimate below is not a startup-inclusive bound.
+
 Resume update (2026-11-10): the already completed source diagnostic
 [42637704239](PG16-TIMEOUT-42637704239.md) establishes an initial 300-second
 checkpointer wait while startup recovery was active. All five later internal
@@ -154,10 +162,10 @@ operational failure handling remain unproven. Accepted restore timings do
 demonstrate technical recovery performance in synthetic CI, but not
 representative operational conditions or an SLA.
 
-Next technical task: use the [completed internal diagnosis](PG16-TIMEOUT-42637704239.md)
-to account explicitly for startup exposure, then use stock PostgreSQL 16.15
-for three consecutive synthetic IONOS natural-cycle verifications before
-changing Technical RPO from CONDITIONAL / PENDING.
+Next technical task: correct per-segment last-activity attribution and address
+the startup-inclusive target violation recorded in the
+[stock follow-up](STOCK-PG16-20261110.md), then repeat the three-cycle stock
+PostgreSQL 16.15 IONOS proof before claiming positive Technical RPO acceptance.
 Operational RPO/RTO still requires representative, authorized non-production
 operational drills and measured alert/response behavior; no production work is
 implied or authorized by this evidence.
