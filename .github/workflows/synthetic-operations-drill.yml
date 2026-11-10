@@ -26,7 +26,7 @@ jobs:
           pnpm exec vitest run tests/operational-alert-drill.test.ts tests/wal-startup-readiness.test.ts tests/proxy-healthcheck.test.ts
       - name: Test WAL pipeline and recovery negative classifiers
         run: node --test tests/wal-offsite.test.mjs tests/recovery-negative-result.test.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: synthetic-operational-alert-${{ github.run_id }}
