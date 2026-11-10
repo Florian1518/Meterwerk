@@ -34,6 +34,14 @@ archive_command = 'test ! -f $work/archive/%f && cp %p $work/archive/%f'
 EOF
 pg_ctl -D "$work/db" -l "$work/postgres.log" start >/dev/null
 
+# pg_walfile_name reports the preceding file at an exact segment boundary.
+# For the current write position, inspect the next byte (read-only arithmetic).
+# Verify the stock SQL semantics at and immediately before the 16 MiB boundary.
+boundary_ok=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT
+  right(pg_walfile_name('0/2000000'::pg_lsn + 1),16)='0000000000000002' AND
+  right(pg_walfile_name('0/1FFFFF0'::pg_lsn + 1),16)='0000000000000001'")
+[[ "$boundary_ok" == t ]] || { echo WAL_BOUNDARY_MAPPING_INVALID >&2; exit 1; }
+
 psql -X -v ON_ERROR_STOP=1 \
   -c 'SHOW server_version; SHOW wal_level; SHOW archive_mode; SHOW archive_command; SHOW archive_library; SHOW archive_timeout;' \
   | tee "$work/evidence/runtime-settings.txt"
@@ -60,7 +68,7 @@ export WAL_DRILL_WORK="$work" WAL_DRILL_SETTINGS="$settings" WAL_DRILL_SEGMENT_S
 initial=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'sampledAt',extract(epoch from clock_timestamp())*1000,
   'currentLsn',pg_current_wal_lsn()::text,
-  'currentSegment',pg_walfile_name(pg_current_wal_lsn()),
+  'currentSegment',pg_walfile_name(pg_current_wal_lsn() + 1),
   'currentOffset',(pg_walfile_name_offset(pg_current_wal_lsn())).file_offset,
   'archivedCount',archived_count,'failedCount',failed_count,
   'lastArchivedWal',last_archived_wal,
@@ -111,7 +119,7 @@ sample() {
   psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
     'sampledAt',extract(epoch from clock_timestamp())*1000,
     'currentLsn',pg_current_wal_lsn()::text,
-    'currentSegment',pg_walfile_name(pg_current_wal_lsn()),
+    'currentSegment',pg_walfile_name(pg_current_wal_lsn() + 1),
     'currentOffset',(pg_walfile_name_offset(pg_current_wal_lsn())).file_offset,
     'archivedCount',archived_count,'failedCount',failed_count,
     'lastArchivedWal',last_archived_wal,
@@ -161,7 +169,7 @@ for cycle in 1 2 3; do
     if (( (attempt-1) % 10 == 0 )); then
       activity_sequence=$((activity_sequence+1))
       psql -Xq -v ON_ERROR_STOP=1 -c "INSERT INTO wal_probe VALUES ($activity_sequence,clock_timestamp())"
-      activity=$(psql -XAt -v ON_ERROR_STOP=1 -c "SELECT extract(epoch from clock_timestamp())*1000,pg_walfile_name(pg_current_wal_lsn())")
+      activity=$(psql -XAt -v ON_ERROR_STOP=1 -c "SELECT extract(epoch from clock_timestamp())*1000,pg_walfile_name(pg_current_wal_lsn() + 1)")
       IFS='|' read -r activity_at activity_segment <<< "$activity"
       [[ -n "$first_activity_at" ]] || { first_activity_at="$activity_at"; first_activity_segment="$activity_segment"; }
       last_activity_at="$activity_at"
