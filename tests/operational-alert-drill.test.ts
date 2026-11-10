@@ -1,13 +1,14 @@
 import { createHash } from "node:crypto";
 import {
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
   copyFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "../src/proxy";
@@ -81,6 +82,7 @@ const receipt = (wal: string) => ({
 afterAll(() => {
   const path = process.env.OPERATIONAL_ALERT_EVIDENCE_FILE;
   if (path) {
+    mkdirSync(dirname(path), { recursive: true });
     writeFileSync(
       path,
       `${JSON.stringify(

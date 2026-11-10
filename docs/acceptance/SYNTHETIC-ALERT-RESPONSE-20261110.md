@@ -29,10 +29,10 @@ Expected operator response is diagnostic and evidence-preserving. This drill per
 
 ## Acceptance
 
-**Technical Monitoring Evidence: PASSED** when the deterministic suite and its exact-condition assertions pass. This demonstrates classifications, synchronous fail-closed behavior, and absence of a false healthy result for these synthetic inputs.
+**Technical Monitoring Evidence: PASSED** when the deterministic suite and its exact-condition assertions pass. This demonstrates classifications, synchronous fail-closed behavior, and absence of a false healthy result for these synthetic inputs. CI runs the complete Vitest suite with evidence capture enabled and uploads `synthetic-operational-alert-<workflow-run-id>`.
 
 **Operational / SLA Alerting Evidence: PENDING.** There is no deployed independent scheduler, external notification route, operator acknowledgement, or timed human remediation measurement. CI synthetic evidence alone does not satisfy operational acceptance.
 
 The separate Technical RPO and RTO acceptance remains unchanged and PASSED for the isolated synthetic scenarios. Genuine schedule evidence is now **PASSED** based on [Recovery Validation run 42666577374](https://github.com/Florian1518/Meterwerk/actions/runs/42666577374): event `schedule`, attempt 1, branch `master`, SHA `9c04c2ebaf39227189ff586d5fd8df6f249054fe`, completed successfully on 2026-11-09 at 17:40:48 UTC. Its single required recovery job succeeded and the `synthetic-recovery-evidence` artifact is present and unexpired. This run is separate from the current feature-branch CI. The Recovery Validation cron remains `23 7 * * 1`.
 
-Local Windows detector evidence and per-incident UTC timestamps: [SYNTHETIC-ALERT-RESPONSE-20261110.json](SYNTHETIC-ALERT-RESPONSE-20261110.json). Run artifact: `synthetic-operational-alert-<workflow-run-id>` contains corresponding CI timestamps and measured detector durations.
+Local Windows detector evidence and per-incident UTC timestamps: [SYNTHETIC-ALERT-RESPONSE-20261110.json](SYNTHETIC-ALERT-RESPONSE-20261110.json). The branch CI unit-test job uploads the corresponding CI timestamps and detector durations in `synthetic-operational-alert-<workflow-run-id>`.
