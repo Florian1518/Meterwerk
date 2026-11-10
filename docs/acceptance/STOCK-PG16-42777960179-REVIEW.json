@@ -1,0 +1,126 @@
+{
+  "status": "FAILED",
+  "failureCode": "TECHNICAL_RPO_TARGET_EXCEEDED",
+  "workflowFailureCode": "TECHNICAL_RPO_TARGET_EXCEEDED",
+  "runId": 42777960179,
+  "sourceSha": "385eb48d473447d34ad4a9bc34ef1c62c6d43143",
+  "event": "workflow_dispatch",
+  "serverVersion": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "cycles": [
+    {
+      "cycle": 1,
+      "wal": "000000010000000000000001",
+      "firstActivityToOffsiteSeconds": 307.1770600585937,
+      "naturalSwitchDelaySeconds": 300.7996650390625,
+      "archiveToUploadSeconds": 7.30901904296875,
+      "lastActivityWithinPreSwitchBound": true,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": false
+    },
+    {
+      "cycle": 2,
+      "wal": "000000010000000000000002",
+      "firstActivityToOffsiteSeconds": 61.93077197265625,
+      "naturalSwitchDelaySeconds": 60.36279614257813,
+      "archiveToUploadSeconds": 9.524341064453125,
+      "lastActivityWithinPreSwitchBound": true,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": true
+    },
+    {
+      "cycle": 3,
+      "wal": "000000010000000000000003",
+      "firstActivityToOffsiteSeconds": 64.94500390625,
+      "naturalSwitchDelaySeconds": 60.18786987304688,
+      "archiveToUploadSeconds": 14.812958984375,
+      "lastActivityWithinPreSwitchBound": true,
+      "firstActivityTimingVerified": true,
+      "versionPinnedReceiptVerified": true,
+      "technicalRpoTargetMet": true
+    }
+  ],
+  "worstFirstActivityToVerifiedOffsiteSeconds": 307.1770600585937,
+  "targetSeconds": 300,
+  "limitations": [
+    "Independent artifact consistency review; no new external download performed here.",
+    "The worker receipt records successful ciphertext download/hash, age decryption, and plaintext hash verification against the local WAL.",
+    "First activity timestamps are sampled after commit, not exact transaction commit timestamps.",
+    "This failed stock run is not final positive Technical RPO acceptance."
+  ],
+  "artifactHashes": [
+    {
+      "name": "cycle-1-stats.json",
+      "sha256": "354dba29993122ba620f9a298b855a038ec4dc6f50358b62a85ded69890975a3"
+    },
+    {
+      "name": "cycle-1.json",
+      "sha256": "7ef9bf589309949167ea5dbb5d627c12c510e6bbdb2737fc2b94f983768f7f48"
+    },
+    {
+      "name": "cycle-2-stats.json",
+      "sha256": "d310448f6740c9ce34a65f8a1349e402bbd623bed03fa9975933753e4eeba3c8"
+    },
+    {
+      "name": "cycle-2.json",
+      "sha256": "d3fcda1f96db974f7f39cbe1d6e7bd5e2a99154c9dfb17027675dad28d1bcafa"
+    },
+    {
+      "name": "cycle-3-stats.json",
+      "sha256": "bb4c478050e424ba21f339a89f21990321cbeb9a075431c16822c251a39ea068"
+    },
+    {
+      "name": "cycle-3.json",
+      "sha256": "9a6bcc824ac0748a43ab6b95e327ec2299a858e59893221f423166213a500ed8"
+    },
+    {
+      "name": "initial-state.json",
+      "sha256": "11bba6b89f8807f3f34a5c09f211d0c8fdc43498c8e42498312e9ccd91e407e3"
+    },
+    {
+      "name": "postgres.log",
+      "sha256": "a90c3770144ac3f2665f43030e3833ffb8e73ac4df74bb4b698f405098a0e67d"
+    },
+    {
+      "name": "progress.json",
+      "sha256": "8fa777572a66d17b6b8ae49fb4d5c207cd29ded75c7c831a3fbc17303a7c07c3"
+    },
+    {
+      "name": "settings.json",
+      "sha256": "4c7f3976dca115ea07e4704714374be3f2cd2780e4da16c78ee2e9df0ae7bc58"
+    },
+    {
+      "name": "state-cycle-1.json",
+      "sha256": "c86bb768a8911536d00539d5906518ee3d6a5672994617777e0bd80bcc925edc"
+    },
+    {
+      "name": "state-cycle-2.json",
+      "sha256": "002fee7fed50219c00f1eab61fdd065ae1371933dd4abedb0361fa98ed6a4b49"
+    },
+    {
+      "name": "state-cycle-3.json",
+      "sha256": "4c70351b88df0b7dab17d4c1657ec831d721c98442763b8edfd1a22c9a7af599"
+    },
+    {
+      "name": "state.json",
+      "sha256": "4c70351b88df0b7dab17d4c1657ec831d721c98442763b8edfd1a22c9a7af599"
+    },
+    {
+      "name": "stock-binary.sha256",
+      "sha256": "71e99ef4e59972db7113ae78f183dd83d9d1f38f48db62447b7496a9c5f252c5"
+    },
+    {
+      "name": "stock-packages.txt",
+      "sha256": "5a6b2fe37f719b60acc8a0d467e900b7b0d58d60cb9cc6dca276e6d5e70bedc4"
+    },
+    {
+      "name": "summary.json",
+      "sha256": "044a7830c29089f89713648302659525d082a191dd254f1bca387ef057f05881"
+    },
+    {
+      "name": "t0.json",
+      "sha256": "7f1abe9f92c738dd860d780872346c12ecf6afe3ac683426b466f08eafe764d7"
+    }
+  ]
+}

@@ -8,10 +8,9 @@ const read = (name) =>
 const run = JSON.parse(
   readFileSync(process.argv[3], "utf8").replace(/^\uFEFF/, ""),
 );
+const runAttempt = run.runAttempt ?? run.run_attempt ?? "1";
 const settings = read("settings.json");
-assert.equal(run.id, 42776171861);
 assert.equal(run.event, "workflow_dispatch");
-assert.equal(run.head_sha.slice(0, 7), "13ee262");
 assert.equal(settings.serverVersionNum, 160015);
 assert.match(settings.serverVersion, /^16\.15 /);
 assert.equal(settings.archiveTimeoutSeconds, 60);
@@ -43,14 +42,16 @@ const cycles = [1, 2, 3].map((n) => {
   assert.equal(stats.after.failedCount, 0);
   assert.equal(state.status, "PASSED");
   assert.equal(state.expectedSegments, n);
+  assert(c.activityLastAt <= c.naturalSwitchDetectionLowerBoundAt);
   assert.deepEqual(c.receipt, state.receipts[wal]);
   assert.equal(c.uploadedVerifiedAt, c.receipt.verifiedAt);
   assert.equal(c.archiveConfirmedAt, stats.after.lastArchivedAt);
   assert.equal(
     c.receipt.object.key,
-    `phase3-acceptance/${run.id}-1/continuous-wal/${wal}.age`,
+    `phase3-acceptance/${run.id}-${runAttempt}/continuous-wal/${wal}.age`,
   );
   assert.equal(c.receipt.object.sse, "AES256");
+  assert.equal(c.receipt.status, "VERIFIED");
   assert(c.receipt.object.version && c.receipt.object.version !== "null");
   for (const hash of [c.receipt.object.sha256, c.receipt.plainSha256])
     assert.match(hash, /^[a-f0-9]{64}$/);
@@ -77,7 +78,7 @@ assert(worst > 300);
 const result = {
   status: "FAILED",
   failureCode: "TECHNICAL_RPO_TARGET_EXCEEDED",
-  workflowFailureCode: "NATURAL_WAL_TIMESTAMPS_INVALID",
+  workflowFailureCode: "TECHNICAL_RPO_TARGET_EXCEEDED",
   runId: run.id,
   sourceSha: run.head_sha,
   event: run.event,
@@ -87,7 +88,7 @@ const result = {
   targetSeconds: 300,
   limitations: [
     "Independent artifact consistency review; no new external download performed here.",
-    "Last-activity samples in cycles 1 and 2 may belong to the following segment and are not accepted.",
+    "The worker receipt records successful ciphertext download/hash, age decryption, and plaintext hash verification against the local WAL.",
     "First activity timestamps are sampled after commit, not exact transaction commit timestamps.",
     "This failed stock run is not final positive Technical RPO acceptance.",
   ],

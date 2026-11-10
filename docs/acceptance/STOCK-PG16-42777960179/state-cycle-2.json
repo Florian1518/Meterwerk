@@ -1,0 +1,41 @@
+{
+  "status": "PASSED",
+  "scope": "synthetic-bounded-single-timeline",
+  "expectedSegments": 2,
+  "lastArchivedWal": "000000010000000000000002",
+  "lastArchiveAt": 1794297360885.659,
+  "lastVerifiedUploadAt": 1794297370410,
+  "checkedAt": 1794297370413,
+  "receipts": {
+    "000000010000000000000001": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000001",
+      "plainSha256": "ea5650707a2e0b748bed0c209cfa456c866e81d042562a00b20d08c39cdf9463",
+      "object": {
+        "key": "phase3-acceptance/42777960179-1/continuous-wal/000000010000000000000001.age",
+        "version": "HCXlRFSpane3TeFaEhURTnmKe37Dy6.",
+        "sha256": "78697f28a37d2fe0d9657ff9d5978fbf2b765140db814f2e33b778bc58507f92",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.7424356937408447,
+        "hashSeconds": 0.008846521377563477
+      },
+      "verifiedAt": 1794297307628
+    },
+    "000000010000000000000002": {
+      "status": "VERIFIED",
+      "wal": "000000010000000000000002",
+      "plainSha256": "c30ce6781ddf556d9de5801d42964b9589881fb35ffa2999548a20c90aaa4da8",
+      "object": {
+        "key": "phase3-acceptance/42777960179-1/continuous-wal/000000010000000000000002.age",
+        "version": "WngaU6-EaTAaPtuxzJDzPVeUaGo5qXl",
+        "sha256": "bec73cc25a35fea1121bf2ddc6f5d52997de0cc4f81f8c5948d557f815c016ae",
+        "bytes": 16781496,
+        "sse": "AES256",
+        "downloadSeconds": 1.7313764095306396,
+        "hashSeconds": 0.008437156677246094
+      },
+      "verifiedAt": 1794297370410
+    }
+  }
+}

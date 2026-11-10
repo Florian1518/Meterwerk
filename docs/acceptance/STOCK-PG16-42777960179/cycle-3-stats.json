@@ -1,0 +1,42 @@
+{
+  "before": {
+    "sampledAt": 1794297370798.258,
+    "currentLsn": "0/3000098",
+    "currentSegment": "000000010000000000000003",
+    "currentOffset": 152,
+    "archivedCount": 2,
+    "failedCount": 0,
+    "lastArchivedWal": "000000010000000000000002",
+    "lastArchivedAt": 1794297360885.659,
+    "lastFailedWal": null,
+    "lastFailedAt": null,
+    "archiverPid": 4206,
+    "checkpointerPid": 4201,
+    "timedCheckpoints": 1,
+    "requestedCheckpoints": 0,
+    "walRecords": 24432,
+    "checkpointerWaitEvent": "CheckpointerMain",
+    "checkpointerWaitEventType": "Activity",
+    "inRecovery": false
+  },
+  "after": {
+    "sampledAt": 1794297421658.846,
+    "currentLsn": "0/4000000",
+    "currentSegment": "000000010000000000000004",
+    "currentOffset": 0,
+    "archivedCount": 3,
+    "failedCount": 0,
+    "lastArchivedWal": "000000010000000000000003",
+    "lastArchivedAt": 1794297420986.041,
+    "lastFailedWal": null,
+    "lastFailedAt": null,
+    "archiverPid": 4206,
+    "checkpointerPid": 4201,
+    "timedCheckpoints": 1,
+    "requestedCheckpoints": 0,
+    "walRecords": 24445,
+    "checkpointerWaitEvent": "CheckpointerMain",
+    "checkpointerWaitEventType": "Activity",
+    "inRecovery": false
+  }
+}
