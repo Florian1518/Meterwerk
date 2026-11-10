@@ -1,0 +1,66 @@
+{
+  "scope": "synthetic detector invocation; excludes polling and delivery",
+  "generatedAt": "2026-11-10T13:38:06.899Z",
+  "incidents": [
+    {
+      "incident": "WAL upload failure",
+      "injectedAt": "2026-11-10T13:38:06.866Z",
+      "firstObservableFailureAt": "2026-11-10T13:38:06.866Z",
+      "monitoringDetectedAt": "2026-11-10T13:38:06.867Z",
+      "alertReportedAt": "2026-11-10T13:38:06.867Z",
+      "detectionDelayMs": 0.841,
+      "classification": "UPLOAD_OR_VERIFICATION_FAILURE",
+      "failClosed": true,
+      "falseHealthy": false,
+      "reportingMechanism": "worker FAILED state JSON + stderr/nonzero exit"
+    },
+    {
+      "incident": "stale WAL pipeline",
+      "injectedAt": "2026-11-10T13:38:06.871Z",
+      "firstObservableFailureAt": "2026-11-10T13:38:06.871Z",
+      "monitoringDetectedAt": "2026-11-10T13:38:06.872Z",
+      "alertReportedAt": "2026-11-10T13:38:06.872Z",
+      "detectionDelayMs": 0.308,
+      "classification": "STALE_PIPELINE",
+      "failClosed": true,
+      "falseHealthy": false,
+      "reportingMechanism": "one-shot watchdog error/nonzero exit"
+    },
+    {
+      "incident": "WAL continuity gap",
+      "injectedAt": "2026-11-10T13:38:06.872Z",
+      "firstObservableFailureAt": "2026-11-10T13:38:06.872Z",
+      "monitoringDetectedAt": "2026-11-10T13:38:06.873Z",
+      "alertReportedAt": "2026-11-10T13:38:06.873Z",
+      "detectionDelayMs": 0.433,
+      "classification": "WAL_GAP",
+      "failClosed": true,
+      "falseHealthy": false,
+      "reportingMechanism": "worker FAILED state JSON + stderr/nonzero exit"
+    },
+    {
+      "incident": "WAL integrity/hash mismatch",
+      "injectedAt": "2026-11-10T13:38:06.875Z",
+      "firstObservableFailureAt": "2026-11-10T13:38:06.875Z",
+      "monitoringDetectedAt": "2026-11-10T13:38:06.885Z",
+      "alertReportedAt": "2026-11-10T13:38:06.885Z",
+      "detectionDelayMs": 10.169,
+      "classification": "CIPHERTEXT_HASH_MISMATCH",
+      "failClosed": true,
+      "falseHealthy": false,
+      "reportingMechanism": "worker FAILED state JSON + stderr/nonzero exit"
+    },
+    {
+      "incident": "startup WAL readiness failure",
+      "injectedAt": "2026-11-10T13:38:06.888Z",
+      "firstObservableFailureAt": "2026-11-10T13:38:06.888Z",
+      "monitoringDetectedAt": "2026-11-10T13:38:06.897Z",
+      "alertReportedAt": "2026-11-10T13:38:06.897Z",
+      "detectionDelayMs": 8.69,
+      "classification": "STARTUP_WAL_GATE_PENDING",
+      "failClosed": true,
+      "falseHealthy": false,
+      "reportingMechanism": "HTTP 503 readiness gate response"
+    }
+  ]
+}
