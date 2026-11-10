@@ -1,0 +1,69 @@
+name: Independent WAL Watchdog
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [software-completion/phase-3-wal-monitoring]
+    paths:
+      - .github/workflows/wal-independent-watchdog.yml
+      - scripts/wal-watchdog.mjs
+      - scripts/synthetic-webhook-receiver.mjs
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: independent-wal-watchdog
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22 }
+      - name: Start isolated notification receiver
+        shell: bash
+        run: |
+          mkdir -p artifacts/wal-watchdog
+          SYNTHETIC_RECEIVER_LOG="$GITHUB_WORKSPACE/artifacts/wal-watchdog/received.jsonl" \
+          SYNTHETIC_RECEIVER_READY_FILE="$RUNNER_TEMP/wal-watchdog-receiver.port" \
+          node scripts/synthetic-webhook-receiver.mjs > "$RUNNER_TEMP/wal-watchdog-receiver.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/wal-watchdog-receiver.pid"
+          for attempt in $(seq 1 50); do
+            if [[ -s "$RUNNER_TEMP/wal-watchdog-receiver.port" ]]; then exit 0; fi
+            sleep 0.1
+          done
+          cat "$RUNNER_TEMP/wal-watchdog-receiver.log"
+          exit 1
+      - name: Poll independent offsite workflow status
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          WAL_WATCHDOG_MAX_AGE_MS: "900000"
+          WAL_WATCHDOG_STATE_FILE: artifacts/wal-watchdog/state.json
+          WAL_WATCHDOG_AUDIT_FILE: artifacts/wal-watchdog/audit.jsonl
+        shell: bash
+        run: |
+          port="$(cat "$RUNNER_TEMP/wal-watchdog-receiver.port")"
+          export WAL_ALERT_WEBHOOK_URL="http://127.0.0.1:${port}/alerts"
+          node scripts/wal-watchdog.mjs
+      - name: Upload watchdog state, alert history, and receiver receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: independent-wal-watchdog-${{ github.run_id }}
+          path: artifacts/wal-watchdog/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Stop isolated notification receiver
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f "$RUNNER_TEMP/wal-watchdog-receiver.pid" ]]; then kill "$(cat "$RUNNER_TEMP/wal-watchdog-receiver.pid")" 2>/dev/null || true; fi

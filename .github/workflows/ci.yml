@@ -69,6 +69,17 @@ jobs:
           path: artifacts/operational-alert/
           if-no-files-found: warn
           retention-days: 30
+      - name: Test independent watchdog and synthetic notification route
+        run: node --test tests/wal-watchdog.test.mjs
+        env:
+          WAL_WATCHDOG_EVIDENCE_FILE: artifacts/independent-watchdog/incidents.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: independent-wal-watchdog-${{ github.run_id }}
+          path: artifacts/independent-watchdog/
+          if-no-files-found: warn
+          retention-days: 30
       - run: pnpm security:regression
 
   integration:
