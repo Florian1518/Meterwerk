@@ -1,0 +1,78 @@
+2026-11-10 08:19:03.627 UTC [4402] DEBUG:  registering background worker "logical replication launcher"
+2026-11-10 08:19:03.627 UTC [4402] DEBUG:  mmap(150994944) with MAP_HUGETLB failed, huge pages disabled: Cannot allocate memory
+2026-11-10 08:19:03.634 UTC [4402] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+2026-11-10 08:19:03.634 UTC [4402] LOG:  listening on Unix socket "/home/runner/work/_temp/meterwerk-wal-natural.MMeDIE/.s.PGSQL.55439"
+2026-11-10 08:19:03.637 UTC [4405] LOG:  database system was shut down at 2026-11-10 08:19:03 UTC
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  checkpoint record is at 0/14EF660
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  redo record is at 0/14EF660; shutdown true
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  next transaction ID: 730; next OID: 13623
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  next MultiXactId: 1; next MultiXactOffset: 0
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  oldest unfrozen transaction ID: 722, in database 1
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  oldest MultiXactId: 1, in database 1
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  commit timestamp Xid oldest/newest: 0/0
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  transaction ID wrap limit is 2147484369, limited by database with OID 1
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  starting up replication slots
+2026-11-10 08:19:03.637 UTC [4405] DEBUG:  xmin required by slots: data 0, catalog 0
+2026-11-10 08:19:03.638 UTC [4405] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-11-10 08:19:03.638 UTC [4405] DEBUG:  MultiXact member stop limit is now 4294914944 based on MultiXact 1
+2026-11-10 08:19:03.640 UTC [4407] DEBUG:  autovacuum launcher started
+2026-11-10 08:19:03.640 UTC [4402] DEBUG:  starting background worker process "logical replication launcher"
+2026-11-10 08:19:03.641 UTC [4402] LOG:  database system is ready to accept connections
+2026-11-10 08:19:03.641 UTC [4409] DEBUG:  logical replication launcher started
+2026-11-10 08:20:03.702 UTC [5455] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:20:33.735 UTC [5951] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:20:33.767 UTC [5951] DEBUG:  rehashing catalog cache id 7 for pg_attribute; 257 tups, 128 buckets
+2026-11-10 08:21:03.718 UTC [6444] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:21:33.764 UTC [6936] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:22:03.742 UTC [7429] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:22:33.783 UTC [7923] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:23:03.750 UTC [8417] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:23:33.810 UTC [8935] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:24:03.716 UTC [4403] LOG:  checkpoint starting: time
+2026-11-10 08:24:03.716 UTC [4403] DEBUG:  performing replication slot checkpoint
+2026-11-10 08:24:03.725 UTC [4403] DEBUG:  write-ahead log switch forced (archive_timeout=60)
+2026-11-10 08:24:03.733 UTC [4408] DEBUG:  archived write-ahead log file "000000010000000000000001"
+2026-11-10 08:24:03.767 UTC [9433] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=1 file=base/5/2703 time=0.495 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=2 file=base/1/2840_vm time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=3 file=base/5/1259 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=4 file=base/5/2673 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=5 file=base/5/2663 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=6 file=base/5/2608_vm time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=7 file=base/5/1247 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=8 file=pg_commit_ts/0000 time=0.128 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=9 file=base/1/2619 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=10 file=base/5/1259_vm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=11 file=base/5/1247_vm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=12 file=base/5/2659 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=13 file=base/5/2704 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=14 file=base/5/2608 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=15 file=base/5/2608_fsm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=16 file=base/5/3455 time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=17 file=base/5/2674 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=18 file=base/1/2696 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=19 file=pg_multixact/offsets/0000 time=0.097 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=20 file=base/5/1249_vm time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=21 file=base/5/1249 time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=22 file=base/1/1259 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=23 file=base/5/2658 time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=24 file=base/1/2841 time=0.001 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=25 file=pg_xact/0000 time=0.073 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=26 file=base/1/2840 time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=27 file=base/1/2619_vm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=28 file=base/1/2840_fsm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=29 file=base/1/2619_fsm time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=30 file=base/5/2662 time=0.000 ms
+2026-11-10 08:24:10.140 UTC [4403] DEBUG:  checkpoint sync: number=31 file=base/5/16384 time=0.000 ms
+2026-11-10 08:24:10.141 UTC [4403] LOG:  checkpoint complete: wrote 68 buffers (0.4%); 0 WAL file(s) added, 0 removed, 0 recycled; write=6.423 s, sync=0.001 s, total=6.426 s; sync files=31, longest=0.001 s, average=0.001 s; distance=358 kB, estimate=358 kB; lsn=0/20005D8, redo lsn=0/1548F08
+2026-11-10 08:24:33.839 UTC [9957] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:25:03.163 UTC [4403] DEBUG:  write-ahead log switch forced (archive_timeout=60)
+2026-11-10 08:25:03.172 UTC [4408] DEBUG:  archived write-ahead log file "000000010000000000000002"
+2026-11-10 08:25:03.781 UTC [10493] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:25:33.862 UTC [10964] DEBUG:  autovacuum: processing database "template1"
+2026-11-10 08:26:03.232 UTC [4403] DEBUG:  write-ahead log switch forced (archive_timeout=60)
+2026-11-10 08:26:03.240 UTC [4408] DEBUG:  archived write-ahead log file "000000010000000000000003"
+2026-11-10 08:26:03.811 UTC [11480] DEBUG:  autovacuum: processing database "postgres"
+2026-11-10 08:26:16.689 UTC [4402] LOG:  received immediate shutdown request
+2026-11-10 08:26:16.693 UTC [4402] LOG:  database system is shut down
