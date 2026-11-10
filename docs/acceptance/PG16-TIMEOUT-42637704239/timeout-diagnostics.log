@@ -1,0 +1,206 @@
+2026-11-09 14:47:16.657 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=1 last_xlog_switch_time=1794235636
+2026-11-09 14:47:16.657 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794235636 archive_timeout=60 last_xlog_switch_time=1794235636 checkpointer_timeout=300 elapsed_since_switch=0 wait_seconds=300 recovery=1
+2026-11-09 14:52:16.705 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAKE now=1794235936 archive_timeout=60 last_xlog_switch_time=1794235636 elapsed_since_switch=300 recovery=0
+2026-11-09 14:52:16.707 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235636
+2026-11-09 14:52:16.707 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235936 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235636 recovery=0
+2026-11-09 14:52:16.707 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=COMPARISON now=1794235936 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235636 get_last_seg_switch_data_time=1794235636 last_xlog_switch_time_after_refresh=1794235636 last_switch_lsn=0/014EF6D8 important_lsn=0/0155D760 important_wal=1 insert_lsn=0/0155D7C0 segment_before=000000010000000000000001
+2026-11-09 14:52:16.707 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=REQUEST invoked=1 checkpointer_pid=11530
+2026-11-09 14:52:16.740 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=RETURN switchpoint=0/0155D7D8 insert_lsn=0/02000000 segment_after=000000010000000000000002 checkpointer_pid=11530
+2026-11-09 14:52:16.740 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=TIMER_UPDATED last_xlog_switch_time_after=1794235936 checkpointer_pid=11530
+2026-11-09 14:52:16.840 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:16.840 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235936 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:16.940 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:16.940 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235936 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.041 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.041 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.141 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.141 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.241 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.241 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.341 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.341 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.441 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.441 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.541 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.541 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.642 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.642 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.742 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.742 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.842 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.842 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:17.942 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:17.942 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235937 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.042 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.042 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.143 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.143 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.243 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.243 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.343 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.343 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.443 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.443 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.543 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.543 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.643 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.643 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.744 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.744 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.844 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.844 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:18.944 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:18.944 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235938 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.044 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.044 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.144 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.144 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.244 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.244 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.345 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.345 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.445 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.445 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.545 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.545 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.645 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.645 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.745 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.745 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.846 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.846 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:19.946 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:19.946 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235939 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.046 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.046 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.146 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.146 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.246 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.246 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.347 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.347 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.447 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.447 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.547 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.547 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.647 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.647 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.747 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.747 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.847 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.847 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:20.947 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:20.947 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235940 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.048 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.048 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.148 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.148 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.248 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.248 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.348 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.348 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.448 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.448 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.548 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.548 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.649 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.649 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.749 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.749 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.849 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.849 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:21.949 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:21.949 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235941 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.049 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.049 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.149 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.149 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.250 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.250 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.350 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.350 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.450 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.450 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.550 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.550 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.650 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.650 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.750 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.750 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.851 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.851 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:22.951 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:22.951 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235942 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.051 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.051 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.151 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.151 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.251 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.251 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.352 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.352 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.452 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.452 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.552 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.552 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.652 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.652 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.752 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.752 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.852 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.852 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:23.953 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:23.953 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235943 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.053 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.053 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.153 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.153 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.253 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.253 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.353 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.353 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.453 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.453 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.553 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.553 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.654 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.654 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.754 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.754 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.854 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.854 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.956 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:52:24.956 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235944 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:52:24.956 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794235944 archive_timeout=60 last_xlog_switch_time=1794235936 checkpointer_timeout=300 elapsed_since_switch=8 wait_seconds=52 recovery=0
+2026-11-09 14:53:17.008 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAKE now=1794235997 archive_timeout=60 last_xlog_switch_time=1794235936 elapsed_since_switch=61 recovery=0
+2026-11-09 14:53:17.008 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235936
+2026-11-09 14:53:17.008 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794235997 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 recovery=0
+2026-11-09 14:53:17.008 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=COMPARISON now=1794235997 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235936 get_last_seg_switch_data_time=1794235936 last_xlog_switch_time_after_refresh=1794235936 last_switch_lsn=0/02000000 important_lsn=0/02004618 important_wal=1 insert_lsn=0/02004678 segment_before=000000010000000000000002
+2026-11-09 14:53:17.008 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=REQUEST invoked=1 checkpointer_pid=11530
+2026-11-09 14:53:17.061 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=RETURN switchpoint=0/02004690 insert_lsn=0/03000000 segment_after=000000010000000000000003 checkpointer_pid=11530
+2026-11-09 14:53:17.061 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=TIMER_UPDATED last_xlog_switch_time_after=1794235997 checkpointer_pid=11530
+2026-11-09 14:53:17.061 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794235997 archive_timeout=60 last_xlog_switch_time=1794235997 checkpointer_timeout=300 elapsed_since_switch=0 wait_seconds=60 recovery=0
+2026-11-09 14:54:17.122 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAKE now=1794236057 archive_timeout=60 last_xlog_switch_time=1794235997 elapsed_since_switch=60 recovery=0
+2026-11-09 14:54:17.122 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794235997
+2026-11-09 14:54:17.122 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794236057 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235997 recovery=0
+2026-11-09 14:54:17.122 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=COMPARISON now=1794236057 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794235997 get_last_seg_switch_data_time=1794235997 last_xlog_switch_time_after_refresh=1794235997 last_switch_lsn=0/03000000 important_lsn=0/030016F0 important_wal=1 insert_lsn=0/03001750 segment_before=000000010000000000000003
+2026-11-09 14:54:17.122 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=REQUEST invoked=1 checkpointer_pid=11530
+2026-11-09 14:54:17.170 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=RETURN switchpoint=0/03001768 insert_lsn=0/04000000 segment_after=000000010000000000000004 checkpointer_pid=11530
+2026-11-09 14:54:17.170 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=TIMER_UPDATED last_xlog_switch_time_after=1794236057 checkpointer_pid=11530
+2026-11-09 14:54:17.170 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794236057 archive_timeout=60 last_xlog_switch_time=1794236057 checkpointer_timeout=300 elapsed_since_switch=0 wait_seconds=60 recovery=0
+2026-11-09 14:55:17.230 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAKE now=1794236117 archive_timeout=60 last_xlog_switch_time=1794236057 elapsed_since_switch=60 recovery=0
+2026-11-09 14:55:17.230 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794236057
+2026-11-09 14:55:17.230 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794236117 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794236057 recovery=0
+2026-11-09 14:55:17.230 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=COMPARISON now=1794236117 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794236057 get_last_seg_switch_data_time=1794236057 last_xlog_switch_time_after_refresh=1794236057 last_switch_lsn=0/04000000 important_lsn=0/040016F0 important_wal=1 insert_lsn=0/04001718 segment_before=000000010000000000000004
+2026-11-09 14:55:17.230 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=REQUEST invoked=1 checkpointer_pid=11530
+2026-11-09 14:55:17.280 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=RETURN switchpoint=0/04001730 insert_lsn=0/05000000 segment_after=000000010000000000000005 checkpointer_pid=11530
+2026-11-09 14:55:17.280 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=TIMER_UPDATED last_xlog_switch_time_after=1794236117 checkpointer_pid=11530
+2026-11-09 14:55:17.280 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794236117 archive_timeout=60 last_xlog_switch_time=1794236117 checkpointer_timeout=300 elapsed_since_switch=0 wait_seconds=60 recovery=0
+2026-11-09 14:56:17.322 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAKE now=1794236177 archive_timeout=60 last_xlog_switch_time=1794236117 elapsed_since_switch=60 recovery=0
+2026-11-09 14:56:17.322 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=CALLSITE checkpointer_pid=11530 archive_timeout=60 recovery=0 last_xlog_switch_time=1794236117
+2026-11-09 14:56:17.322 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=EVALUATION now=1794236177 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794236117 recovery=0
+2026-11-09 14:56:17.322 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=COMPARISON now=1794236177 timeout=60 checkpointer_pid=11530 last_xlog_switch_time_before=1794236117 get_last_seg_switch_data_time=1794236117 last_xlog_switch_time_after_refresh=1794236117 last_switch_lsn=0/05000000 important_lsn=0/05001728 important_wal=1 insert_lsn=0/05001750 segment_before=000000010000000000000005
+2026-11-09 14:56:17.322 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=REQUEST invoked=1 checkpointer_pid=11530
+2026-11-09 14:56:17.376 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=RETURN switchpoint=0/05001768 insert_lsn=0/06000000 segment_after=000000010000000000000006 checkpointer_pid=11530
+2026-11-09 14:56:17.376 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=TIMER_UPDATED last_xlog_switch_time_after=1794236177 checkpointer_pid=11530
+2026-11-09 14:56:17.376 UTC [11530] LOG:  PG16_TIMEOUT_DIAG phase=WAIT now=1794236177 archive_timeout=60 last_xlog_switch_time=1794236177 checkpointer_timeout=300 elapsed_since_switch=0 wait_seconds=59 recovery=0
