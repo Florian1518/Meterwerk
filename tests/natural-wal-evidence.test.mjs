@@ -31,7 +31,7 @@ function fixture() {
   const t0 = {
     referenceAt: 0,
     initialSegment: segment(1),
-    initialArchiver: { archivedCount: 0, failedCount: 0 },
+    initialArchiver: { archivedCount: 1, failedCount: 0 },
   };
   const cycles = [1, 2, 3].map((number) => {
     const prior = (number - 1) * 60000;
@@ -99,9 +99,35 @@ function fixture() {
   });
   return {
     settings,
+    startupGate: {
+      status: "PASSED",
+      runId: "123456-1",
+      segment: segment(0),
+      recoveryComplete: true,
+      switchCount: 1,
+      archiveConfirmed: true,
+      archiveConfirmedAt: 10,
+      probeCommittedAt: 5,
+      gateDurationMs: 1000,
+      receipt: {
+        status: "VERIFIED",
+        wal: segment(0),
+        plainSha256: sha,
+        verifiedAt: 20,
+        object: {
+          key: `phase3-acceptance/123456-1/startup-wal/${segment(0)}.age`,
+          version: "startup-version",
+          bytes: 16787456,
+          bytes: 16787456,
+          sha256: sha,
+          sse: "AES256",
+        },
+      },
+    },
     t0,
     cycles,
-    drillSource: "for (let cycle = 1; cycle <= 3; cycle++) insert();",
+    drillSource:
+      "# STARTUP_WAL_GATE_BEGIN\nSELECT pg_switch_wal();\n# STARTUP_WAL_GATE_END\n# STEADY_STATE_RPO_BEGIN\nfor (let cycle = 1; cycle <= 3; cycle++) insert();\n# STEADY_STATE_RPO_END",
   };
 }
 
@@ -136,7 +162,7 @@ test("rejects a different PostgreSQL patch release", () => {
   failsWith(input, "STOCK_POSTGRESQL_16_15_REQUIRED");
 });
 
-test("retains all cycles but fails RPO when startup delays the first switch", () => {
+test("keeps steady-state acceptance independent from the startup gate", () => {
   const input = fixture();
   for (const [index, cycle] of input.cycles.entries()) {
     for (const key of [
@@ -178,7 +204,7 @@ test("retains all cycles but fails RPO when startup delays the first switch", ()
     309,
   );
   assert.equal(result.technicalRpoTargetMet, false);
-  assert.equal(result.startupCycleIncluded, true);
+  assert.equal(result.startupCycleIncluded, false);
   assert.equal(result.cycles.length, 3);
 });
 
@@ -201,10 +227,25 @@ test("uses the oldest exact commit timestamp for the five-minute RPO gate", () =
   assert.equal(result.observedWorstTransactionToVerifiedOffsiteSeconds, 310);
 });
 
-test("manual WAL switch in positive proof fails with the exact condition", () => {
+test("rejects a manual WAL switch inside the steady-state proof", () => {
   const input = fixture();
-  input.drillSource += "\nSELECT pg_switch_wal();\n";
+  input.drillSource = input.drillSource.replace(
+    "for (let cycle",
+    "SELECT pg_switch_wal();\nfor (let cycle",
+  );
   failsWith(input, "MANUAL_WAL_SWITCH_PRESENT");
+});
+
+test("requires exactly one switch in startup gate", () => {
+  const input = fixture();
+  input.drillSource = input.drillSource.replace("SELECT pg_switch_wal();", "");
+  failsWith(input, "STARTUP_WAL_SWITCH_COUNT_INVALID");
+});
+
+test("requires startup recovery and verified offsite evidence before steady state", () => {
+  const input = fixture();
+  input.startupGate.receipt.object.sse = "";
+  failsWith(input, "STARTUP_WAL_GATE_EVIDENCE_INVALID");
 });
 
 test("archive failure never counts as a successful natural cycle", () => {

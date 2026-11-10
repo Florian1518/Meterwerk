@@ -551,12 +551,23 @@ acceptance passed in run `42595934065`. Scope and acceptance limits:
 
 Final natural-cycle evidence must use stock PostgreSQL 16.15, selected from
 distribution packages with package versions and binary hash retained. Temporary
-source instrumentation is diagnostic evidence only. The first startup cycle
-remains in the RPO measurement: the diagnosed 300-second checkpointer sleep
-must not be hidden by warm-up or a relaxed 300-second RPO target. The collector
-retains all three cycles and emits a failed summary if that target is exceeded.
-See [startup diagnosis](acceptance/PG16-TIMEOUT-42637704239.md).
-The [stock follow-up](acceptance/STOCK-PG16-20261110.md) observed 306.366 seconds
-for its first confirmed activity-to-offsite cycle; startup-inclusive RPO is
-not accepted. Last-activity attribution also requires correction before the
-three-cycle verifier can pass; raw failed-run evidence remains preserved.
+source instrumentation is diagnostic evidence only. Startup recovery protection
+and steady-state Technical RPO are separate acceptance claims. With PostgreSQL
+`archive_mode=on` (or
+`METERWERK_WAL_STARTUP_GATE_REQUIRED=true`), `/api/health/ready` remains
+unavailable until the configured `METERWERK_WAL_STARTUP_GATE_FILE` contains a
+successful post-recovery probe, exactly one startup-only WAL switch, archiver
+confirmation, and a verified encrypted IONOS receipt. The startup orchestrator
+must create this file atomically only after ciphertext hash, age decryption,
+plaintext hash, version-pinned object download, and SSE-S3/AES256 verification;
+failure or timeout leaves readiness false. The probe is synthetic and contains
+no customer data. Its WAL and timing are excluded from steady-state RPO.
+
+After the readiness gate, three consecutive stock PostgreSQL 16.15
+`archive_timeout=60` natural cycles are measured from each normal transaction
+commit to verified IONOS availability. No manual switch, forced checkpoint, or
+volume-driven rollover is accepted in this region; the unchanged target remains
+300 seconds. The diagnosed startup checkpointer sleep and the historical
+305.630-second cycle remain preserved as failed evidence. See
+[startup diagnosis](acceptance/PG16-TIMEOUT-42637704239.md) and the
+[stock proof report](acceptance/STOCK-PG16-20261110.md).

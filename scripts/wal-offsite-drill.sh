@@ -118,6 +118,80 @@ export METERWERK_BACKUP_AGE_RECIPIENT
 METERWERK_BACKUP_AGE_RECIPIENT=$(age-keygen -y "$work/identity")
 start_reference=$(node --input-type=module -e 'process.stdout.write(String(JSON.parse(process.env.WAL_DRILL_INITIAL).sampledAt))')
 
+# STARTUP_WAL_GATE_BEGIN
+# The isolated Meterwerk application readiness marker does not exist until this
+# one-time post-recovery archive and encrypted offsite verification completes.
+gate_started_at=$(date +%s%3N)
+for attempt in $(seq 1 300); do
+  in_recovery=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT pg_is_in_recovery()')
+  [[ "$in_recovery" == f ]] && break
+  sleep 1
+done
+[[ "${in_recovery:-}" == f ]] || { echo STARTUP_RECOVERY_TIMEOUT >&2; exit 1; }
+gate_recovery_complete_at=$(date +%s%3N)
+psql -Xq -v ON_ERROR_STOP=1 -c 'CREATE TABLE wal_startup_probe(marker text PRIMARY KEY, committed_at timestamptz NOT NULL DEFAULT clock_timestamp())'
+psql -Xq -v ON_ERROR_STOP=1 -c "INSERT INTO wal_startup_probe(marker) VALUES ('isolated-startup-readiness-probe')"
+gate_probe_committed_at=$(date +%s%3N)
+gate_failed_baseline=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT failed_count FROM pg_stat_archiver')
+gate_archive_count_before=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT archived_count FROM pg_stat_archiver')
+[[ "$gate_failed_baseline" == 0 ]] || { echo STARTUP_ARCHIVER_FAILURE_BASELINE >&2; exit 1; }
+startup_wal=$(psql -XAtq -v ON_ERROR_STOP=1 -c "WITH switched AS (SELECT pg_switch_wal() AS lsn) SELECT pg_walfile_name(lsn - 1) FROM switched")
+[[ "$startup_wal" =~ ^[0-9A-F]{24}$ ]] || { echo STARTUP_SWITCH_SEGMENT_INVALID >&2; exit 1; }
+gate_switch_at=$(date +%s%3N)
+for attempt in $(seq 1 120); do
+  gate_archive=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object('lastArchivedWal',last_archived_wal,'archivedCount',archived_count,'failedCount',failed_count,'archiveAt',extract(epoch from last_archived_time)*1000) FROM pg_stat_archiver")
+  export WAL_GATE_ARCHIVE="$gate_archive" WAL_GATE_SEGMENT="$startup_wal"
+  if node --input-type=module -e 'const s=JSON.parse(process.env.WAL_GATE_ARCHIVE); process.exit(s.lastArchivedWal===process.env.WAL_GATE_SEGMENT&&s.failedCount===0?0:1)'; then break; fi
+  sleep 1
+done
+export WAL_GATE_ARCHIVE_COUNT_BEFORE="$gate_archive_count_before"
+node --input-type=module -e 'const s=JSON.parse(process.env.WAL_GATE_ARCHIVE); if(s.lastArchivedWal!==process.env.WAL_GATE_SEGMENT||s.failedCount!==0||s.archivedCount!==Number(process.env.WAL_GATE_ARCHIVE_COUNT_BEFORE)+1) throw Error("STARTUP_ARCHIVE_CONFIRMATION_FAILED")'
+[[ "$(stat -c '%s' "$work/archive/$startup_wal")" -eq "$wal_segment_size" ]] || { echo STARTUP_ARCHIVE_SIZE_INVALID >&2; exit 1; }
+export METERWERK_WAL_OBJECT_CLASS=startup-wal
+node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync(process.env.WAL_DRILL_WORK+"/plan-startup.json",JSON.stringify({first:process.env.WAL_GATE_SEGMENT,segmentSize:Number(process.env.WAL_DRILL_SEGMENT_SIZE),failedCountBefore:0,maxAgeMs:120000,pollMs:1000,archiveDirectory:process.env.WAL_DRILL_WORK+"/archive"}))'
+WAL_OFFSITE_ONCE=1 node scripts/wal-offsite.mjs "$work/plan-startup.json" "$work/evidence/startup-state.json"
+unset METERWERK_WAL_OBJECT_CLASS
+startup_state=$(cat "$work/evidence/startup-state.json")
+export WAL_GATE_STATE="$startup_state" WAL_GATE_SEGMENT="$startup_wal"
+gate_verified_at=$(node --input-type=module -e 'const s=JSON.parse(process.env.WAL_GATE_STATE), r=s.receipts?.[process.env.WAL_GATE_SEGMENT], sha=/^[a-f0-9]{64}$/; if(s.status!=="PASSED"||s.expectedSegments!==1||!r||r.status!=="VERIFIED"||r.object?.sse!=="AES256"||!r.object?.version||!sha.test(r.object?.sha256)||!sha.test(r.plainSha256)||!r.object?.key.endsWith("/startup-wal/"+process.env.WAL_GATE_SEGMENT+".age")) throw Error("STARTUP_OFFSITE_VERIFICATION_FAILED"); process.stdout.write(String(r.verifiedAt))')
+gate_ready_duration_ms=$((gate_verified_at-gate_started_at))
+[[ "$gate_ready_duration_ms" -ge 0 && "$gate_ready_duration_ms" -le 600000 ]] || { echo STARTUP_GATE_TIMEOUT >&2; exit 1; }
+startup_run_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}"
+export WAL_GATE_RUN_ID="$startup_run_id" WAL_GATE_DURATION="$gate_ready_duration_ms" WAL_GATE_RECOVERY_AT="$gate_recovery_complete_at" WAL_GATE_PROBE_AT="$gate_probe_committed_at" WAL_GATE_SWITCH_AT="$gate_switch_at" WAL_GATE_SEGMENT="$startup_wal"
+node --input-type=module -e 'import {renameSync,writeFileSync} from "node:fs"; const s=JSON.parse(process.env.WAL_GATE_STATE),r=s.receipts[process.env.WAL_GATE_SEGMENT]; const proof={status:"PASSED",runId:process.env.WAL_GATE_RUN_ID,segment:process.env.WAL_GATE_SEGMENT,recoveryComplete:true,recoveryCompleteAt:Number(process.env.WAL_GATE_RECOVERY_AT),switchCount:1,archiveConfirmed:true,archiveConfirmedAt:JSON.parse(process.env.WAL_GATE_ARCHIVE).archiveAt,probeCommittedAt:Number(process.env.WAL_GATE_PROBE_AT),switchAt:Number(process.env.WAL_GATE_SWITCH_AT),verifiedAt:r.verifiedAt,gateDurationMs:Number(process.env.WAL_GATE_DURATION),receipt:r}; const data=JSON.stringify(proof,null,2)+"\n"; for(const path of [process.env.WAL_DRILL_WORK+"/evidence/startup-gate.json",process.env.WAL_DRILL_WORK+"/wal-startup-readiness.json"]){writeFileSync(path+".tmp",data,{mode:0o600});renameSync(path+".tmp",path)} console.log(JSON.stringify({startupGate:"PASSED",gateDurationMs:proof.gateDurationMs,wal:proof.segment,object:r.object.key}))'
+export METERWERK_WAL_STARTUP_GATE_REQUIRED=true METERWERK_WAL_STARTUP_GATE_FILE="$work/wal-startup-readiness.json"
+node --input-type=module -e 'import {readFileSync} from "node:fs"; const p=JSON.parse(readFileSync(process.env.METERWERK_WAL_STARTUP_GATE_FILE)); if(p.status!=="PASSED") process.exit(1)'
+
+# Exclude the startup probe and its explicit switch from all steady-state RPO
+# timestamps. Begin with archiver count 1 and a fresh current natural segment.
+initial=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
+  'sampledAt',extract(epoch from clock_timestamp())*1000,
+  'currentLsn',pg_current_wal_lsn()::text,
+  'currentSegment',pg_walfile_name(pg_current_wal_lsn() + 1),
+  'currentOffset',(pg_walfile_name_offset(pg_current_wal_lsn())).file_offset,
+  'archivedCount',archived_count,'failedCount',failed_count,
+  'lastArchivedWal',last_archived_wal,'lastArchivedAt',extract(epoch from last_archived_time)*1000,
+  'lastFailedWal',last_failed_wal,'lastFailedAt',extract(epoch from last_failed_time)*1000,
+  'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
+  'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'timedCheckpoints',checkpoints_timed,'requestedCheckpoints',checkpoints_req,
+  'walRecords',(SELECT wal_records FROM pg_stat_wal),
+  'checkpointerWaitEvent',(SELECT wait_event FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'checkpointerWaitEventType',(SELECT wait_event_type FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1),
+  'inRecovery',pg_is_in_recovery()) FROM pg_stat_archiver CROSS JOIN pg_stat_bgwriter")
+printf '%s\n' "$initial" > "$work/evidence/steady-state-start.json"
+export WAL_DRILL_INITIAL="$initial"
+node --input-type=module -e '
+  import {writeFileSync} from "node:fs";
+  const initial=JSON.parse(process.env.WAL_DRILL_INITIAL);
+  if(initial.inRecovery!==false||initial.archivedCount<1||initial.failedCount!==0) throw Error("STARTUP_GATE_BASELINE_INVALID");
+  writeFileSync(process.env.WAL_DRILL_WORK+"/evidence/t0.json",JSON.stringify({referenceAt:initial.sampledAt,initialSegment:initial.currentSegment,initialLsn:initial.currentLsn,initialArchiver:initial},null,2)+"\n");
+  writeFileSync(process.env.WAL_DRILL_WORK+"/plan.json",JSON.stringify({first:initial.currentSegment,segmentSize:Number(process.env.WAL_DRILL_SEGMENT_SIZE),failedCountBefore:0,maxAgeMs:120000,pollMs:1000,archiveDirectory:process.env.WAL_DRILL_WORK+"/archive"}));
+'
+archive_count_baseline=$(node --input-type=module -e 'process.stdout.write(String(JSON.parse(process.env.WAL_DRILL_INITIAL).archivedCount))')
+export WAL_DRILL_ARCHIVE_BASELINE="$archive_count_baseline"
+start_reference=$(node --input-type=module -e 'process.stdout.write(String(JSON.parse(process.env.WAL_DRILL_INITIAL).sampledAt))')
+
 sample() {
   psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
     'sampledAt',extract(epoch from clock_timestamp())*1000,
@@ -143,13 +217,14 @@ sample() {
 activity_sequence=0
 printf 'cycle,xid,wal,committed_at_ms\n' > "$work/evidence/transactions.csv"
 previous_switch_observed_at="$start_reference"
+# STEADY_STATE_RPO_BEGIN
 for cycle in 1 2 3; do
   before=$(sample)
   export WAL_CYCLE_BEFORE="$before"
   expected=$(node --input-type=module -e 'process.stdout.write(JSON.parse(process.env.WAL_CYCLE_BEFORE).currentSegment)')
   baseline_count=$(node --input-type=module -e 'process.stdout.write(String(JSON.parse(process.env.WAL_CYCLE_BEFORE).archivedCount))')
   [[ "$expected" =~ ^[0-9A-F]{24}$ ]] || { echo INVALID_INITIAL_WAL_SEGMENT >&2; exit 1; }
-  [[ "$baseline_count" -eq $((cycle-1)) ]] || { echo ARCHIVER_BASELINE_MISMATCH >&2; exit 1; }
+  [[ "$baseline_count" -eq $((archive_count_baseline+cycle-1)) ]] || { echo ARCHIVER_BASELINE_MISMATCH >&2; exit 1; }
   first_activity_at=''
   last_activity_at=''
   first_activity_segment=''
@@ -308,6 +383,7 @@ for cycle in 1 2 3; do
   start_reference="$switch_observed_at"
   unset archive_confirmed_at
 done
+# STEADY_STATE_RPO_END
 
 cp "$work/postgres.log" "$work/evidence/postgres.log"
 node scripts/natural-wal-evidence.mjs "$work/evidence" "$work/evidence/summary.json"

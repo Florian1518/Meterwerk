@@ -1,17 +1,29 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import { proxy } from "../src/proxy";
 
 const originalEnvironment = process.env.METERWERK_ENV;
 const originalTrustedHosts = process.env.TRUSTED_HOSTS;
+const originalStartupGateRequired =
+  process.env.METERWERK_WAL_STARTUP_GATE_REQUIRED;
+const originalStartupGateFile = process.env.METERWERK_WAL_STARTUP_GATE_FILE;
 
 afterEach(() => {
   if (originalEnvironment === undefined) delete process.env.METERWERK_ENV;
   else process.env.METERWERK_ENV = originalEnvironment;
   if (originalTrustedHosts === undefined) delete process.env.TRUSTED_HOSTS;
   else process.env.TRUSTED_HOSTS = originalTrustedHosts;
+  if (originalStartupGateRequired === undefined)
+    delete process.env.METERWERK_WAL_STARTUP_GATE_REQUIRED;
+  else
+    process.env.METERWERK_WAL_STARTUP_GATE_REQUIRED =
+      originalStartupGateRequired;
+  if (originalStartupGateFile === undefined)
+    delete process.env.METERWERK_WAL_STARTUP_GATE_FILE;
+  else process.env.METERWERK_WAL_STARTUP_GATE_FILE = originalStartupGateFile;
 });
 
 describe("production proxy healthcheck contract", () => {
@@ -67,5 +79,49 @@ describe("production proxy healthcheck contract", () => {
     );
     expect(response).toBeInstanceOf(NextResponse);
     expect(response.status).toBe(421);
+  });
+
+  it("blocks normal application requests until startup WAL evidence is verified", () => {
+    process.env.METERWERK_ENV = "test";
+    process.env.METERWERK_WAL_STARTUP_GATE_REQUIRED = "true";
+    const directory = mkdtempSync(join(tmpdir(), "meterwerk-proxy-wal-gate-"));
+    const evidencePath = join(directory, "readiness.json");
+    process.env.METERWERK_WAL_STARTUP_GATE_FILE = evidencePath;
+    const request = () =>
+      proxy(new NextRequest("http://localhost:3000/dashboard"));
+
+    try {
+      expect(request().status).toBe(503);
+      expect(
+        proxy(new NextRequest("http://localhost:3000/api/health/ready")).status,
+      ).toBe(200);
+      const wal = "000000010000000000000001";
+      writeFileSync(
+        evidencePath,
+        JSON.stringify({
+          status: "PASSED",
+          runId: "123456-1",
+          segment: wal,
+          recoveryComplete: true,
+          switchCount: 1,
+          archiveConfirmed: true,
+          receipt: {
+            status: "VERIFIED",
+            wal,
+            plainSha256: "a".repeat(64),
+            object: {
+              key: `phase3-acceptance/123456-1/startup-wal/${wal}.age`,
+              version: "isolated-version",
+              bytes: 16787456,
+              sha256: "b".repeat(64),
+              sse: "AES256",
+            },
+          },
+        }),
+      );
+      expect(request().status).toBe(200);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

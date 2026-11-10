@@ -5,6 +5,10 @@ import { z } from "zod";
 import { db } from "./db";
 import { AccessError } from "./policy";
 import { requireProductionSecrets } from "./security-config";
+import {
+  startupWalGateReady,
+  startupWalGateRequired,
+} from "./wal-startup-readiness";
 
 const idSchema = z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/);
 export async function correlationId() {
@@ -57,6 +61,18 @@ export async function liveHealth() {
 }
 export async function readyHealth() {
   try {
+    const [{ archive_mode: archiveMode }] = await db.$queryRaw<
+      { archive_mode: string }[]
+    >`SELECT current_setting('archive_mode') AS archive_mode`;
+    if (
+      startupWalGateRequired(undefined, archiveMode) &&
+      !startupWalGateReady()
+    ) {
+      throw new AccessError(
+        503,
+        "WAL-Offsite-Startbereitschaft ist noch nicht bestätigt.",
+      );
+    }
     requireProductionSecrets();
     await db.$queryRaw`SELECT 1`;
     return { status: "ready", postgres: true, time: new Date().toISOString() };

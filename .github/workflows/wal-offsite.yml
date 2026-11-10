@@ -6,12 +6,22 @@ on:
     paths:
       - .github/workflows/wal-offsite.yml
       - scripts/wal-offsite*
+      - src/server/wal-startup-readiness.ts
+      - src/server/observability.ts
+      - src/proxy.ts
+      - tests/wal-startup-readiness.test.ts
+      - tests/proxy-healthcheck.test.ts
       - scripts/natural-wal-evidence.mjs
       - tests/wal-offsite.test.mjs
       - tests/natural-wal-evidence.test.mjs
   pull_request:
     paths:
       - scripts/wal-offsite*
+      - src/server/wal-startup-readiness.ts
+      - src/server/observability.ts
+      - src/proxy.ts
+      - tests/wal-startup-readiness.test.ts
+      - tests/proxy-healthcheck.test.ts
       - scripts/natural-wal-evidence.mjs
       - tests/wal-offsite.test.mjs
       - tests/natural-wal-evidence.test.mjs

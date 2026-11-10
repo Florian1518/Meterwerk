@@ -21,6 +21,7 @@ function walIndex(value) {
 
 export function verifyNaturalWalEvidence({
   settings,
+  startupGate,
   t0,
   cycles,
   drillSource,
@@ -63,9 +64,51 @@ export function verifyNaturalWalEvidence({
     Number.isInteger(settings.checkpointerPid),
     "CHECKPOINTER_NOT_RUNNING",
   );
-  const executableSource = drillSource.replace(/^\s*#.*$/gm, "");
+  const startupReceipt = startupGate?.receipt;
   requireEvidence(
-    !/\bpg_switch_wal\s*\(|\bCHECKPOINT\s*;/i.test(executableSource),
+    startupGate?.status === "PASSED" &&
+      startupGate.recoveryComplete === true &&
+      startupGate.switchCount === 1 &&
+      startupGate.archiveConfirmed === true &&
+      startupGate.runId ===
+        `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || "1"}` &&
+      walName.test(startupGate.segment) &&
+      Number.isFinite(startupGate.gateDurationMs) &&
+      startupGate.gateDurationMs >= 0 &&
+      startupGate.gateDurationMs <= 600000 &&
+      startupReceipt?.status === "VERIFIED" &&
+      startupReceipt.wal === startupGate.segment &&
+      startupReceipt.object?.key ===
+        `phase3-acceptance/${startupGate.runId}/startup-wal/${startupGate.segment}.age` &&
+      !!startupReceipt.object?.version &&
+      Number.isInteger(startupReceipt.object?.bytes) &&
+      startupReceipt.object.bytes > 0 &&
+      startupReceipt.object?.sse === "AES256" &&
+      sha256.test(startupReceipt.object?.sha256) &&
+      sha256.test(startupReceipt.plainSha256),
+    "STARTUP_WAL_GATE_EVIDENCE_INVALID",
+  );
+  const startup =
+    drillSource
+      .split("# STARTUP_WAL_GATE_BEGIN")[1]
+      ?.split("# STARTUP_WAL_GATE_END")[0] ?? "";
+  const steady =
+    drillSource
+      .split("# STEADY_STATE_RPO_BEGIN")[1]
+      ?.split("# STEADY_STATE_RPO_END")[0] ?? "";
+  requireEvidence(
+    startup.length > 0 && steady.length > 0,
+    "WAL_PROOF_PHASE_MARKERS_MISSING",
+  );
+  const executableStartup = startup.replace(/^\s*#.*$/gm, "");
+  const executableSteady = steady.replace(/^\s*#.*$/gm, "");
+  requireEvidence(
+    (executableStartup.match(/\bpg_switch_wal\s*\(/gi) ?? []).length === 1 &&
+      !/\bCHECKPOINT\s*;/i.test(executableStartup),
+    "STARTUP_WAL_SWITCH_COUNT_INVALID",
+  );
+  requireEvidence(
+    !/\bpg_switch_wal\s*\(|\bCHECKPOINT\s*;/i.test(executableSteady),
     "MANUAL_WAL_SWITCH_PRESENT",
   );
   requireEvidence(
@@ -73,7 +116,8 @@ export function verifyNaturalWalEvidence({
     "INITIAL_WAL_SEGMENT_INVALID",
   );
   requireEvidence(
-    t0.initialArchiver.archivedCount === 0 &&
+    Number.isInteger(t0.initialArchiver.archivedCount) &&
+      t0.initialArchiver.archivedCount >= 1 &&
       t0.initialArchiver.failedCount === 0,
     "INITIAL_ARCHIVER_STATE_INVALID",
   );
@@ -279,6 +323,21 @@ export function verifyNaturalWalEvidence({
     runAttempt: process.env.GITHUB_RUN_ATTEMPT || "1",
     sourceSha: process.env.GITHUB_SHA,
     t0,
+    startupGate: {
+      status: "PASSED",
+      runId: startupGate.runId,
+      segment: startupGate.segment,
+      recoveryComplete: true,
+      switchCount: 1,
+      archiveConfirmedAt: startupGate.archiveConfirmedAt,
+      probeCommittedAt: startupGate.probeCommittedAt,
+      verifiedAt: startupReceipt.verifiedAt,
+      gateDurationMs: startupGate.gateDurationMs,
+      object: startupReceipt.object,
+      ciphertextSha256: startupReceipt.object.sha256,
+      plaintextSha256: startupReceipt.plainSha256,
+      encryption: "age",
+    },
     settings,
     initialArchiverState: t0.initialArchiver,
     cycles: normalized,
@@ -286,7 +345,8 @@ export function verifyNaturalWalEvidence({
     observedWorstTransactionToVerifiedOffsiteSeconds: worst,
     technicalActiveWalRpoTargetSeconds: 300,
     technicalRpoTargetMet: worst <= 300,
-    startupCycleIncluded: true,
+    startupCycleIncluded: false,
+    steadyStateCyclesAfterStartupReadiness: true,
     failuresObserved: 0,
   };
 }
@@ -298,6 +358,9 @@ async function main() {
     const settings = JSON.parse(
       readFileSync(join(directory, "settings.json"), "utf8"),
     );
+    const startupGate = JSON.parse(
+      readFileSync(join(directory, "startup-gate.json"), "utf8"),
+    );
     const t0 = JSON.parse(readFileSync(join(directory, "t0.json"), "utf8"));
     const cycles = [1, 2, 3].map((number) =>
       JSON.parse(readFileSync(join(directory, `cycle-${number}.json`), "utf8")),
@@ -308,6 +371,7 @@ async function main() {
     );
     const evidence = verifyNaturalWalEvidence({
       settings,
+      startupGate,
       t0,
       cycles,
       drillSource,

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assertStagingIsolation, getEnvironment } from "@/lib/environment";
+import { startupWalGateReady } from "@/server/wal-startup-readiness";
 export function proxy(request: NextRequest) {
   const environment = getEnvironment();
   assertStagingIsolation(environment);
@@ -34,6 +35,20 @@ export function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.protocol = "https:";
     return NextResponse.redirect(url, 308);
+  }
+  const readinessPath = request.nextUrl.pathname;
+  const readinessProbe =
+    readinessPath === "/api/health/ready" ||
+    readinessPath === "/api/health/live";
+  if (
+    process.env.METERWERK_WAL_STARTUP_GATE_REQUIRED === "true" &&
+    !readinessProbe &&
+    !startupWalGateReady()
+  ) {
+    return NextResponse.json(
+      { status: "unavailable", reason: "startup-wal-gate-pending" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV === "development";

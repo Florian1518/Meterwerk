@@ -17,7 +17,9 @@ if __name__ == "__main__":
             source, destination, wal = sys.argv[2:]
             storage.require(re.fullmatch(r"[0-9A-F]{24}", wal), "INVALID_WAL_NAME")
             storage.require(store.call("get-bucket-versioning").get("Status") == "Enabled", "VERSIONING_DISABLED")
-            record = store.put(source, store.prefix + "continuous-wal/" + wal + ".age")
+            object_class = __import__("os").environ.get("METERWERK_WAL_OBJECT_CLASS", "continuous-wal")
+            storage.require(object_class in ("continuous-wal", "startup-wal"), "INVALID_OBJECT_CLASS")
+            record = store.put(source, store.prefix + object_class + "/" + wal + ".age")
             store.get(record, destination)
             print(json.dumps(record))
         elif action == "verify":
