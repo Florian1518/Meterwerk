@@ -8,3 +8,5 @@ prisma/migrations
 next-env.d.ts
 .test-edge-queue.json
 .meterwerk-queue.json
+docs/acceptance/STOCK-PG16-42775271308/**
+docs/acceptance/STOCK-PG16-42776171861/**
