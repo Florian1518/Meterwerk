@@ -16,6 +16,7 @@
       "lastActivityWithinPreSwitchBound": true,
       "firstActivityTimingVerified": true,
       "versionPinnedReceiptVerified": true,
+      "sseS3AES256Verified": true,
       "technicalRpoTargetMet": false
     },
     {
@@ -27,6 +28,7 @@
       "lastActivityWithinPreSwitchBound": true,
       "firstActivityTimingVerified": true,
       "versionPinnedReceiptVerified": true,
+      "sseS3AES256Verified": true,
       "technicalRpoTargetMet": true
     },
     {
@@ -38,6 +40,7 @@
       "lastActivityWithinPreSwitchBound": true,
       "firstActivityTimingVerified": true,
       "versionPinnedReceiptVerified": true,
+      "sseS3AES256Verified": true,
       "technicalRpoTargetMet": true
     }
   ],

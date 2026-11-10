@@ -51,6 +51,8 @@ const cycles = [1, 2, 3].map((n) => {
     `phase3-acceptance/${run.id}-${runAttempt}/continuous-wal/${wal}.age`,
   );
   assert.equal(c.receipt.object.sse, "AES256");
+  assert.equal(c.receipt.object.bytes, 16781496);
+  assert(c.receipt.object.bytes > settings.walSegmentSize);
   assert.equal(c.receipt.status, "VERIFIED");
   assert(c.receipt.object.version && c.receipt.object.version !== "null");
   for (const hash of [c.receipt.object.sha256, c.receipt.plainSha256])
@@ -70,6 +72,7 @@ const cycles = [1, 2, 3].map((n) => {
       c.activityLastAt <= c.naturalSwitchDetectionLowerBoundAt,
     firstActivityTimingVerified: true,
     versionPinnedReceiptVerified: true,
+    sseS3AES256Verified: c.receipt.object.sse === "AES256",
     technicalRpoTargetMet: seconds <= 300,
   };
 });
