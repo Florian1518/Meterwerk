@@ -1,5 +1,24 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## Aktueller Phase-3-Akzeptanzstand, 2026-11-10
+
+Technical RPO: **PASSED** bei unverändertem Ziel `<= 300 s`. Der fail-closed
+Startup WAL Readiness Gate blockiert normale App-Anfragen bis zur verifizierten
+Startup- und natürlichen Warm-up-Archivierung; danach bestanden drei natürliche
+`archive_timeout=60`-Zyklen in
+[Workflow-Run 42819079627](https://github.com/Florian1518/Meterwerk/actions/runs/42819079627).
+Der schlechteste Commit-bis-verifiziertes-IONOS-RPO-Wert war **68,380 s**.
+Technical RTO bleibt **PASSED** (Full Restore 7,471 s, PITR 8,068 s, Host Loss
+28,613 s); kombinierte Technical RPO/RTO-Evidence ist **PASSED** für die
+isolierten synthetischen Szenarien. Operatives/SLA-RPO/RTO und echte
+Schedule-Evidence bleiben **PENDING**. IAM Least Privilege bleibt wegen der
+ContractUserId **BLOCKED**, ebenso Staging Recovery.
+
+Der historische 305,630-s-Zyklus bleibt als fehlgeschlagener Lauf dokumentiert
+und wurde nicht umetikettiert oder in die Post-READY-Messung einbezogen. Details
+und die getrennten Startup-/Steady-State-Evidence stehen in der
+[Startup-WAL-Akzeptanz](acceptance/STARTUP-WAL-READINESS.md).
+
 ## Current Phase-3 continuation, 2026-11-09
 
 Genuine Scheduled Recovery Evidence: **PENDING**. The API audit found zero

@@ -1,5 +1,19 @@
 # Disaster Recovery
 
+## Current Phase-3 acceptance, 2026-11-10
+
+Technical RPO: **PASSED** at the unchanged 300-second target with the
+fail-closed startup WAL readiness gate and three post-ready natural
+`archive_timeout=60` cycles in
+[run 42819079627](https://github.com/Florian1518/Meterwerk/actions/runs/42819079627).
+Worst measured transaction-to-verified-IONOS RPO was **68.380 s**. Technical
+RTO remains **PASSED** (Full Restore 7.471 s, PITR 8.068 s, Host Loss 28.613 s);
+combined Technical RPO/RTO evidence is **PASSED** for those isolated synthetic
+scenarios. Operational/SLA RPO/RTO and genuine scheduled Recovery evidence
+remain **PENDING**. IAM Least Privilege remains blocked on ContractUserId, and
+Staging Recovery remains blocked. See the
+[startup policy and exact WAL evidence](acceptance/STARTUP-WAL-READINESS.md).
+
 ## Scheduled Recovery audit, 2026-11-09
 
 Genuine Scheduled Recovery Evidence remains **PENDING**: no Recovery run with

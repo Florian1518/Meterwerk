@@ -1,21 +1,38 @@
 # Technical recovery performance evidence — 2026-11-09
 
+## Current acceptance addendum, 2026-11-10
+
+The fail-closed startup readiness policy and steady-state Technical RPO
+acceptance passed in
+[stock PostgreSQL 16.15 run 42819079627](https://github.com/Florian1518/Meterwerk/actions/runs/42819079627).
+The startup gate took **306.108 s** including a naturally archived and
+offsite-verified warm-up; three separate post-ready natural timeout cycles
+measured **61.456 s**, **68.380 s**, and **63.672 s** from transaction commit to
+verified IONOS availability. The unchanged 300-second target is **PASSED**;
+Technical RTO remains **PASSED**, so combined Technical RPO/RTO evidence is
+**PASSED** for the isolated synthetic scenarios. Operational/SLA RPO/RTO and
+genuine scheduled Recovery evidence remain **PENDING**. IAM Least Privilege and
+Staging Recovery remain **BLOCKED**. The historical 305.630-second failure is
+retained unchanged. See the [startup gate evidence](STARTUP-WAL-READINESS.md).
+
 ## Outcome
 
 Stock follow-up (2026-11-10): [three natural cycles on stock PostgreSQL 16.15](STOCK-PG16-20261110.md)
 passed segment-attribution and offsite integrity checks. The startup-inclusive
 first activity to verified IONOS upload was **307.177 s**, exceeding the
-unchanged 300-second target. Final Technical RPO is **FAILED** for this target;
-the historical 72.604-second conditional estimate below is not a
-startup-inclusive bound.
+unchanged 300-second target in that run. At that point Technical RPO was
+**FAILED**; the current accepted result is recorded in the addendum above. The
+historical 72.604-second conditional estimate below is not an observed RPO and
+does not replace either measured run.
 
 Resume update (2026-11-10): the already completed source diagnostic
 [42637704239](PG16-TIMEOUT-42637704239.md) establishes an initial 300-second
 checkpointer wait while startup recovery was active. All five later internal
 important-record comparisons were true and requested natural switches.
 The historical investigation below records the earlier state; the internal
-diagnosis is now complete for this reproduction. Stock-binary natural-cycle
-offsite acceptance and Technical RPO remain pending, including startup exposure.
+diagnosis is now complete for this reproduction. The stock-binary acceptance
+and startup protection subsequently passed in run 42819079627, with startup
+exposure measured separately as described above.
 
 This is non-production technical evidence, not an operational SLA. The accepted
 end-to-end technical RTO measurements are Full Restore **7.471 s**, PITR
@@ -161,10 +178,8 @@ operational failure handling remain unproven. Accepted restore timings do
 demonstrate technical recovery performance in synthetic CI, but not
 representative operational conditions or an SLA.
 
-Next technical task: correct per-segment last-activity attribution and address
-the startup-inclusive target violation recorded in the
-[stock follow-up](STOCK-PG16-20261110.md), then repeat the three-cycle stock
-PostgreSQL 16.15 IONOS proof before claiming positive Technical RPO acceptance.
-Operational RPO/RTO still requires representative, authorized non-production
-operational drills and measured alert/response behavior; no production work is
-implied or authorized by this evidence.
+The next outstanding acceptance task is to obtain genuine `event=schedule`
+Recovery evidence and complete authorized operational RPO/RTO drills with
+measured alert/response behavior. IAM ContractUserId and the Staging Recovery
+blockers remain separate. No production work is implied or authorized by this
+evidence.
