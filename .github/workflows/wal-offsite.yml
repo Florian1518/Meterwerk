@@ -47,7 +47,7 @@ jobs:
           sudo apt-get update
           pg_version=$(apt-cache madison postgresql-16 | awk '$3 ~ /^16\.15-/ {print $3; exit}')
           test -n "$pg_version" || { echo STOCK_POSTGRESQL_16_15_UNAVAILABLE >&2; exit 1; }
-          sudo apt-get install --yes "postgresql-16=$pg_version" "postgresql-client-16=$pg_version" age
+          sudo apt-get install --yes --allow-downgrades "postgresql-16=$pg_version" "postgresql-client-16=$pg_version" age
           mkdir -p artifacts/wal-offsite
           dpkg-query -W postgresql-16 postgresql-client-16 > artifacts/wal-offsite/stock-packages.txt
           sha256sum /usr/lib/postgresql/16/bin/postgres > artifacts/wal-offsite/stock-binary.sha256
