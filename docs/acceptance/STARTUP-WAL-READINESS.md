@@ -51,7 +51,27 @@ tests. Run
 verified its one-time startup switch and isolated `.age` upload in 6.366 s,
 but its first post-ready natural cycle took 300.579 s. That run remains failed
 evidence and showed the app must stay closed through a verified natural
-post-recovery warm-up as well. A new isolated proof is pending. Until the
-startup gate and three post-ready natural cycles pass together, Technical RPO
-remains failed/pending. The historical 305.630-second cycle in
+post-recovery warm-up as well.
+
+Run
+[42816631791](https://github.com/Florian1518/Meterwerk/actions/runs/42816631791)
+then completed the extended gate: total closed time was 305.950 s, including a
+300.262 s natural warm-up; both startup segments were uploaded under the new
+isolated prefix `phase3-acceptance/42816631791-1/startup-wal/` and verified.
+The three post-ready transaction-to-verified-offsite measurements were 60.591,
+62.559, and 70.841 s (worst 70.841 s), with three natural switches and
+verified encrypted receipts under that run's `continuous-wal/` prefix. The
+workflow correctly remained failed because the evidence verifier rejected a
+boundary transaction in the third WAL segment: its commit preceded the
+previous switch-observation sample by 26.791 ms. All timestamps and receipt
+ordering were otherwise valid. The verifier had incorrectly required the
+previous sampled observation to precede every transaction in the next segment;
+the check now allows this sampling race while requiring the observation to
+precede that segment's final transaction. The raw run remains failed and is not
+counted as accepted proof. A fresh workflow run with the corrected verifier is
+required.
+
+Until a workflow run accepts the startup gate and three post-ready natural
+cycles together, Technical RPO remains failed/pending. The historical
+305.630-second cycle in
 [the stock PostgreSQL report](STOCK-PG16-20261110.md) remains failed evidence.

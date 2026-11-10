@@ -174,6 +174,16 @@ test("accepts three consecutive low-volume natural timeout cycles with verified 
   assert.equal(result.technicalRpoTargetMet, true);
 });
 
+test("keeps segment-boundary commits when sampled switch observation follows them", () => {
+  const input = fixture();
+  const thirdCycle = input.cycles[2];
+  thirdCycle.activityFirstAt = thirdCycle.priorNaturalSwitchObservedAt - 25;
+  thirdCycle.transactions[0].committedAt = thirdCycle.activityFirstAt;
+  const result = verifyNaturalWalEvidence(input);
+  assert.equal(result.status, "PASSED");
+  assert.equal(result.cycles[2].transactionRpoSamples, 6);
+});
+
 test("rejects a different PostgreSQL patch release", () => {
   for (const version of ["16.11", "16.16", "16.150"]) {
     const input = fixture();

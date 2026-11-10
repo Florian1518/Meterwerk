@@ -243,7 +243,7 @@ export function verifyNaturalWalEvidence({
     ];
     requireEvidence(
       times.every(Number.isFinite) &&
-        cycle.priorNaturalSwitchObservedAt <= cycle.activityFirstAt &&
+        cycle.priorNaturalSwitchObservedAt <= cycle.activityLastAt &&
         cycle.activityFirstAt <= cycle.activityLastAt &&
         cycle.activityLastAt <= cycle.naturalSwitchDetectionLowerBoundAt &&
         cycle.naturalSwitchDetectionLowerBoundAt <=
