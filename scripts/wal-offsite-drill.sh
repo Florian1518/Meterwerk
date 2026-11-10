@@ -172,8 +172,12 @@ for cycle in 1 2 3; do
       activity=$(psql -XAt -v ON_ERROR_STOP=1 -c "SELECT extract(epoch from clock_timestamp())*1000,pg_walfile_name(pg_current_wal_lsn() + 1)")
       IFS='|' read -r activity_at activity_segment <<< "$activity"
       [[ -n "$first_activity_at" ]] || { first_activity_at="$activity_at"; first_activity_segment="$activity_segment"; }
-      last_activity_at="$activity_at"
-      transaction_count=$((transaction_count+1))
+      # A transaction committed after the natural switch belongs to the next
+      # cycle, even if this poll has not yet observed the archived segment.
+      if [[ "$activity_segment" == "$expected" ]]; then
+        last_activity_at="$activity_at"
+        transaction_count=$((transaction_count+1))
+      fi
     fi
 
     current=$(sample)
