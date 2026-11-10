@@ -65,6 +65,8 @@ export function verifyNaturalWalEvidence({
     "CHECKPOINTER_NOT_RUNNING",
   );
   const startupReceipt = startupGate?.receipt;
+  const startupWarmup = startupGate?.naturalWarmup;
+  const startupWarmupReceipt = startupWarmup?.receipt;
   requireEvidence(
     startupGate?.status === "PASSED" &&
       startupGate.recoveryComplete === true &&
@@ -85,7 +87,33 @@ export function verifyNaturalWalEvidence({
       startupReceipt.object.bytes > 0 &&
       startupReceipt.object?.sse === "AES256" &&
       sha256.test(startupReceipt.object?.sha256) &&
-      sha256.test(startupReceipt.plainSha256),
+      sha256.test(startupReceipt.plainSha256) &&
+      startupWarmup?.status === "PASSED" &&
+      startupWarmup.naturalSwitch === true &&
+      Number.isFinite(startupWarmup.archiveConfirmedAt) &&
+      Number.isFinite(startupWarmup.gateDurationMs) &&
+      startupWarmup.gateDurationMs >= 0 &&
+      walName.test(startupWarmup.segment) &&
+      walIndex(startupWarmup.segment) === walIndex(startupGate.segment) + 1n &&
+      walIndex(t0.initialSegment) === walIndex(startupWarmup.segment) + 1n &&
+      Number.isFinite(startupWarmup.probeCommittedAt) &&
+      Number.isInteger(startupWarmup.preSwitchOffset) &&
+      startupWarmup.preSwitchOffset < settings.walSegmentSize &&
+      Number.isFinite(startupWarmup.verifiedAt) &&
+      typeof startupWarmup.switchLog === "string" &&
+      startupWarmup.switchLog.includes(
+        "write-ahead log switch forced (archive_timeout=60)",
+      ) &&
+      startupWarmupReceipt?.status === "VERIFIED" &&
+      startupWarmupReceipt.wal === startupWarmup.segment &&
+      startupWarmupReceipt.object?.key ===
+        `phase3-acceptance/${startupGate.runId}/startup-wal/${startupWarmup.segment}.age` &&
+      !!startupWarmupReceipt.object?.version &&
+      Number.isInteger(startupWarmupReceipt.object?.bytes) &&
+      startupWarmupReceipt.object.bytes > 0 &&
+      startupWarmupReceipt.object?.sse === "AES256" &&
+      sha256.test(startupWarmupReceipt.object?.sha256) &&
+      sha256.test(startupWarmupReceipt.plainSha256),
     "STARTUP_WAL_GATE_EVIDENCE_INVALID",
   );
   const startup =
@@ -336,6 +364,21 @@ export function verifyNaturalWalEvidence({
       object: startupReceipt.object,
       ciphertextSha256: startupReceipt.object.sha256,
       plaintextSha256: startupReceipt.plainSha256,
+      encryption: "age",
+    },
+    startupNaturalWarmup: {
+      status: startupWarmup.status,
+      segment: startupWarmup.segment,
+      naturalSwitch: true,
+      probeCommittedAt: startupWarmup.probeCommittedAt,
+      preSwitchOffset: startupWarmup.preSwitchOffset,
+      archiveConfirmedAt: startupWarmup.archiveConfirmedAt,
+      verifiedAt: startupWarmupReceipt.verifiedAt,
+      switchLog: startupWarmup.switchLog,
+      gateDurationMs: startupWarmup.gateDurationMs,
+      object: startupWarmupReceipt.object,
+      ciphertextSha256: startupWarmupReceipt.object.sha256,
+      plaintextSha256: startupWarmupReceipt.plainSha256,
       encryption: "age",
     },
     settings,

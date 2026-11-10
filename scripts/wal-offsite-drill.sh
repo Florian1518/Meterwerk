@@ -154,11 +154,43 @@ unset METERWERK_WAL_OBJECT_CLASS
 startup_state=$(cat "$work/evidence/startup-state.json")
 export WAL_GATE_STATE="$startup_state" WAL_GATE_SEGMENT="$startup_wal"
 gate_verified_at=$(node --input-type=module -e 'const s=JSON.parse(process.env.WAL_GATE_STATE), r=s.receipts?.[process.env.WAL_GATE_SEGMENT], sha=/^[a-f0-9]{64}$/; if(s.status!=="PASSED"||s.expectedSegments!==1||!r||r.status!=="VERIFIED"||r.object?.sse!=="AES256"||!r.object?.version||!sha.test(r.object?.sha256)||!sha.test(r.plainSha256)||!r.object?.key.endsWith("/startup-wal/"+process.env.WAL_GATE_SEGMENT+".age")) throw Error("STARTUP_OFFSITE_VERIFICATION_FAILED"); process.stdout.write(String(r.verifiedAt))')
-gate_ready_duration_ms=$((gate_verified_at-gate_started_at))
+
+# Keep the application closed through the first post-recovery natural switch.
+# This drains the checkpointer sleep inherited from recovery; it is startup
+# protection evidence and is excluded from the post-ready Technical RPO cycles.
+warmup_baseline=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT archived_count FROM pg_stat_archiver')
+warmup_failed_baseline=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT failed_count FROM pg_stat_archiver')
+warmup_wal=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT pg_walfile_name(pg_current_wal_lsn() + 1)')
+psql -Xq -v ON_ERROR_STOP=1 -c "INSERT INTO wal_startup_probe(marker) VALUES ('isolated-checkpointer-drain-probe')"
+warmup_probe_committed_at=$(date +%s%3N)
+warmup_started_at=$(date +%s%3N)
+warmup_pre_switch_offset=$(psql -XAtq -v ON_ERROR_STOP=1 -c 'SELECT (pg_walfile_name_offset(pg_current_wal_lsn())).file_offset')
+[[ "$warmup_pre_switch_offset" -lt "$wal_segment_size" ]] || { echo STARTUP_WARMUP_VOLUME_ROLLOVER >&2; exit 1; }
+export WAL_WARMUP_BASELINE="$warmup_baseline" WAL_WARMUP_FAILED_BASELINE="$warmup_failed_baseline"
+for attempt in $(seq 1 660); do
+  warmup_archive=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object('lastArchivedWal',last_archived_wal,'archivedCount',archived_count,'failedCount',failed_count,'archiveAt',extract(epoch from last_archived_time)*1000) FROM pg_stat_archiver")
+  export WAL_WARMUP_ARCHIVE="$warmup_archive" WAL_WARMUP_SEGMENT="$warmup_wal"
+  if node --input-type=module -e 'const s=JSON.parse(process.env.WAL_WARMUP_ARCHIVE); process.exit(s.lastArchivedWal===process.env.WAL_WARMUP_SEGMENT&&s.failedCount===Number(process.env.WAL_WARMUP_FAILED_BASELINE)?0:1)'; then break; fi
+  [[ "$(node --input-type=module -e 'process.stdout.write(String(JSON.parse(process.env.WAL_WARMUP_ARCHIVE).failedCount))')" == "$warmup_failed_baseline" ]] || { echo STARTUP_WARMUP_ARCHIVE_FAILURE >&2; exit 1; }
+  sleep 1
+done
+node --input-type=module -e 'const s=JSON.parse(process.env.WAL_WARMUP_ARCHIVE); if(s.lastArchivedWal!==process.env.WAL_WARMUP_SEGMENT||s.archivedCount!==Number(process.env.WAL_WARMUP_BASELINE)+1||s.failedCount!==Number(process.env.WAL_WARMUP_FAILED_BASELINE)) throw Error("STARTUP_WARMUP_ARCHIVE_CONFIRMATION_FAILED")'
+warmup_switch_log=$(awk -v wal="$warmup_wal" '/write-ahead log switch forced \(archive_timeout=60\)/ {last=$0} index($0, "archived write-ahead log file \"" wal "\"") {print last; exit}' "$work/postgres.log")
+[[ "$warmup_switch_log" == *"archive_timeout=60"* ]] || { echo STARTUP_WARMUP_NATURAL_TIMEOUT_NOT_LOGGED >&2; exit 1; }
+[[ "$(stat -c '%s' "$work/archive/$warmup_wal")" -eq "$wal_segment_size" ]] || { echo STARTUP_WARMUP_ARCHIVE_SIZE_INVALID >&2; exit 1; }
+export METERWERK_WAL_OBJECT_CLASS=startup-wal
+node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync(process.env.WAL_DRILL_WORK+"/plan-startup-warmup.json",JSON.stringify({first:process.env.WAL_WARMUP_SEGMENT,segmentSize:Number(process.env.WAL_DRILL_SEGMENT_SIZE),failedCountBefore:Number(process.env.WAL_WARMUP_FAILED_BASELINE),maxAgeMs:120000,pollMs:1000,archiveDirectory:process.env.WAL_DRILL_WORK+"/archive"}))'
+WAL_OFFSITE_ONCE=1 node scripts/wal-offsite.mjs "$work/plan-startup-warmup.json" "$work/evidence/startup-warmup-state.json"
+unset METERWERK_WAL_OBJECT_CLASS
+warmup_state=$(cat "$work/evidence/startup-warmup-state.json")
+export WAL_WARMUP_STATE="$warmup_state" WAL_WARMUP_SEGMENT="$warmup_wal"
+warmup_verified_at=$(node --input-type=module -e 'const s=JSON.parse(process.env.WAL_WARMUP_STATE), r=s.receipts?.[process.env.WAL_WARMUP_SEGMENT], sha=/^[a-f0-9]{64}$/; if(s.status!=="PASSED"||s.expectedSegments!==1||!r||r.status!=="VERIFIED"||r.object?.sse!=="AES256"||!r.object?.version||!sha.test(r.object?.sha256)||!sha.test(r.plainSha256)||!r.object?.key.endsWith("/startup-wal/"+process.env.WAL_WARMUP_SEGMENT+".age")) throw Error("STARTUP_WARMUP_OFFSITE_VERIFICATION_FAILED"); process.stdout.write(String(r.verifiedAt))')
+export WAL_WARMUP_SWITCH_LOG="$warmup_switch_log"
+gate_ready_duration_ms=$((warmup_verified_at-gate_started_at))
 [[ "$gate_ready_duration_ms" -ge 0 && "$gate_ready_duration_ms" -le 600000 ]] || { echo STARTUP_GATE_TIMEOUT >&2; exit 1; }
 startup_run_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}"
-export WAL_GATE_RUN_ID="$startup_run_id" WAL_GATE_DURATION="$gate_ready_duration_ms" WAL_GATE_RECOVERY_AT="$gate_recovery_complete_at" WAL_GATE_PROBE_AT="$gate_probe_committed_at" WAL_GATE_SWITCH_AT="$gate_switch_at" WAL_GATE_SEGMENT="$startup_wal"
-node --input-type=module -e 'import {renameSync,writeFileSync} from "node:fs"; const s=JSON.parse(process.env.WAL_GATE_STATE),r=s.receipts[process.env.WAL_GATE_SEGMENT]; const proof={status:"PASSED",runId:process.env.WAL_GATE_RUN_ID,segment:process.env.WAL_GATE_SEGMENT,recoveryComplete:true,recoveryCompleteAt:Number(process.env.WAL_GATE_RECOVERY_AT),switchCount:1,archiveConfirmed:true,archiveConfirmedAt:JSON.parse(process.env.WAL_GATE_ARCHIVE).archiveAt,probeCommittedAt:Number(process.env.WAL_GATE_PROBE_AT),switchAt:Number(process.env.WAL_GATE_SWITCH_AT),verifiedAt:r.verifiedAt,gateDurationMs:Number(process.env.WAL_GATE_DURATION),receipt:r}; const data=JSON.stringify(proof,null,2)+"\n"; for(const path of [process.env.WAL_DRILL_WORK+"/evidence/startup-gate.json",process.env.WAL_DRILL_WORK+"/wal-startup-readiness.json"]){writeFileSync(path+".tmp",data,{mode:0o600});renameSync(path+".tmp",path)} console.log(JSON.stringify({startupGate:"PASSED",gateDurationMs:proof.gateDurationMs,wal:proof.segment,object:r.object.key}))'
+export WAL_GATE_RUN_ID="$startup_run_id" WAL_GATE_DURATION="$gate_ready_duration_ms" WAL_GATE_RECOVERY_AT="$gate_recovery_complete_at" WAL_GATE_PROBE_AT="$gate_probe_committed_at" WAL_GATE_SWITCH_AT="$gate_switch_at" WAL_GATE_SEGMENT="$startup_wal" WAL_WARMUP_PROBE_AT="$warmup_probe_committed_at" WAL_WARMUP_PRE_SWITCH_OFFSET="$warmup_pre_switch_offset" WAL_WARMUP_DURATION="$((warmup_verified_at-warmup_started_at))"
+node --input-type=module -e 'import {renameSync,writeFileSync} from "node:fs"; const s=JSON.parse(process.env.WAL_GATE_STATE),r=s.receipts[process.env.WAL_GATE_SEGMENT],w=JSON.parse(process.env.WAL_WARMUP_STATE),wr=w.receipts[process.env.WAL_WARMUP_SEGMENT]; const proof={status:"PASSED",runId:process.env.WAL_GATE_RUN_ID,segment:process.env.WAL_GATE_SEGMENT,recoveryComplete:true,recoveryCompleteAt:Number(process.env.WAL_GATE_RECOVERY_AT),switchCount:1,archiveConfirmed:true,archiveConfirmedAt:JSON.parse(process.env.WAL_GATE_ARCHIVE).archiveAt,probeCommittedAt:Number(process.env.WAL_GATE_PROBE_AT),switchAt:Number(process.env.WAL_GATE_SWITCH_AT),verifiedAt:r.verifiedAt,gateDurationMs:Number(process.env.WAL_GATE_DURATION),receipt:r,naturalWarmup:{status:"PASSED",segment:process.env.WAL_WARMUP_SEGMENT,probeCommittedAt:Number(process.env.WAL_WARMUP_PROBE_AT),preSwitchOffset:Number(process.env.WAL_WARMUP_PRE_SWITCH_OFFSET),naturalSwitch:true,archiveConfirmedAt:JSON.parse(process.env.WAL_WARMUP_ARCHIVE).archiveAt,switchLog:process.env.WAL_WARMUP_SWITCH_LOG,verifiedAt:wr.verifiedAt,gateDurationMs:Number(process.env.WAL_WARMUP_DURATION),receipt:wr}}; const data=JSON.stringify(proof,null,2)+"\n"; for(const path of [process.env.WAL_DRILL_WORK+"/evidence/startup-gate.json",process.env.WAL_DRILL_WORK+"/wal-startup-readiness.json"]){writeFileSync(path+".tmp",data,{mode:0o600});renameSync(path+".tmp",path)} console.log(JSON.stringify({startupGate:"PASSED",gateDurationMs:proof.gateDurationMs,manualWal:proof.segment,naturalWarmupWal:proof.naturalWarmup.segment,object:r.object.key,warmupObject:wr.object.key}))'
 export METERWERK_WAL_STARTUP_GATE_REQUIRED=true METERWERK_WAL_STARTUP_GATE_FILE="$work/wal-startup-readiness.json"
 node --input-type=module -e 'import {readFileSync} from "node:fs"; const p=JSON.parse(readFileSync(process.env.METERWERK_WAL_STARTUP_GATE_FILE)); if(p.status!=="PASSED") process.exit(1)'
 

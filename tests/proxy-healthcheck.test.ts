@@ -117,6 +117,25 @@ describe("production proxy healthcheck contract", () => {
               sse: "AES256",
             },
           },
+          naturalWarmup: {
+            status: "PASSED",
+            segment: "000000010000000000000002",
+            naturalSwitch: true,
+            preSwitchOffset: 45000,
+            archiveConfirmedAt: Date.now(),
+            receipt: {
+              status: "VERIFIED",
+              wal: "000000010000000000000002",
+              plainSha256: "c".repeat(64),
+              object: {
+                key: "phase3-acceptance/123456-1/startup-wal/000000010000000000000002.age",
+                version: "warmup-version",
+                bytes: 16787456,
+                sha256: "d".repeat(64),
+                sse: "AES256",
+              },
+            },
+          },
         }),
       );
       expect(request().status).toBe(200);

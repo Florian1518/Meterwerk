@@ -30,12 +30,12 @@ function fixture() {
   };
   const t0 = {
     referenceAt: 0,
-    initialSegment: segment(1),
-    initialArchiver: { archivedCount: 1, failedCount: 0 },
+    initialSegment: segment(2),
+    initialArchiver: { archivedCount: 2, failedCount: 0 },
   };
   const cycles = [1, 2, 3].map((number) => {
     const prior = (number - 1) * 60000;
-    const wal = segment(number);
+    const wal = segment(number + 1);
     const activityFirstAt = prior + 1000;
     const activityLastAt = prior + 5000;
     const lower = prior + 59000;
@@ -46,7 +46,7 @@ function fixture() {
     return {
       cycle: number,
       wal,
-      nextCurrentSegment: segment(number + 1),
+      nextCurrentSegment: segment(number + 2),
       archiveTimeoutSeconds: 60,
       manualSwitchCalls: 0,
       manualCheckpointCalls: 0,
@@ -69,8 +69,8 @@ function fixture() {
       switchToArchiveSeconds: (archiveAt - lower) / 1000,
       uploadedVerifiedAt: uploaded,
       archiveToUploadSeconds: (uploaded - archiveAt) / 1000,
-      archivedCountBefore: number - 1,
-      archivedCountAfter: number,
+      archivedCountBefore: number + 1,
+      archivedCountAfter: number + 2,
       failedCountAfter: 0,
       lastArchivedWalAfter: wal,
       archiverPid: 33,
@@ -118,9 +118,32 @@ function fixture() {
           key: `phase3-acceptance/123456-1/startup-wal/${segment(0)}.age`,
           version: "startup-version",
           bytes: 16787456,
-          bytes: 16787456,
           sha256: sha,
           sse: "AES256",
+        },
+      },
+      naturalWarmup: {
+        status: "PASSED",
+        segment: segment(1),
+        probeCommittedAt: 25,
+        preSwitchOffset: 45000,
+        naturalSwitch: true,
+        archiveConfirmedAt: 300,
+        switchLog: "DEBUG: write-ahead log switch forced (archive_timeout=60)",
+        verifiedAt: 400,
+        gateDurationMs: 300000,
+        receipt: {
+          status: "VERIFIED",
+          wal: segment(1),
+          plainSha256: sha,
+          verifiedAt: 400,
+          object: {
+            key: `phase3-acceptance/123456-1/startup-wal/${segment(1)}.age`,
+            version: "warmup-version",
+            bytes: 16787456,
+            sha256: sha,
+            sse: "AES256",
+          },
         },
       },
     },

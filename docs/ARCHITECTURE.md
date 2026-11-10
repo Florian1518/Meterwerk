@@ -557,7 +557,9 @@ and steady-state Technical RPO are separate acceptance claims. With PostgreSQL
 `METERWERK_WAL_STARTUP_GATE_REQUIRED=true`), `/api/health/ready` remains
 unavailable until the configured `METERWERK_WAL_STARTUP_GATE_FILE` contains a
 successful post-recovery probe, exactly one startup-only WAL switch, archiver
-confirmation, and a verified encrypted IONOS receipt. The startup orchestrator
+confirmation, a verified encrypted IONOS receipt, and a verified natural
+post-recovery warm-up rollover that drains the checkpointer's inherited sleep.
+The startup orchestrator
 must create this file atomically only after ciphertext hash, age decryption,
 plaintext hash, version-pinned object download, and SSE-S3/AES256 verification;
 failure or timeout leaves readiness false. The probe is synthetic and contains
