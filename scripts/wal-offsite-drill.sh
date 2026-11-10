@@ -14,7 +14,7 @@ cleanup() {
   pg_ctl -D "$work/db" -m immediate stop >/dev/null 2>&1 || true
   if [[ -d "$work/evidence" ]]; then
     mkdir -p artifacts/wal-offsite
-    cp "$work/evidence/"*.json artifacts/wal-offsite/ 2>/dev/null || true
+    cp "$work/evidence/"* artifacts/wal-offsite/ 2>/dev/null || true
   fi
   if [[ -f "$work/postgres.log" ]]; then cp "$work/postgres.log" artifacts/wal-offsite/postgres.log; fi
   exit "$result"
@@ -29,6 +29,7 @@ port = 55439
 wal_level = replica
 archive_mode = on
 archive_timeout = 60
+track_commit_timestamp = on
 log_min_messages = debug1
 archive_command = 'test ! -f $work/archive/%f && cp %p $work/archive/%f'
 EOF
@@ -60,6 +61,7 @@ settings=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'archiveTimeoutSeconds',extract(epoch from current_setting('archive_timeout')::interval),
   'archiveTimeoutSource',(SELECT source FROM pg_settings WHERE name='archive_timeout'),
   'archiveTimeoutPendingRestart',(SELECT pending_restart FROM pg_settings WHERE name='archive_timeout'),
+  'trackCommitTimestamp',current_setting('track_commit_timestamp'),
   'archiverPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='archiver' LIMIT 1),
   'checkpointerPid',(SELECT pid FROM pg_stat_activity WHERE backend_type='checkpointer' LIMIT 1))")
 wal_segment_size=$(pg_controldata "$work/db" | awk -F': *' '/Bytes per WAL segment/ {print $2}')
@@ -93,6 +95,7 @@ node --input-type=module -e '
   if (settings.serverVersionNum !== 160015 || settings.walLevel !== "replica" ||
       settings.archiveMode !== "on" || !settings.archiveCommand || settings.archiveLibrary !== "" ||
       settings.archiveTimeoutSeconds !== 60 || !Number.isInteger(settings.archiverPid) ||
+      settings.trackCommitTimestamp !== "on" ||
       !Number.isInteger(settings.checkpointerPid) || settings.archiveTimeoutSource !== "configuration file" ||
       settings.archiveTimeoutPendingRestart !== false || initial.inRecovery !== false ||
       initial.archivedCount !== 0 || initial.failedCount !== 0 || !Number.isInteger(initial.archiverPid))
@@ -138,6 +141,7 @@ sample() {
 }
 
 activity_sequence=0
+printf 'cycle,xid,wal,committed_at_ms\n' > "$work/evidence/transactions.csv"
 previous_switch_observed_at="$start_reference"
 for cycle in 1 2 3; do
   before=$(sample)
@@ -168,9 +172,12 @@ for cycle in 1 2 3; do
     if [[ -n "$worker" ]]; then kill -0 "$worker" || { echo WAL_WORKER_EXITED >&2; exit 1; }; fi
     if (( (attempt-1) % 10 == 0 )); then
       activity_sequence=$((activity_sequence+1))
-      psql -Xq -v ON_ERROR_STOP=1 -c "INSERT INTO wal_probe VALUES ($activity_sequence,clock_timestamp())"
-      activity=$(psql -XAt -v ON_ERROR_STOP=1 -c "SELECT extract(epoch from clock_timestamp())*1000,pg_walfile_name(pg_current_wal_lsn() + 1)")
+      xid=$(psql -XAtq -v ON_ERROR_STOP=1 -c "INSERT INTO wal_probe VALUES ($activity_sequence,clock_timestamp()) RETURNING pg_current_xact_id()::text")
+      [[ "$xid" =~ ^[0-9]+$ ]] || { echo TRANSACTION_XID_INVALID >&2; exit 1; }
+      activity=$(psql -XAt -v ON_ERROR_STOP=1 -c "SELECT extract(epoch from pg_xact_commit_timestamp('$xid'::xid8::xid))*1000,pg_walfile_name(pg_current_wal_lsn() + 1)")
       IFS='|' read -r activity_at activity_segment <<< "$activity"
+      [[ "$activity_at" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo COMMIT_TIMESTAMP_UNAVAILABLE >&2; exit 1; }
+      printf '%s,%s,%s,%s\n' "$cycle" "$xid" "$activity_segment" "$activity_at" >> "$work/evidence/transactions.csv"
       [[ -n "$first_activity_at" ]] || { first_activity_at="$activity_at"; first_activity_segment="$activity_segment"; }
       # A transaction committed after the natural switch belongs to the next
       # cycle, even if this poll has not yet observed the archived segment.
@@ -259,6 +266,7 @@ for cycle in 1 2 3; do
     WAL_CYCLE_PREVIOUS_SWITCH="$previous_switch_observed_at" WAL_CYCLE_SEGMENT="$switched_segment" \
     WAL_CYCLE_MAX_OFFSET="$max_offset" WAL_CYCLE_PRE_OFFSET="$last_pre_switch_offset" \
     WAL_CYCLE_COUNT="$transaction_count" WAL_CYCLE_BASELINE_COUNT="$baseline_count" \
+    WAL_CYCLE_ACTIVITY_FILE="$work/evidence/transactions.csv" \
     WAL_CYCLE_ARCHIVED_BYTES="$archived_wal_bytes" \
     WAL_CYCLE_BASELINE="$before" WAL_CYCLE_FINAL="$current"
   node --input-type=module -e '
@@ -267,12 +275,15 @@ for cycle in 1 2 3; do
     const state=JSON.parse(process.env.WAL_CYCLE_STATE), before=JSON.parse(process.env.WAL_CYCLE_BASELINE), final=JSON.parse(process.env.WAL_CYCLE_FINAL);
     const receipt=state.receipts[process.env.WAL_CYCLE_EXPECTED];
     if (!receipt || receipt.status!=="VERIFIED" || receipt.object?.sse!=="AES256" || !receipt.object?.key.endsWith(".age")) throw new Error("OFFSITE_RECEIPT_INVALID");
-    const n=Number(process.env.WAL_DRILL_CYCLE), sw=Number(process.env.WAL_CYCLE_SWITCH), switchLower=Number(process.env.WAL_CYCLE_SWITCH_LOWER), archiveSample=Number(process.env.WAL_CYCLE_ARCHIVE_SAMPLE), archived=Number(final.lastArchivedAt), uploaded=Number(state.lastVerifiedUploadAt), first=Number(process.env.WAL_CYCLE_FIRST), last=Number(process.env.WAL_CYCLE_LAST);
+    const n=Number(process.env.WAL_DRILL_CYCLE), sw=Number(process.env.WAL_CYCLE_SWITCH), switchLower=Number(process.env.WAL_CYCLE_SWITCH_LOWER), archiveSample=Number(process.env.WAL_CYCLE_ARCHIVE_SAMPLE), archived=Number(final.lastArchivedAt), uploaded=Number(state.lastVerifiedUploadAt);
+    const transactionRows=readFileSync(process.env.WAL_CYCLE_ACTIVITY_FILE,"utf8").trim().split(/\r?\n/).slice(1).map(line=>{const [cycle,xid,wal,committedAt]=line.split(",");return {cycle:Number(cycle),xid,wal,committedAt:Number(committedAt)};}).filter(row=>row.cycle===n&&row.wal===process.env.WAL_CYCLE_EXPECTED);
+    if(transactionRows.length!==Number(process.env.WAL_CYCLE_COUNT)||transactionRows.some(row=>!/^\d+$/.test(row.xid)||!Number.isFinite(row.committedAt))) throw new Error("COMMITTED_TRANSACTION_EVIDENCE_INVALID");
+    const first=Math.min(...transactionRows.map(row=>row.committedAt)), last=Math.max(...transactionRows.map(row=>row.committedAt));
     writeFileSync(w+"cycle-"+n+"-stats.json",JSON.stringify({before,after:final},null,2)+"\n");
     writeFileSync(w+"cycle-"+n+".json",JSON.stringify({cycle:n,wal:process.env.WAL_CYCLE_EXPECTED,nextCurrentSegment:process.env.WAL_CYCLE_SEGMENT,
       archiveTimeoutSeconds:60,manualSwitchCalls:0,manualCheckpointCalls:0,transactionCount:Number(process.env.WAL_CYCLE_COUNT),
       priorNaturalSwitchObservedAt:Number(process.env.WAL_CYCLE_PREVIOUS_SWITCH),activityFirstAt:first,activityLastAt:last,
-      firstActivitySegment:process.env.WAL_CYCLE_FIRST_SEGMENT,naturalSwitchDetectionLowerBoundAt:switchLower,naturalSwitchObservedAt:sw,
+      firstActivitySegment:process.env.WAL_CYCLE_FIRST_SEGMENT,transactions:transactionRows,naturalSwitchDetectionLowerBoundAt:switchLower,naturalSwitchObservedAt:sw,
       naturalSwitchDelaySeconds:(sw-Number(process.env.WAL_CYCLE_PREVIOUS_SWITCH))/1000,
       firstActivityToSwitchUpperBoundSeconds:(sw-first)/1000,archiveConfirmedAt:archived,archiveConfirmationObservedAt:archiveSample,
       switchToArchiveSeconds:(archived-switchLower)/1000,uploadedVerifiedAt:uploaded,
@@ -301,6 +312,6 @@ done
 cp "$work/postgres.log" "$work/evidence/postgres.log"
 node scripts/natural-wal-evidence.mjs "$work/evidence" "$work/evidence/summary.json"
 mkdir -p artifacts/wal-offsite
-cp "$work/evidence/"*.json artifacts/wal-offsite/
+cp "$work/evidence/"* artifacts/wal-offsite/
 # No key material or WAL bytes are placed in logs/artifacts. Uploads contain
 # only age ciphertext through the existing version-pinned IONOS transport.

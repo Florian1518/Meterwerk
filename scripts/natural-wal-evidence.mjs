@@ -52,6 +52,10 @@ export function verifyNaturalWalEvidence({
     "WAL_SEGMENT_SIZE_INVALID",
   );
   requireEvidence(
+    settings.trackCommitTimestamp === "on",
+    "COMMIT_TIMESTAMP_TRACKING_DISABLED",
+  );
+  requireEvidence(
     Number.isInteger(settings.archiverPid),
     "ARCHIVER_NOT_RUNNING",
   );
@@ -138,6 +142,17 @@ export function verifyNaturalWalEvidence({
       "LOW_VOLUME_ACTIVITY_INVALID",
     );
     requireEvidence(
+      Array.isArray(cycle.transactions) &&
+        cycle.transactions.length === cycle.transactionCount &&
+        cycle.transactions.every(
+          (transaction) =>
+            Number.isFinite(transaction.committedAt) &&
+            transaction.wal === cycle.wal &&
+            /^\d+$/.test(transaction.xid),
+        ),
+      "COMMITTED_TRANSACTION_EVIDENCE_INVALID",
+    );
+    requireEvidence(
       cycle.currentSegmentMaxOffsetBeforeSwitch < settings.walSegmentSize &&
         cycle.lastOffsetBeforeSwitch < settings.walSegmentSize &&
         cycle.archivedWalBytes === settings.walSegmentSize,
@@ -194,6 +209,16 @@ export function verifyNaturalWalEvidence({
       "OFFSITE_HASH_INVALID",
     );
 
+    const transactionRpoSeconds = cycle.transactions.map(
+      (transaction) =>
+        (cycle.uploadedVerifiedAt - transaction.committedAt) / 1000,
+    );
+    requireEvidence(
+      transactionRpoSeconds.every((seconds) => seconds >= 0),
+      "TRANSACTION_RPO_TIMESTAMP_INVALID",
+    );
+    const worstTransactionRpoSeconds = Math.max(...transactionRpoSeconds);
+
     return {
       cycle: cycle.cycle,
       wal: cycle.wal,
@@ -201,6 +226,9 @@ export function verifyNaturalWalEvidence({
       manualSwitchCalls: 0,
       manualCheckpointCalls: 0,
       transactionCount: cycle.transactionCount,
+      transactionRpoSamples: cycle.transactions.length,
+      observedWorstTransactionToVerifiedOffsiteSeconds:
+        worstTransactionRpoSeconds,
       priorNaturalSwitchObservedAt: cycle.priorNaturalSwitchObservedAt,
       activityFirstAt: cycle.activityFirstAt,
       activityLastAt: cycle.activityLastAt,
@@ -213,8 +241,7 @@ export function verifyNaturalWalEvidence({
       switchToArchiveSeconds: cycle.switchToArchiveSeconds,
       uploadedVerifiedAt: cycle.uploadedVerifiedAt,
       archiveToUploadSeconds: cycle.archiveToUploadSeconds,
-      firstActivityToOffsiteSeconds:
-        (cycle.uploadedVerifiedAt - cycle.activityFirstAt) / 1000,
+      firstActivityToOffsiteSeconds: worstTransactionRpoSeconds,
       lastActivityToOffsiteSeconds:
         (cycle.uploadedVerifiedAt - cycle.activityLastAt) / 1000,
       archivedCountBefore: cycle.archivedCountBefore,
@@ -238,7 +265,9 @@ export function verifyNaturalWalEvidence({
   });
 
   const worst = Math.max(
-    ...normalized.map((cycle) => cycle.firstActivityToOffsiteSeconds),
+    ...normalized.map(
+      (cycle) => cycle.observedWorstTransactionToVerifiedOffsiteSeconds,
+    ),
   );
   return {
     status: worst <= 300 ? "PASSED" : "FAILED",
@@ -254,6 +283,7 @@ export function verifyNaturalWalEvidence({
     initialArchiverState: t0.initialArchiver,
     cycles: normalized,
     observedWorstTransactionActivityToVerifiedOffsiteSeconds: worst,
+    observedWorstTransactionToVerifiedOffsiteSeconds: worst,
     technicalActiveWalRpoTargetSeconds: 300,
     technicalRpoTargetMet: worst <= 300,
     startupCycleIncluded: true,

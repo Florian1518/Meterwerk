@@ -24,6 +24,7 @@ function fixture() {
     archiveTimeoutSource: "configuration file",
     archiveTimeoutPendingRestart: false,
     walSegmentSize: 16777216,
+    trackCommitTimestamp: "on",
     archiverPid: 33,
     checkpointerPid: 34,
   };
@@ -50,6 +51,11 @@ function fixture() {
       manualSwitchCalls: 0,
       manualCheckpointCalls: 0,
       transactionCount: 6,
+      transactions: Array.from({ length: 6 }, (_, index) => ({
+        xid: String(1000 + number * 100 + index),
+        wal,
+        committedAt: activityFirstAt + index * 800,
+      })),
       priorNaturalSwitchObservedAt: prior,
       activityFirstAt,
       activityLastAt,
@@ -115,6 +121,7 @@ test("accepts three consecutive low-volume natural timeout cycles with verified 
     result.observedWorstTransactionActivityToVerifiedOffsiteSeconds,
     69,
   );
+  assert.equal(result.observedWorstTransactionToVerifiedOffsiteSeconds, 69);
   assert.equal(result.technicalRpoTargetMet, true);
 });
 
@@ -144,6 +151,11 @@ test("retains all cycles but fails RPO when startup delays the first switch", ()
     if (index === 0) {
       cycle.naturalSwitchDelaySeconds = 300;
       cycle.transactionCount = 30;
+      cycle.transactions = Array.from({ length: 30 }, (_, transaction) => ({
+        xid: String(1100 + transaction),
+        wal: cycle.wal,
+        committedAt: cycle.activityFirstAt + transaction * 10000,
+      }));
       cycle.activityLastAt += 240000;
     } else {
       for (const key of [
@@ -153,6 +165,9 @@ test("retains all cycles but fails RPO when startup delays the first switch", ()
       ]) {
         cycle[key] += 240000;
       }
+      cycle.transactions.forEach((row) => {
+        row.committedAt += 240000;
+      });
     }
   }
   const result = verifyNaturalWalEvidence(input);
@@ -165,6 +180,25 @@ test("retains all cycles but fails RPO when startup delays the first switch", ()
   assert.equal(result.technicalRpoTargetMet, false);
   assert.equal(result.startupCycleIncluded, true);
   assert.equal(result.cycles.length, 3);
+});
+
+test("requires valid commit timestamps for every included transaction", () => {
+  const input = fixture();
+  input.cycles[0].transactions[2].wal = segment(9);
+  failsWith(input, "COMMITTED_TRANSACTION_EVIDENCE_INVALID");
+
+  const missing = fixture();
+  missing.cycles[0].transactions.pop();
+  failsWith(missing, "COMMITTED_TRANSACTION_EVIDENCE_INVALID");
+});
+
+test("uses the oldest exact commit timestamp for the five-minute RPO gate", () => {
+  const input = fixture();
+  input.cycles[0].transactions[0].committedAt = -240000;
+  const result = verifyNaturalWalEvidence(input);
+  assert.equal(result.status, "FAILED");
+  assert.equal(result.failureCode, "TECHNICAL_RPO_TARGET_EXCEEDED");
+  assert.equal(result.observedWorstTransactionToVerifiedOffsiteSeconds, 310);
 });
 
 test("manual WAL switch in positive proof fails with the exact condition", () => {
