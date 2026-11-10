@@ -5,7 +5,9 @@ import { join } from "node:path";
 const base = process.argv[2];
 const read = (name) =>
   JSON.parse(readFileSync(join(base, name), "utf8").replace(/^\uFEFF/, ""));
-const run = JSON.parse(readFileSync(process.argv[3], "utf8").replace(/^\uFEFF/, ""));
+const run = JSON.parse(
+  readFileSync(process.argv[3], "utf8").replace(/^\uFEFF/, ""),
+);
 const settings = read("settings.json");
 assert.equal(run.id, 42776171861);
 assert.equal(run.event, "workflow_dispatch");
