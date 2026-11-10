@@ -26,8 +26,9 @@ export function verifyNaturalWalEvidence({
   drillSource,
 }) {
   requireEvidence(
-    settings.serverVersion?.startsWith("16."),
-    "POSTGRESQL_16_REQUIRED",
+    settings.serverVersionNum === 160015 &&
+      /^16\.15(?:\s|$)/.test(settings.serverVersion),
+    "STOCK_POSTGRESQL_16_15_REQUIRED",
   );
   requireEvidence(settings.walLevel === "replica", "WAL_LEVEL_INVALID");
   requireEvidence(settings.archiveMode === "on", "ARCHIVE_MODE_NOT_ACTIVE");
@@ -132,7 +133,8 @@ export function verifyNaturalWalEvidence({
       "ARCHIVE_COUNT_DID_NOT_INCREASE",
     );
     requireEvidence(
-      cycle.transactionCount >= 4 && cycle.transactionCount <= 20,
+      cycle.transactionCount >= 4 &&
+        cycle.transactionCount <= (index === 0 ? 40 : 20),
       "LOW_VOLUME_ACTIVITY_INVALID",
     );
     requireEvidence(
@@ -166,12 +168,8 @@ export function verifyNaturalWalEvidence({
     );
     requireEvidence(
       cycle.naturalSwitchDelaySeconds >= (index === 0 ? 35 : 50) &&
-        cycle.naturalSwitchDelaySeconds <= (index === 0 ? 90 : 75),
+        cycle.naturalSwitchDelaySeconds <= (index === 0 ? 360 : 75),
       "NATURAL_WAL_SWITCH_DELAY_INVALID",
-    );
-    requireEvidence(
-      cycle.uploadedVerifiedAt - cycle.activityFirstAt <= 300000,
-      "TECHNICAL_RPO_TARGET_EXCEEDED",
     );
 
     const receipt = cycle.receipt;
@@ -243,7 +241,8 @@ export function verifyNaturalWalEvidence({
     ...normalized.map((cycle) => cycle.firstActivityToOffsiteSeconds),
   );
   return {
-    status: "PASSED",
+    status: worst <= 300 ? "PASSED" : "FAILED",
+    failureCode: worst <= 300 ? null : "TECHNICAL_RPO_TARGET_EXCEEDED",
     scope:
       "three consecutive PostgreSQL 16 archive_timeout natural-switch cycles; synthetic database and WAL only",
     event: process.env.GITHUB_EVENT_NAME,
@@ -257,6 +256,7 @@ export function verifyNaturalWalEvidence({
     observedWorstTransactionActivityToVerifiedOffsiteSeconds: worst,
     technicalActiveWalRpoTargetSeconds: 300,
     technicalRpoTargetMet: worst <= 300,
+    startupCycleIncluded: true,
     failuresObserved: 0,
   };
 }
@@ -286,6 +286,10 @@ async function main() {
       resolve(outputPath),
       JSON.stringify(evidence, null, 2) + "\n",
     );
+    if (!evidence.technicalRpoTargetMet) {
+      console.error(evidence.failureCode);
+      process.exitCode = 1;
+    }
     console.log(
       JSON.stringify({
         status: evidence.status,

@@ -36,7 +36,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: deterministic
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: { persist-credentials: false }
@@ -45,7 +45,12 @@ jobs:
       - name: Install synthetic dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes postgresql-16 age
+          pg_version=$(apt-cache madison postgresql-16 | awk '$3 ~ /^16\.15-/ {print $3; exit}')
+          test -n "$pg_version" || { echo STOCK_POSTGRESQL_16_15_UNAVAILABLE >&2; exit 1; }
+          sudo apt-get install --yes "postgresql-16=$pg_version" "postgresql-client-16=$pg_version" age
+          mkdir -p artifacts/wal-offsite
+          dpkg-query -W postgresql-16 postgresql-client-16 > artifacts/wal-offsite/stock-packages.txt
+          sha256sum /usr/lib/postgresql/16/bin/postgres > artifacts/wal-offsite/stock-binary.sha256
           echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
           python3 -m venv "$RUNNER_TEMP/wal-sdk"
           "$RUNNER_TEMP/wal-sdk/bin/pip" install 'boto3==1.40.0'

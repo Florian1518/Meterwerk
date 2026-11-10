@@ -42,6 +42,8 @@ psql -Xq -v ON_ERROR_STOP=1 -c \
 
 settings=$(psql -XAtq -v ON_ERROR_STOP=1 -c "SELECT json_build_object(
   'serverVersion',current_setting('server_version'),
+  'serverVersionNum',current_setting('server_version_num')::int,
+  'postmasterStartTime',extract(epoch from pg_postmaster_start_time())*1000,
   'walLevel',current_setting('wal_level'),
   'archiveMode',current_setting('archive_mode'),
   'archiveCommand',current_setting('archive_command'),
@@ -80,7 +82,7 @@ node --input-type=module -e '
   import {writeFileSync} from "node:fs";
   const settings={...JSON.parse(process.env.WAL_DRILL_SETTINGS),walSegmentSize:Number(process.env.WAL_DRILL_SEGMENT_SIZE)};
   const initial=JSON.parse(process.env.WAL_DRILL_INITIAL);
-  if (!settings.serverVersion.startsWith("16.") || settings.walLevel !== "replica" ||
+  if (settings.serverVersionNum !== 160015 || settings.walLevel !== "replica" ||
       settings.archiveMode !== "on" || !settings.archiveCommand || settings.archiveLibrary !== "" ||
       settings.archiveTimeoutSeconds !== 60 || !Number.isInteger(settings.archiverPid) ||
       !Number.isInteger(settings.checkpointerPid) || settings.archiveTimeoutSource !== "configuration file" ||
@@ -148,10 +150,13 @@ for cycle in 1 2 3; do
   switched_segment=''
   uploaded=false
 
-  # 120 observations allow the full 60 s timeout plus scheduler/poll margin.
+  # Capture startup's diagnosed 300 s sleep without excluding its RPO exposure.
+  # Later cycles retain the 120-observation limit. Acceptance stays at 300 s.
   # A tiny committed INSERT every 10 s keeps genuine WAL activity without
   # approaching the 16 MiB segment boundary.
-  for attempt in $(seq 1 120); do
+  observation_limit=120
+  if [[ "$cycle" -eq 1 ]]; then observation_limit=360; fi
+  for attempt in $(seq 1 "$observation_limit"); do
     if [[ -n "$worker" ]]; then kill -0 "$worker" || { echo WAL_WORKER_EXITED >&2; exit 1; }; fi
     if (( (attempt-1) % 10 == 0 )); then
       activity_sequence=$((activity_sequence+1))
@@ -263,6 +268,8 @@ for cycle in 1 2 3; do
       lastActivityToOffsiteSeconds:(uploaded-last)/1000,archivedCountBefore:Number(process.env.WAL_CYCLE_BASELINE_COUNT),
       archivedCountAfter:Number(final.archivedCount),failedCountAfter:Number(final.failedCount),
       lastArchivedWalAfter:final.lastArchivedWal,archiverPid:final.archiverPid,
+      checkpointerPid:final.checkpointerPid,
+      walRecordsBefore:before.walRecords,walRecordsAfter:final.walRecords,
       checkpointerWaitEventAfter:final.checkpointerWaitEvent,
       checkpointerWaitEventTypeAfter:final.checkpointerWaitEventType,
       inRecoveryAfter:final.inRecovery,
@@ -271,7 +278,7 @@ for cycle in 1 2 3; do
       lastOffsetBeforeSwitch:Number(process.env.WAL_CYCLE_PRE_OFFSET),walSegmentSize:Number(JSON.parse(process.env.WAL_DRILL_SETTINGS).walSegmentSize||process.env.WAL_DRILL_SEGMENT_SIZE),
       receipt
     },null,2)+"\n");
-    if (!(first<=switchLower&&switchLower<=sw&&archived<=archiveSample&&archiveSample<=uploaded) || uploaded-first>300000 || Number(process.env.WAL_CYCLE_PRE_OFFSET)>=16777216) throw new Error("NATURAL_CYCLE_TIMING_INVALID");
+    if (!(first<=switchLower&&switchLower<=sw&&archived<=archiveSample&&archiveSample<=uploaded) || Number(process.env.WAL_CYCLE_PRE_OFFSET)>=16777216) throw new Error("NATURAL_CYCLE_TIMING_INVALID");
   '
   cp "$work/evidence/state.json" "$work/evidence/state-cycle-$cycle.json"
   previous_switch_observed_at="$switch_observed_at"

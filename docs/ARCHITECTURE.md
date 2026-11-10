@@ -548,3 +548,11 @@ hashes and a separately checked heartbeat are required for success. No product
 data path or production service is changed. The three-cycle real IONOS
 acceptance passed in run `42595934065`. Scope and acceptance limits:
 [WAL Offsite Monitoring](WAL-OFFSITE-MONITORING.md).
+
+Final natural-cycle evidence must use stock PostgreSQL 16.15, selected from
+distribution packages with package versions and binary hash retained. Temporary
+source instrumentation is diagnostic evidence only. The first startup cycle
+remains in the RPO measurement: the diagnosed 300-second checkpointer sleep
+must not be hidden by warm-up or a relaxed 300-second RPO target. The collector
+retains all three cycles and emits a failed summary if that target is exceeded.
+See [startup diagnosis](acceptance/PG16-TIMEOUT-42637704239.md).

@@ -2,6 +2,14 @@
 
 ## Outcome
 
+Resume update (2026-11-10): the already completed source diagnostic
+[42637704239](PG16-TIMEOUT-42637704239.md) establishes an initial 300-second
+checkpointer wait while startup recovery was active. All five later internal
+important-record comparisons were true and requested natural switches.
+The historical investigation below records the earlier state; the internal
+diagnosis is now complete for this reproduction. Stock-binary natural-cycle
+offsite acceptance and Technical RPO remain pending, including startup exposure.
+
 This is non-production technical evidence, not an operational SLA. The accepted
 end-to-end technical RTO measurements are Full Restore **7.471 s**, PITR
 **8.068 s**, and Host Loss **28.613 s**. The conservative observed technical
@@ -146,9 +154,8 @@ operational failure handling remain unproven. Accepted restore timings do
 demonstrate technical recovery performance in synthetic CI, but not
 representative operational conditions or an SLA.
 
-Next technical task: obtain the internal timeout comparison values from the
-corrected disposable PostgreSQL 16.15 source diagnostic, classify why the live
-checkpointer did not request a natural switch, then use stock PostgreSQL 16.15
+Next technical task: use the [completed internal diagnosis](PG16-TIMEOUT-42637704239.md)
+to account explicitly for startup exposure, then use stock PostgreSQL 16.15
 for three consecutive synthetic IONOS natural-cycle verifications before
 changing Technical RPO from CONDITIONAL / PENDING.
 Operational RPO/RTO still requires representative, authorized non-production

@@ -13,7 +13,8 @@ function fixture() {
   process.env.GITHUB_RUN_ID = "123456";
   process.env.GITHUB_RUN_ATTEMPT = "1";
   const settings = {
-    serverVersion: "16.11",
+    serverVersion: "16.15",
+    serverVersionNum: 160015,
     walLevel: "replica",
     archiveMode: "on",
     archiveCommand: "test ! -f archive/%f && cp %p archive/%f",
@@ -115,6 +116,55 @@ test("accepts three consecutive low-volume natural timeout cycles with verified 
     69,
   );
   assert.equal(result.technicalRpoTargetMet, true);
+});
+
+test("rejects a different PostgreSQL patch release", () => {
+  for (const version of ["16.11", "16.16", "16.150"]) {
+    const input = fixture();
+    input.settings.serverVersion = version;
+    failsWith(input, "STOCK_POSTGRESQL_16_15_REQUIRED");
+  }
+  const input = fixture();
+  input.settings.serverVersionNum = 160016;
+  failsWith(input, "STOCK_POSTGRESQL_16_15_REQUIRED");
+});
+
+test("retains all cycles but fails RPO when startup delays the first switch", () => {
+  const input = fixture();
+  for (const [index, cycle] of input.cycles.entries()) {
+    for (const key of [
+      "naturalSwitchDetectionLowerBoundAt",
+      "naturalSwitchObservedAt",
+      "archiveConfirmedAt",
+      "archiveConfirmationObservedAt",
+      "uploadedVerifiedAt",
+    ]) {
+      cycle[key] += 240000;
+    }
+    if (index === 0) {
+      cycle.naturalSwitchDelaySeconds = 300;
+      cycle.transactionCount = 30;
+      cycle.activityLastAt += 240000;
+    } else {
+      for (const key of [
+        "priorNaturalSwitchObservedAt",
+        "activityFirstAt",
+        "activityLastAt",
+      ]) {
+        cycle[key] += 240000;
+      }
+    }
+  }
+  const result = verifyNaturalWalEvidence(input);
+  assert.equal(result.status, "FAILED");
+  assert.equal(result.failureCode, "TECHNICAL_RPO_TARGET_EXCEEDED");
+  assert.equal(
+    result.observedWorstTransactionActivityToVerifiedOffsiteSeconds,
+    309,
+  );
+  assert.equal(result.technicalRpoTargetMet, false);
+  assert.equal(result.startupCycleIncluded, true);
+  assert.equal(result.cycles.length, 3);
 });
 
 test("manual WAL switch in positive proof fails with the exact condition", () => {

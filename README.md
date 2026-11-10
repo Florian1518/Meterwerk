@@ -1,5 +1,11 @@
 # Meterwerk
 
+Phase-3 WAL recovery proof requires stock PostgreSQL **16.15**. The synthetic
+workflow pins that package version and includes startup exposure in the
+unchanged 300-second RPO target. The diagnosed initial checkpointer sleep can
+delay the first switch by 300 seconds; the technical RPO remains pending.
+See [diagnosis and retained evidence](docs/acceptance/PG16-TIMEOUT-42637704239.md).
+
 ## Phase 2: Release Supply Chain
 
 Der manuelle Releaseworkflow verwendet einen gemeinsamen Build-/Publishpfad mit
