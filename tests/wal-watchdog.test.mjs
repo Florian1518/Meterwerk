@@ -230,7 +230,7 @@ test("watchdog workflow has an independent five-minute schedule and read-only so
     resolve(".github/workflows/wal-independent-watchdog.yml"),
     "utf8",
   );
-  assert.match(workflow, /cron: "\*\/5 \* \* \* \*"/);
+  assert.match(workflow, /cron: "2-59\/5 \* \* \* \*"/);
   assert.match(workflow, /actions: read/);
   assert.match(workflow, /timeout-minutes: 8/);
   assert.match(workflow, /node scripts\/wal-watchdog\.mjs/);
