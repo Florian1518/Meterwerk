@@ -1,0 +1,226 @@
+{
+  "scope": "Historical source snapshots are immutable evidence, not current status. Run IDs include failures and controls; presence is not acceptance.",
+  "files": [
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/DISASTER-RECOVERY.md",
+      "snapshot": "history/DISASTER-RECOVERY.md.txt",
+      "sha256": "72df45a692acbc2d992cd022c321d2244f999f4a9b693b293a4ade3b4e0fb05e",
+      "runIds": [
+        "41638394904",
+        "41638539926",
+        "41802033425",
+        "42034092512",
+        "42040140763",
+        "42595934065",
+        "42819079627"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/SOFTWARE-READINESS-RC7.md",
+      "snapshot": "history/SOFTWARE-READINESS-RC7.md.txt",
+      "sha256": "ef20f96f711916d6936fc16c5de6f1f77406bf09859cd98cc3898a67752c8df4",
+      "runIds": [
+        "40691330702",
+        "40835587733",
+        "40835587738",
+        "40889030154",
+        "40889044502",
+        "41067550884",
+        "41068729605",
+        "41074152924",
+        "41405832117",
+        "41406630847",
+        "41406700801",
+        "41636754986",
+        "41636755019",
+        "41636765372",
+        "41636765785",
+        "41638394904",
+        "41638394907",
+        "41638539926",
+        "41791165623",
+        "41791165665",
+        "41802033425",
+        "42034092512",
+        "42040140763",
+        "42595934065",
+        "42819079627"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/WAL-OFFSITE-MONITORING.md",
+      "snapshot": "history/WAL-OFFSITE-MONITORING.md.txt",
+      "sha256": "02bd6b4f7689103723043ba8a2e808b4d5ad01a853ac64ce15e23d838875a5d8",
+      "runIds": ["41791165665", "42040140763", "42041884271", "42595934065"]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/WAL-OFFSITE-42595934065.md",
+      "snapshot": "history/WAL-OFFSITE-42595934065.md.txt",
+      "sha256": "2c4c612e861164b3166478f3ce60dbb44447eaba73c959a81b9583b5daeb1b8e",
+      "runIds": [
+        "41791165665",
+        "42040140763",
+        "42041884271",
+        "42595336472",
+        "42595336550",
+        "42595481636",
+        "42595552218",
+        "42595857254",
+        "42595857268",
+        "42595934065"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/TECHNICAL-RPO-RTO-20261109.md",
+      "snapshot": "history/TECHNICAL-RPO-RTO-20261109.md.txt",
+      "sha256": "a4274b80cc27355fabc082bc022e3fc9e8f8c805dbd06971fd3db61539ec60ad",
+      "runIds": [
+        "42040140763",
+        "42595934065",
+        "42600455962",
+        "42601200178",
+        "42611695559",
+        "42611990673",
+        "42613286232",
+        "42613659743",
+        "42621101392",
+        "42633154371",
+        "42633154372",
+        "42635642689",
+        "42637704239",
+        "42819079627"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/PG16-TIMEOUT-42637704239.md",
+      "snapshot": "history/PG16-TIMEOUT-42637704239.md.txt",
+      "sha256": "51c67fed1592e13ffa846a1e84e8659253cc1b53912b74ec7f6bedf6e9c3f2af",
+      "runIds": [
+        "42611990673",
+        "42613286232",
+        "42613659743",
+        "42614626022",
+        "42621101392",
+        "42633154371",
+        "42635642689",
+        "42637704239",
+        "42819079627"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/STOCK-PG16-20261110.md",
+      "snapshot": "history/STOCK-PG16-20261110.md.txt",
+      "sha256": "b36a640e5514badf5196ef56fba2b01e4db3d6607fdc94c87ac30896978a6b97",
+      "runIds": [
+        "42775026519",
+        "42775269642",
+        "42775271308",
+        "42776169964",
+        "42776171861",
+        "42777960179",
+        "42778174264",
+        "42781578715",
+        "42784657870",
+        "42819079627"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/STARTUP-WAL-READINESS.md",
+      "snapshot": "history/STARTUP-WAL-READINESS.md.txt",
+      "sha256": "02be5679946dd91c586e6de673b686ea777a2b9ae1440dc47701df533408b5fc",
+      "runIds": ["42791806505", "42816631791", "42819079627"]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/SCHEDULE-RECOVERY-20261109.md",
+      "snapshot": "history/SCHEDULE-RECOVERY-20261109.md.txt",
+      "sha256": "7e3ba6947d614f276bab5681b5302fd8812cc76887c4394fae9eac5c0d28615b",
+      "runIds": [
+        "41791165665",
+        "42040140763",
+        "42595857254",
+        "42595857268",
+        "42595934065"
+      ]
+    },
+    {
+      "sourceCommit": "95afeff875420205ede1a1c7a1e5660cc9e0c5db",
+      "sourcePath": "docs/acceptance/SYNTHETIC-ALERT-RESPONSE-20261110.md",
+      "snapshot": "history/SYNTHETIC-ALERT-RESPONSE-20261110.md.txt",
+      "sha256": "a79ff538334273b48306fac82e3ad3b2780c1d969874a9edba254b6d2bbc75ff",
+      "runIds": ["42666577374"]
+    },
+    {
+      "sourceCommit": "ce2a8f13f7d8b46f0427ab921447d4cd56c6dcc0",
+      "sourcePath": "docs/acceptance/HUMAN-OPERATOR-RESPONSE-DRILL-20261111.md",
+      "snapshot": "history/HUMAN-OPERATOR-RESPONSE-DRILL-20261111.md.txt",
+      "sha256": "7c8693629708e4db7f819cb648c3dddb4e3538dab31152ad2a2a74fec3e800e9",
+      "runIds": []
+    },
+    {
+      "sourceCommit": "ce2a8f13f7d8b46f0427ab921447d4cd56c6dcc0",
+      "sourcePath": "docs/acceptance/HUMAN-OPERATOR-RESPONSE-DRILL-20261111.json",
+      "snapshot": "HUMAN-OPERATOR-RESPONSE-DRILL-20261111.json",
+      "sha256": "60ea594d94d51fec5d70ecf2810e46206d1691e6be970c675d625b3b12c3724d",
+      "runIds": []
+    },
+    {
+      "sourceCommit": "037887db41dfc07c22fb9f03e3b76f3ffab55f54",
+      "sourcePath": "docs/SOFTWARE-READINESS-RC7.md",
+      "snapshot": "history/IONOS-READINESS-20261104.md.txt",
+      "sha256": "8db5d08c2bd3c73a00cd94ce84c6e6c961542154e6a9c0402fd233d3143d762e",
+      "runIds": [
+        "40691330702",
+        "40835587733",
+        "40835587738",
+        "40889030154",
+        "40889044502",
+        "41067550884",
+        "41068729605",
+        "41074152924",
+        "41405832117",
+        "41406630847",
+        "41406700801",
+        "41636754986",
+        "41636755019",
+        "41636765372",
+        "41636765785",
+        "41638394904",
+        "41638394907",
+        "41638539926",
+        "41791165623",
+        "41791165665",
+        "41802033425"
+      ]
+    },
+    {
+      "sourceRun": 43137624178,
+      "artifactId": 13907628922,
+      "sourcePath": "state.json",
+      "snapshot": "WATCHDOG-43137624178-state.json",
+      "sha256": "090a5aa7cc96fada19363f279b72e4f36a9f61ef9f8de4d8fad25b399e74e50c"
+    },
+    {
+      "sourceRun": 43137624178,
+      "artifactId": 13907628922,
+      "sourcePath": "audit.jsonl",
+      "snapshot": "WATCHDOG-43137624178-audit.jsonl",
+      "sha256": "fb108b662b5e4f8294b93e1326f11c9e729f043fbaebb9ecb5f11f4eba5e9744"
+    },
+    {
+      "sourceRun": 43137624178,
+      "artifactId": 13907628922,
+      "sourcePath": "received.jsonl",
+      "snapshot": "WATCHDOG-43137624178-received.jsonl",
+      "sha256": "58c25e5c60370f937f6e8cfeb6b98ca0303cdb880186a6cb96f46c3f31bb4e2d"
+    }
+  ]
+}

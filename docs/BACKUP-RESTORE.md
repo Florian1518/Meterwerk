@@ -1,5 +1,7 @@
 # Backup and Restore Operations
 
+Aktueller Phase-3-Status: [verbindliche Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md). Synthetische technische Nachweise und historische Messungen sind getrennt von ausstehender operativer/SLA-Abnahme zu lesen. Dieses Verfahren erteilt keine Infrastruktur- oder Betriebsfreigabe.
+
 The supported CLI is `pnpm db:backup {backup|verify|restore}`. A backup is
 PostgreSQL custom format, streamed to a restricted temporary directory,
 encrypted client-side with `age`, and published as a timestamped `.age` file

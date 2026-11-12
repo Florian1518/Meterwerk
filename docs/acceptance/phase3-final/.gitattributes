@@ -1,0 +1,4 @@
+# Preserve exact evidence bytes and SHA-256 across Windows/Linux checkouts.
+history/*.txt -text
+HUMAN-OPERATOR-RESPONSE-DRILL-20261111.json -text
+WATCHDOG-* -text

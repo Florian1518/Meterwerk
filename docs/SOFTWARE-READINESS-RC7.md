@@ -1,5 +1,10 @@
 # Meterwerk RC7 – Software Readiness und Restpunkte
 
+## Verbindlicher Phase-3-Abnahmestand: 12.11.2026
+
+**Phase 3 Technical Acceptance: PASSED WITH EXTERNAL OPERATIONAL BLOCKERS.**
+Die [finale Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md) ersetzt ausschließlich frühere Phase-3-Statusbehauptungen. Die folgenden datierten Inventare und Tabellen bleiben historische Momentaufnahmen; ihre damaligen offenen Punkte sind keine erneute Bewertung des heutigen technischen Nachweises. Operative/SLA-Abnahme bleibt offen. Technische Evidence verschiedener Branches ist keine Aussage über Deployment oder vollständige Integration auf Master.
+
 ## Software Completion Phase 3 – operativer Stand vom 03.11.2026
 
 **Gesamtstatus: PARTIAL / externe Acceptance BLOCKED. Keine Freigabe für Phase 4 oder Production.**

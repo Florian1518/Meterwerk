@@ -1,0 +1,46 @@
+﻿# Human operator response drill — 2026-11-11
+
+## Scope
+
+One controlled `STALE_PIPELINE` incident was created from a synthetic observation in the isolated non-production drill directory. The existing watchdog classifier failed closed, and the existing notification adapter delivered one alert to its loopback synthetic receiver. No production data, external notification provider, hardware, IAM, bucket policy, credential, ContractUserId, Staging Recovery, or IONOS evidence was involved. The blocked watchdog cron was not changed.
+
+## Incident and response timeline
+
+- Incident ID / correlation ID: `operator-drill:stale-pipeline:20261111T141936686Z`
+- Classification: `STALE_PIPELINE`
+- Incident injection: `2026-11-11T14:19:36.890Z`
+- First observable failure: `2026-11-11T14:19:36.890Z`
+- Detection: `2026-11-11T14:19:36.890Z`
+- Notification dispatch: `2026-11-11T14:19:36.896Z`
+- Notification receipt: `2026-11-11T14:19:36.962Z` by the isolated `synthetic-receiver`
+- Human acknowledgement: `2026-11-11T14:26:00.564Z`, actor `Florian1518`; verified against the original append-only audit record.
+- Health check after acknowledgement: `2026-11-11T14:28:28.234Z`; state remained `FAILED / STALE_PIPELINE`.
+- Recovery action start: `2026-11-11T14:28:28.237Z`; only the synthetic observation timestamp was refreshed.
+- Healthy state: `2026-11-11T14:28:28.240Z`, after rerunning the watchdog classifier against the repaired synthetic observation.
+
+Acknowledgement alone did not clear health. The stored unhealthy state remained `FAILED / STALE_PIPELINE` after the acknowledgement; the state changed to healthy only after the isolated stale observation was repaired. The original alert, receiver receipt, acknowledgement, post-ack failed-state snapshot, repaired observation, and healthy-state evidence are preserved in the drill artifacts and the machine-readable record.
+
+## Measured durations
+
+| Interval                                      |                Duration |
+| --------------------------------------------- | ----------------------: |
+| Incident to detection                         |                    0 ms |
+| Detection to notification receipt             |                   72 ms |
+| Notification receipt to human acknowledgement | 383,602 ms (6m 23.602s) |
+| Incident to human acknowledgement             | 383,674 ms (6m 23.674s) |
+| Acknowledgement to recovery start             | 147,673 ms (2m 27.673s) |
+| Recovery start to healthy                     |                    3 ms |
+| Incident to healthy                           | 531,350 ms (8m 51.350s) |
+
+## Acceptance and limits
+
+- Human Operator Acknowledgement Evidence: **PASSED**.
+- Synthetic Human Response Drill: **PASSED**.
+- Operational/SLA Alert Response: **PENDING**. This drill did not exercise representative staffing, an external notification route, on-call conditions, or a real operational response.
+- Technical Independent Watchdog: **PARTIAL / BLOCKED** by the external GitHub scheduler registration issue. No qualifying genuine schedule run was established by this human-response drill.
+- Technical RPO/RTO: **PASSED**.
+- Technical Notification: **PASSED** for the isolated synthetic receiver scope.
+- IAM Least Privilege: **BLOCKED** pending IONOS ContractUserId.
+- Staging Recovery: **BLOCKED** pending an approved source and principal.
+
+See `HUMAN-OPERATOR-RESPONSE-DRILL-20261111.json` for machine-readable timestamps, durations, and evidence status. The separate local audit and receiver logs are preserved under the ignored `.local/operator-response-drill-data` directory.

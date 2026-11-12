@@ -1,5 +1,7 @@
 # Recovery Runbook
 
+Aktueller Phase-3-Status: [verbindliche Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md). Synthetische technische Nachweise und historische Messungen sind getrennt von ausstehender operativer/SLA-Abnahme zu lesen. Dieses Verfahren erteilt keine Infrastruktur- oder Betriebsfreigabe.
+
 Für alle Fälle gilt: erkennen → eindämmen → Backup auswählen → isoliertes
 Restore-Ziel vorbereiten → wiederherstellen → validieren → Dienste starten →
 Readiness prüfen → Audit und Timeline dokumentieren. Keine destruktiven

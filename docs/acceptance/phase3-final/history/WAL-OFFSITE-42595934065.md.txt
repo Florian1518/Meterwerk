@@ -1,0 +1,136 @@
+# Continuous WAL Offsite external acceptance — 2026-11-09
+
+**PASSED**, bounded synthetic continuous operation/monitoring using real IONOS
+Object Storage. Not a production service, operational RPO/RTO or schedule claim.
+
+- Branch: `software-completion/phase-3-wal-monitoring`.
+- Executed SHA: `ddc8518f006c8c1aa2e152db37524321c098b643`.
+- [Manual workflow run 42595934065](https://github.com/Florian1518/Meterwerk/actions/runs/42595934065): **success**.
+- Workflow: `.github/workflows/wal-offsite.yml`; event: `workflow_dispatch`.
+- Started 2026-11-09 09:46:13 UTC; completed 09:47:28 UTC; elapsed 75 seconds.
+- Three-cycle drill: 31 seconds. Times are synthetic measurements, not an SLA.
+- Artifact: `synthetic-wal-offsite-42595934065`, ID `13664090803`.
+- [Machine-readable receipts, versions, hashes and independent verification](WAL-OFFSITE-42595934065.json).
+
+## Three independently verified cycles
+
+All timestamps below are UTC on 2026-11-09. Coverage grows from one through
+three consecutive segments on timeline 1; preceding receipts remain unchanged.
+
+| Cycle | WAL segment                | Archive confirmed | Upload downloaded, decrypted and hash-verified | Archive-to-verified upload | Result |
+| ----- | -------------------------- | ----------------- | ---------------------------------------------- | -------------------------- | ------ |
+| 1     | `000000010000000000000001` | 09:46:52.110      | 09:46:58.782                                   | 6.671364 s                 | PASSED |
+| 2     | `000000010000000000000002` | 09:46:59.420      | 09:47:09.430                                   | 10.009763 s                | PASSED |
+| 3     | `000000010000000000000003` | 09:47:09.808      | 09:47:22.412                                   | 12.603525 s                | PASSED |
+
+Bucket `meterwerk-offsite-backup-fesch`, region `eu-central-3`.
+Each key is `phase3-acceptance/42595934065-1/continuous-wal/<segment>.age`.
+Each ciphertext is 16,781,496 bytes, with a separate non-null object version,
+SSE-S3 `AES256`, matching downloaded ciphertext SHA-256 and matching decrypted
+plaintext SHA-256. Real age encryption and decryption must succeed before a
+receipt becomes VERIFIED. The three original plaintext segments were 16 MiB;
+only age ciphertext was passed to `Store.put`.
+
+The independent review compared every `cycle-N.json` with the summary,
+recomputed expected names and coverage, checked timestamps/freshness, required
+all receipts to be VERIFIED, checked hashes/version/SSE/size, and required prior
+receipts to remain identical. Artifact file SHA-256 values are retained in
+the JSON record. Offsite version retrieval actually occurred in the runner;
+the subsequent local artifact review did not perform a second offsite download.
+
+## Monitoring and negative tests
+
+The real pipeline reported PASSED after each new segment and all three separate
+watchdog CLI checks returned PASSED. Each state's last successful upload equals
+the corresponding newest verified receipt; rechecks did not rewrite it.
+All **70 Node tests** passed in this same run, including exact equality checks:
+
+| Fault injected in deterministic CI test           | Required exact condition                               |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| Dead/stale worker heartbeat                       | `STALE_PIPELINE`                                       |
+| Failed pipeline state                             | `PIPELINE_FAILURE`                                     |
+| Stale archive / observation / upload              | `STALE_ARCHIVE` / `STALE_OBSERVATION` / `STALE_UPLOAD` |
+| Archiver failure counter increased                | `ARCHIVE_FAILURE`                                      |
+| Upload unavailable                                | `UPLOAD_UNAVAILABLE`                                   |
+| Missing expected receipt in continuity range      | `WAL_GAP`                                              |
+| Collector / remote verification unavailable       | `COLLECTOR_OFFLINE` / `REMOTE_OFFLINE`                 |
+| Corrupted returned ciphertext / decrypted content | `CIPHERTEXT_HASH_MISMATCH` / `PLAINTEXT_HASH_MISMATCH` |
+| Unencrypted payload                               | `ENCRYPTION_REQUIRED`                                  |
+
+These negatives are deterministic fault injection, not live IAM-denial tests
+or deletion of remote WAL. A passing test means the exact error was asserted;
+an unrelated exception does not pass. Eight existing Python storage tests also
+passed (0.185 s), plus Python compilation and Bash syntax checks.
+
+## Safety and failed attempts
+
+No bucket preflight mutation is called. The reviewed path uses only bucket
+versioning read, new-prefix put, version-pinned get/head and object ACL read.
+There is no remote delete or bucket-policy/configuration operation. Existing
+objects, credentials, master, production and hardware were not changed.
+The successful run prefix is new; subsequent polls only retrieve its existing
+versions. Signature/masking review covered 28 artifact/log files: zero
+recognizable private-key/access-key signatures; all four logged AWS credential
+assignments were masked. Evidence JSON contains only the selected metadata and
+hashes. Raw logs and identities are not committed. This review does not claim
+knowledge of encrypted GitHub secret values.
+
+Initial filename dispatch returned HTTP 404 because the new workflow was not
+registered. Commit `7c87ba50b3aaa13b4d26ef12051f9e3336fc7a36` added a scoped
+branch push trigger for deterministic checks; IONOS remained manual-only.
+Manual run `42595552218` then **failed** installing PostgreSQL 16 on the
+Ubuntu 26.04 `ubuntu-latest` image: `Unable to locate package postgresql-16`,
+exit 100. No IONOS step ran and this was not an expected-negative success.
+Commit `ddc8518f006c8c1aa2e152db37524321c098b643` pinned the WAL runners to
+Ubuntu 24.04 and added four missing Markdown blank lines found by general CI.
+The fresh manual run recorded above passed. History was not rewritten.
+
+General CI runs `42595336472` and `42595481636` failed only the format gate
+before that correction. Recovery runs `42595336550` and `42595857268` passed.
+Full CI [42595857254](https://github.com/Florian1518/Meterwerk/actions/runs/42595857254)
+on the executed WAL SHA passed, including fast checks, unit tests, database
+integration/migrations, production build and browser/mobile tests.
+The historical CI `42041884271`, Full Restore 7.471 s, PITR 8.068 s and Host Loss
+28.613 s / `42040140763`, plus recovery `41791165665`, remain accepted.
+
+## Commands and publication
+
+From the isolated worktree:
+
+```powershell
+git push origin refs/heads/software-completion/phase-3-wal-monitoring:refs/heads/software-completion/phase-3-wal-monitoring
+$env:PATH = 'C:/Program Files/Git/bin;' + $env:PATH
+node --test tests/wal-offsite.test.mjs tests/pitr-archive.test.mjs tests/recovery-negative-result.test.mjs scripts/hostloss-apparmor.test.mjs
+node node_modules/prettier/bin/prettier.cjs --check . --end-of-line auto
+git diff --check
+```
+
+Local Node rerun: 70/70 passed, 810.473 ms. The first format check identified
+exactly four added section boundaries; the four blank-line fixes passed the
+focused check. The final whole-repository format check passed, documentation
+links passed (110 Markdown files), secret scan had zero review findings and
+`git diff --check` passed. The DR/backup Vitest command documented in the
+[monitoring runbook](../WAL-OFFSITE-MONITORING.md) was rerun: 15/15 passed in
+1.29 s. Existing GitHub API helper was used from repository root:
+
+```powershell
+node .local/phase2-github.mjs POST actions/workflows/wal-offsite.yml/dispatches '@.local/wal-dispatch.json'
+node .local/phase2-github.mjs GET actions/runs/42595934065 - .local/wal-second-run.json
+node .local/phase2-github.mjs GET actions/artifacts/13664090803/zip - .local/wal-evidence-42595934065.zip
+node .local/phase2-github.mjs GET actions/runs/42595934065/logs - .local/wal-logs-42595934065.zip
+node .local/verify-wal-external.mjs
+```
+
+Dispatch body: `{"ref":"software-completion/phase-3-wal-monitoring"}`.
+The downloaded API JSON and ZIP contents were validated independently; some
+helper calls hit the existing Node 24 Windows shutdown assertion after download.
+No failed helper exit was used to infer workflow success. The successful API
+conclusion, SHA, artifacts and job logs agree. Final documentation-only commits
+must remain distinguishable from the executed SHA above.
+
+IAM Least Privilege remains **BLOCKED** awaiting the real ContractUserId;
+Staging Recovery remains **BLOCKED** awaiting an expressly approved read-only
+source/principal. Genuine `event=schedule` evidence and operational RPO/RTO are
+still pending. **Next task:** inspect existing scheduled Recovery Validation
+runs, capture an actual successful `event=schedule` run and its evidence; do not
+substitute a manual dispatch or merge this WAL branch to obtain it.
