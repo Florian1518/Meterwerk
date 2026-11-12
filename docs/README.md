@@ -1,5 +1,7 @@
 # Meterwerk-Dokumentation
 
+- [Verbindliche Phase-3-Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md) – technische Abnahme, operative Restpunkte, externe Blocker und historische Evidence.
+
 - [README](../README.md) – Einstieg und Schnellstart
 - [ARCHITECTURE](ARCHITECTURE.md) – Komponenten und Datenfluss
 - [DEVELOPMENT](DEVELOPMENT.md) – Installation, Migrationen und Entwicklung

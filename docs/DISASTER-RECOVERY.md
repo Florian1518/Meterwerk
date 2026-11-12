@@ -1,5 +1,9 @@
 # Disaster Recovery
 
+## Aktueller Abnahmestand: 12.11.2026
+
+Verbindlich ist die [finale Phase-3-Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md): technische synthetische Recovery, WAL/RPO/RTO, Detection, Notification und menschliche Drill-ACK sind bestanden. Recovery und Watchdog besitzen echte Schedule-Nachweise. Operative/SLA-Abnahme bleibt offen; IAM und Staging Recovery bleiben extern blockiert. Die datierten Nachweise unten beschreiben ihren damaligen Stand; frühere fehlende Offsite-/Schedule-Nachweise werden durch die Matrix abgelöst, ohne Fehlerhistorie zu löschen. Dieses Runbook ist keine Betriebsfreigabe.
+
 ## Scope and current evidence
 
 This runbook covers PostgreSQL, application release/configuration, workers,

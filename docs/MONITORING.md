@@ -1,5 +1,7 @@
 # Monitoring und Observability
 
+Aktueller Phase-3-Status: [verbindliche Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md). Synthetische technische Nachweise und historische Messungen sind getrennt von ausstehender operativer/SLA-Abnahme zu lesen. Dieses Verfahren erteilt keine Infrastruktur- oder Betriebsfreigabe.
+
 ## Was die Anwendung tatsächlich meldet
 
 `/api/health/live` dient dem Prozess-Liveness-Check. `/api/health/ready` prüft Datenbankverbindung und produktionsrelevante Konfiguration; dies ist kein vollständiger MQTT-, Storage- oder Worker-Verfügbarkeitsnachweis. Build-Informationen liefert `/api/system/build-info`. Endpunkte in einer realen Installation über Reverse Proxy nur passend exponieren.

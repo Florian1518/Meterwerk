@@ -1,0 +1,194 @@
+# Stock PostgreSQL 16.15 natural WAL proof — 2026-11-10
+
+Final proof uses distribution PostgreSQL 16.15 without the temporary source
+instrumentation. The package version and server binary SHA-256 are retained in
+each workflow artifact. No checkpoint_timeout change, manual checkpoint,
+manual WAL switch, startup warm-up exclusion, or RPO target relaxation is used.
+
+## Completed preparation and first stock observation
+
+- `677fe7a`: exact server version gate, startup-inclusive collection, missing
+  checkpointer/WAL statistics fields, and failed RPO summary retained after
+  all three cycles.
+- `95c84db`: raw source-diagnostic comparison log retained in Git.
+- Run [42775026519](https://github.com/Florian1518/Meterwerk/actions/runs/42775026519)
+  failed before database startup: the runner had a newer package and APT required
+  explicit permission to install the older exact version. No RPO observation.
+- `b8dbe56`: allow the exact package downgrade on the disposable runner and fix
+  evidence formatting. Full CI
+  [42775269642](https://github.com/Florian1518/Meterwerk/actions/runs/42775269642)
+  passed, including generation, typecheck, lint, tests, integration, build and
+  browser checks.
+- Stock run [42775271308](https://github.com/Florian1518/Meterwerk/actions/runs/42775271308)
+  installed `16.15-0ubuntu0.24.04.1` for server and client. At
+  `2026-11-10T07:31:51.069Z` PostgreSQL logged a natural `archive_timeout=60`
+  switch; segment 1 was archived at `07:31:51.075Z`. Startup was
+  `07:26:51.012Z`, approximately 300 seconds earlier. Requested checkpoints
+  remained zero. This confirms the startup delay with a stock binary.
+
+That run then failed with `ARCHIVE_WITHOUT_OBSERVED_NATURAL_SWITCH` because its
+observer saw LSN `0/2000000` and the previous segment name. PostgreSQL documents
+that `pg_walfile_name()` returns the preceding file at an exact boundary.
+This was an observer failure, not evidence that PostgreSQL failed to switch.
+No offsite transfer had started. Retained evidence:
+[settings](STOCK-PG16-42775271308/settings.json),
+[last observation](STOCK-PG16-42775271308/progress.json),
+and `STOCK-PG16-42775271308/postgres.log`.
+Artifact ZIP SHA-256:
+`cc837360128f17d1f6c15cb2d3b4b2e81466919836938450fe6c525b468a7b09`.
+
+Commit `13ee262` corrects the current-position name using read-only next-byte
+LSN arithmetic and adds a stock SQL assertion immediately before and at the
+boundary. It does not generate WAL or force a switch. The existing archiver
+and offsite-worker logic remains unchanged.
+See [PostgreSQL's boundary semantics](https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-ADMIN-BACKUP).
+
+## Acceptance
+
+Stock run [42776171861](https://github.com/Florian1518/Meterwerk/actions/runs/42776171861)
+at `13ee262` completed three natural switches and three verified encrypted
+IONOS transfers. Its collector's last-activity attribution was incorrect; this
+is why it is superseded by the later run below. Full CI
+[42776169964](https://github.com/Florian1518/Meterwerk/actions/runs/42776169964)
+passed on that same code. The stock workflow itself **FAILED** with
+`NATURAL_WAL_TIMESTAMPS_INVALID`; it must not be presented as passed.
+
+| Cycle                | Observed natural switch interval | First confirmed activity to verified offsite | Archive to verified offsite |
+| -------------------- | -------------------------------- | -------------------------------------------- | --------------------------- |
+| 1 (startup included) | 300.505 s                        | **306.366 s**                                | 6.524 s                     |
+| 2                    | 60.023 s                         | 61.485 s                                     | 7.953 s                     |
+| 3                    | 60.024 s                         | 64.921 s                                     | 13.444 s                    |
+
+The independent [artifact review](STOCK-PG16-42776171861-REVIEW.json) verifies
+first-activity segment identity, timestamp arithmetic, exact per-run object
+keys, version IDs, hashes, SSE, state receipts, sequential archive counters,
+zero requested checkpoints and three PostgreSQL timeout log messages. It
+confirms a startup-inclusive **RPO target violation** even without accepting
+the invalid last-activity fields. These times begin at a SQL sample after
+commit; actual commit-to-offsite exposure is at least as long.
+
+The collector's last-activity sample in cycles 1 and 2 occurred after the
+last observed pre-switch boundary. A periodic INSERT executed between the
+switch and the observer's next sample was counted in the wrong segment. The
+strict verifier correctly rejected those fields. The collector now associates
+each committed transaction with its segment and counts last activity only
+while it remains in the cycle's expected segment. The original raw artifacts
+remain unchanged and are not accepted as last-commit RPO evidence. The
+first-activity observations and their verified upload times are unaffected.
+The worker downloads each version-pinned `.age` object, verifies the ciphertext
+SHA-256, decrypts with the run's private age identity, and verifies the
+plaintext SHA-256 against the local WAL before writing `status: VERIFIED`.
+The receipt binds both hashes to that verification. The local review checks the
+receipt and hashes; it does not claim a second remote download.
+
+The initial raw observation remains under `STOCK-PG16-42776171861/` as historical
+diagnostic evidence. Reproduce the superseding, segment-attributed review with:
+
+```sh
+node docs/acceptance/STOCK-PG16-42776171861-verify.mjs docs/acceptance/STOCK-PG16-42777960179 docs/acceptance/STOCK-PG16-42777960179-run.json docs/acceptance/STOCK-PG16-42777960179-REVIEW.json
+```
+
+The corrected collector in commit `385eb48` attributes committed activity to
+the WAL segment reported for that transaction. Stock run
+[42777960179](https://github.com/Florian1518/Meterwerk/actions/runs/42777960179)
+completed all three cycles and all timestamp checks. Its outcome is a conclusive
+**Technical RPO failure**: the startup cycle exceeded the 300-second target.
+Full CI [42778174264](https://github.com/Florian1518/Meterwerk/actions/runs/42778174264)
+passed on the collector-fix commit.
+
+| Cycle                | Normal committed transactions | Natural switch interval | First activity to verified offsite | Last activity to verified offsite | Archive to verified offsite |
+| -------------------- | ----------------------------: | ----------------------: | ---------------------------------: | --------------------------------: | --------------------------: |
+| 1 (startup included) |                            29 |               300.800 s |                      **307.177 s** |                          10.746 s |                     7.309 s |
+| 2                    |                             5 |                60.363 s |                           61.931 s |                          19.635 s |                     9.524 s |
+| 3                    |                             5 |                60.188 s |                           64.945 s |                          22.625 s |                    14.813 s |
+
+The report is `FAILED / TECHNICAL_RPO_TARGET_EXCEEDED`; all cycles reached
+independently verified offsite storage. The first segment had 641 more WAL
+records at the end than at the start. Its maximum observed offset was 5.54 MiB
+of a 16 MiB segment, excluding volume-driven rollover. All cycles report zero
+manual WAL switches and zero manual checkpoints; requested checkpoints were
+zero. No forced checkpoint or WAL switch was used.
+
+Each cycle wrote a full `.age` object to the new isolated prefix
+`phase3-acceptance/42777960179-1/continuous-wal/`. The worker downloaded the
+version-pinned object, SHA-256-checked the ciphertext, decrypted it with the
+temporary run's age identity, and SHA-256-checked the plaintext against the
+local archived WAL. Each cycle's `VERIFIED` receipt retains both hashes, remote
+object version, key and encryption metadata. The IONOS adapter independently
+checks `ServerSideEncryption=AES256` on the version-specific `head-object` and
+again on the downloaded object response; the retained receipts show `sse:
+AES256` for all three objects. The independent artifact verifier asserts this
+value per cycle. The raw receipts and server log
+are preserved under `STOCK-PG16-42777960179/`; summary and run metadata sit next
+to that directory. The independent verifier checks all three receipts and
+timestamps and records the target failure in
+`STOCK-PG16-42777960179-REVIEW.json`.
+
+**This run's Technical RPO assessment: FAILED at the documented 300-second target.**
+The first stock 16.15 run completed natural cycles and offsite integrity checks,
+but its startup-inclusive measurement exceeded the target. The exact
+transaction-timestamp result below supersedes that initial measurement.
+Meeting that objective required a supported startup/recovery policy. The
+separate startup-readiness proof later met the unchanged objective; see the
+current acceptance addendum below and
+[Startup WAL readiness acceptance](STARTUP-WAL-READINESS.md). Operational/SLA
+RPO/RTO, genuine schedule evidence, IAM and staging recovery retain their
+separate statuses.
+
+## Exact transaction-to-verified-offsite result
+
+The earlier `42777960179` timing sampled after each INSERT and therefore
+slightly understated transaction-to-offsite RPO. Run
+[42781578715](https://github.com/Florian1518/Meterwerk/actions/runs/42781578715)
+enabled `track_commit_timestamp` and captured commit timestamps, but its
+per-cycle output misattributed a transaction observed across a segment
+boundary. Its raw artifact is retained as an intermediate measurement and is
+superseded below. The collector now partitions every transaction by its actual
+WAL segment and includes that segment's full transaction cohort in its RPO.
+
+Stock PostgreSQL 16.15 run
+[42784657870](https://github.com/Florian1518/Meterwerk/actions/runs/42784657870)
+completed three natural switches and verified all three encrypted uploads to
+the new isolated prefix
+`phase3-acceptance/42784657870-1/continuous-wal/`. `track_commit_timestamp=on`
+was checked at runtime, and each normal logged INSERT retained its transaction
+ID, WAL segment, and `pg_xact_commit_timestamp`. The evidence verifier matches
+the CSV cohort against all three per-cycle records and calculates each
+transaction's commit-to-`VERIFIED` receipt time.
+
+|                Cycle | Transactions in WAL segment | Natural switch interval | Worst transaction commit to verified offsite | Archive to verified offsite |
+| -------------------: | --------------------------: | ----------------------: | -------------------------------------------: | --------------------------: |
+| 1 (startup included) |                          28 |               300.379 s |                                **305.630 s** |                     5.839 s |
+|                    2 |                           5 |                59.118 s |                                     62.138 s |                     9.516 s |
+|                    3 |                           5 |                60.050 s |                                     61.970 s |                    12.581 s |
+
+The exact startup-inclusive worst case exceeds the unchanged 300-second limit
+by 5.630 seconds. The report remains **FAILED / TECHNICAL_RPO_TARGET_EXCEEDED**.
+Each cycle was a natural `archive_timeout=60` switch; PostgreSQL logged three
+timeout-driven switches, manual `pg_switch_wal()` and manual checkpoint counts
+were zero, requested checkpoints remained zero, and each WAL segment remained
+below the 16 MiB volume rollover point before switching. Each `.age` object was
+downloaded by version, ciphertext SHA-256 checked, decrypted with the temporary
+age identity, and plaintext SHA-256 checked against the local WAL. Each
+version-specific IONOS receipt reports SSE-S3/AES256. These conditions passed;
+the 5-minute RPO target did not.
+
+The raw workflow evidence, including `transactions.csv`, runtime settings,
+PostgreSQL log, receipts and SHA-256 inventory, is preserved under
+`STOCK-PG16-42784657870/`. The workflow ZIP SHA-256 and run metadata are in
+`STOCK-PG16-42784657870-run.json`; the independent review is
+`STOCK-PG16-42784657870-REVIEW.json`. Reproduce the review with:
+
+```sh
+node docs/acceptance/verify-natural-wal-rpo.mjs docs/acceptance/STOCK-PG16-42784657870 docs/acceptance/STOCK-PG16-42784657870-run.json docs/acceptance/STOCK-PG16-42784657870-REVIEW.json
+```
+
+This historical run remains **FAILED** and its 305.630-second cycle is
+preserved as failed evidence. Later, the fail-closed startup gate and three
+post-ready natural cycles passed in
+[run 42819079627](https://github.com/Florian1518/Meterwerk/actions/runs/42819079627);
+the worst post-ready commit-to-verified-offsite RPO was 68.380 s. The historical
+cycle was not deleted, relabeled, or included in that separate measurement.
+Operational/SLA RPO/RTO, genuine schedule evidence, IAM and staging recovery
+retain their separate statuses. See
+[Startup WAL readiness acceptance](STARTUP-WAL-READINESS.md).

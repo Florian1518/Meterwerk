@@ -1,5 +1,7 @@
 # Disaster-Recovery-Drills
 
+Aktueller Phase-3-Status: [verbindliche Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md). Synthetische technische Nachweise und historische Messungen sind getrennt von ausstehender operativer/SLA-Abnahme zu lesen. Dieses Verfahren erteilt keine Infrastruktur- oder Betriebsfreigabe.
+
 DR-Übungen laufen ausschließlich in explizit freigegebenen `test`- oder `staging`-Umgebungen. Produktionsdatenbanken, produktive Storage-Buckets und reale Geräte werden nie automatisch verändert.
 
 ## Szenarien

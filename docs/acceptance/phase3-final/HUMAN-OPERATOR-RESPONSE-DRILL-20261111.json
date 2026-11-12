@@ -1,0 +1,63 @@
+﻿{
+  "environment": "isolated-synthetic-non-production",
+  "incidentId": "operator-drill:stale-pipeline:20261111T141936686Z",
+  "classification": "STALE_PIPELINE",
+  "incidentInjectionAt": "2026-11-11T14:19:36.890Z",
+  "firstObservableFailureAt": "2026-11-11T14:19:36.890Z",
+  "detectionAt": "2026-11-11T14:19:36.890Z",
+  "notificationDispatchAt": "2026-11-11T14:19:36.896Z",
+  "notificationReceiptAt": "2026-11-11T14:19:36.962Z",
+  "notificationReceiver": "synthetic-receiver",
+  "humanAcknowledgement": {
+    "type": "ACKNOWLEDGED",
+    "incidentId": "operator-drill:stale-pipeline:20261111T141936686Z",
+    "actor": "Florian1518",
+    "timestamp": "2026-11-11T14:26:00.564Z",
+    "verifiedInAppendOnlyAudit": true
+  },
+  "stateAfterAcknowledgement": {
+    "checkedAt": "2026-11-11T14:28:28.234Z",
+    "status": "FAILED",
+    "classification": "STALE_PIPELINE",
+    "acknowledgementAloneClearedHealth": false
+  },
+  "recovery": {
+    "recoveryActionStartAt": "2026-11-11T14:28:28.237Z",
+    "action": "Refreshed only the isolated synthetic observation timestamp",
+    "healthyAt": "2026-11-11T14:28:28.240Z",
+    "healthyState": {
+      "status": "PASSED",
+      "classification": null,
+      "source": "repaired synthetic freshness fixture"
+    },
+    "originalAlertPreserved": true,
+    "notificationReceiptPreserved": true,
+    "acknowledgementPreserved": true
+  },
+  "durationsMs": {
+    "incidentToDetection": 0,
+    "detectionToNotificationReceipt": 72,
+    "notificationReceiptToHumanAcknowledgement": 383602,
+    "incidentToHumanAcknowledgement": 383674,
+    "acknowledgementToRecoveryStart": 147673,
+    "recoveryStartToHealthy": 3,
+    "incidentToHealthy": 531350
+  },
+  "failClosed": true,
+  "acceptance": {
+    "humanOperatorAcknowledgementEvidence": "PASSED",
+    "syntheticHumanResponseDrill": "PASSED",
+    "operationalSlaAlertResponse": "PENDING",
+    "technicalIndependentWatchdog": "PARTIAL_BLOCKED_EXTERNAL_GITHUB_SCHEDULER",
+    "technicalRpoRto": "PASSED",
+    "technicalNotification": "PASSED_SYNTHETIC_RECEIVER_SCOPE",
+    "iamLeastPrivilege": "BLOCKED_PENDING_CONTRACT_USER_ID",
+    "stagingRecovery": "BLOCKED_PENDING_APPROVED_SOURCE_AND_PRINCIPAL"
+  },
+  "limitations": [
+    "Synthetic loopback receiver only; no production notification channel.",
+    "No representative staffing, on-call conditions, or operational SLA response was tested.",
+    "Only the synthetic stale timestamp was repaired; no external source or infrastructure was changed.",
+    "The separate GitHub scheduled watchdog remains blocked by its external scheduler registration issue."
+  ]
+}

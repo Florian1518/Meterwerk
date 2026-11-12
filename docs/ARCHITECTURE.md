@@ -1,5 +1,7 @@
 # Architektur und Anforderungen
 
+Der aktuelle technische Recovery-/Watchdog-Abnahmestand und die Grenzen der Integration sind in der [Phase-3-Abnahmematrix](acceptance/PHASE-3-FINAL-ACCEPTANCE.md) festgehalten. Diese Dokumentationskonsolidierung trifft keine neue Architekturentscheidung und integriert keine Runtime aus den Evidence-Branches.
+
 ## Release Supply Chain (Phase 2)
 
 Build/Test/Publish liegen in einem wiederverwendbaren Workflow. Releaseidentität

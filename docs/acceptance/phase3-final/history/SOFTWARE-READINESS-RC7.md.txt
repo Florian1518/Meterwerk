@@ -1,0 +1,690 @@
+# Meterwerk RC7 – Software Readiness und Restpunkte
+
+## Aktueller Phase-3-Akzeptanzstand, 2026-11-10
+
+Technical RPO: **PASSED** bei unverändertem Ziel `<= 300 s`. Der fail-closed
+Startup WAL Readiness Gate blockiert normale App-Anfragen bis zur verifizierten
+Startup- und natürlichen Warm-up-Archivierung; danach bestanden drei natürliche
+`archive_timeout=60`-Zyklen in
+[Workflow-Run 42819079627](https://github.com/Florian1518/Meterwerk/actions/runs/42819079627).
+Der schlechteste Commit-bis-verifiziertes-IONOS-RPO-Wert war **68,380 s**.
+Technical RTO bleibt **PASSED** (Full Restore 7,471 s, PITR 8,068 s, Host Loss
+28,613 s); kombinierte Technical RPO/RTO-Evidence ist **PASSED** für die
+isolierten synthetischen Szenarien. Operatives/SLA-RPO/RTO und echte
+Schedule-Evidence bleiben **PENDING**. IAM Least Privilege bleibt wegen der
+ContractUserId **BLOCKED**, ebenso Staging Recovery.
+
+Der historische 305,630-s-Zyklus bleibt als fehlgeschlagener Lauf dokumentiert
+und wurde nicht umetikettiert oder in die Post-READY-Messung einbezogen. Details
+und die getrennten Startup-/Steady-State-Evidence stehen in der
+[Startup-WAL-Akzeptanz](acceptance/STARTUP-WAL-READINESS.md).
+
+## Current Phase-3 continuation, 2026-11-09
+
+Genuine Scheduled Recovery Evidence: **PENDING**. The API audit found zero
+Recovery `schedule` runs. The existing default-branch workflow is active and
+eligible, with unchanged Monday 07:23 UTC cron; next window November 16.
+No dispatch or cron change was used. [Exact schedule audit](acceptance/SCHEDULE-RECOVERY-20261109.md).
+The later recheck also returned zero qualifying Recovery schedule runs.
+
+Continuous WAL Offsite operation/monitoring: **PASSED** for three synthetic
+incremental cycles against real IONOS, [run 42595934065 evidence](acceptance/WAL-OFFSITE-42595934065.md).
+This supersedes historical WAL-pending statements below. Existing CI, Full
+Restore, PITR and Host Loss evidence remains valid. IAM Least Privilege remains
+**BLOCKED** on the real ContractUserId; Staging Recovery remains **BLOCKED**.
+Genuine schedule-trigger evidence and operational RPO/RTO remain pending.
+**READY FOR SOFTWARE COMPLETION PHASE 4: NO.** Production remains untouched.
+
+Technical RPO/RTO evidence update: Full Restore 7.471 s, PITR 8.068 s, and
+Host Loss 28.613 s yield a synthetic technical RTO envelope of 28.613 s.
+The 72.604 s RPO figure is conditional arithmetic (60 s synthetic test-harness
+archive-timeout setting plus 12.603525 s maximum accepted archive-to-verified-upload lag), not
+an observed worst case: natural-timeout probes failed closed. The latest
+instrumented PostgreSQL 16 reproduction had active WAL writes and valid runtime
+settings but no natural switch; the internal checkpointer cause is undetermined.
+Technical
+RTO is demonstrated for those scenarios; Technical RPO remains
+CONDITIONAL/PENDING and operational RPO/RTO remains PENDING. [Detailed
+acceptance table and limitations](acceptance/TECHNICAL-RPO-RTO-20261109.md).
+
+## Historischer Phase-3-Status vom 05.11.2026
+
+**METERWERK SOFTWARE COMPLETION PHASE 3: PARTIAL.** Host-Loss-Validation im synthetischen, leeren isolierten Docker-Daemon: **PASSED**, [Run 42040140763](https://github.com/Florian1518/Meterwerk/actions/runs/42040140763), Kandidaten-SHA `1120e7cfec11ae81374ed0745136138218cf4ae6`; gemessene Dauer **28,613 s**. Persistence-Gate `42034092512` blieb PASSED und wurde im Fortsetzungsrun verifiziert, nicht wiederholt. Offsite Full Restore `7,471 s` und PITR `8,068 s` bleiben gültige bestehende Evidence.
+
+IAM Least Privilege bleibt PARTIAL; Staging Recovery Acceptance BLOCKED, solange keine freigegebene read-only Backup-Quelle existiert. Continuous WAL Offsite und ein echter `event=schedule`-Run sind nicht belegt. Operatives RPO/RTO bleibt NOT YET DEMONSTRATED. **READY FOR SOFTWARE COMPLETION PHASE 4: NO.** RC7 unverändert; Production unangetastet. Details und Grenzen des Host-Loss-Nachweises stehen im [Disaster-Recovery-Runbook](DISASTER-RECOVERY.md).
+
+Der Zwischenstand vom 04.11.2026 in Commit `037887db41dfc07c22fb9f03e3b76f3ffab55f54` hielt Host Loss noch als BLOCKED fest, ohne belegte Root Cause. Er wird durch Run `42040140763` vom 05.11.2026 abgelöst.
+
+## IONOS-Evidence-Fortsetzung vom 04.11.2026
+
+Offsite Acceptance **PASSED, synthetisch** auf SHA `4e928ed1a96f33db5a28f0f1d3dcdd3b1f530494`; [Workflow 41802033425](https://github.com/Florian1518/Meterwerk/actions/runs/41802033425), Artefakt 13308157780. Private Bucket/ACL/Policy/Public Access Block, Region, Versioning, age, SSE-S3/AES256, zwei echte Objektversionen, Abruf einer alten Version, ausschlie?lich externer Download, Hash und Full Restore mit Restore Verifier/App Readiness bestanden. Negative Tests f?r fehlendes Objekt, ung?ltige Version, anonymen Zugriff, besch?digten Ciphertext, falschen age-Key und lokale Backup-Hashkorruption fail-closed.
+
+Synthetische Download-to-readiness-Zeit 7,471 s; externe PITR-Download-to-Target-Zeit 8,068 s. Werte sind keine Production-SLA. Offsite WAL-/Base-Restore und positive PITR bestanden. Laufzeit-/Teilmessungen und Commit-/WAL-LSNs stehen im [DR-Runbook](DISASTER-RECOVERY.md).
+
+IAM Least Privilege bleibt OPEN (Admin-generierter Key). Staging Recovery Acceptance BLOCKED (keine freigegebene read-only Backup-Quelle). Kontinuierlicher WAL-Offsite-Betrieb/Gapping bleiben nicht abgenommen. Ein echter Scheduled-Cron-Run ist nicht vorhanden; nur der manuelle Dispatch ist PASSED. Die spätere Host-Loss-Validierung vom 05.11.2026 ist PASSED; siehe aktuellen Status oben. RPO/RTO bleiben operativ PARTIAL/BLOCKED.
+
+Gesamtstatus Phase 3 PARTIAL; READY FOR SOFTWARE COMPLETION PHASE 4: NO. RC7 unverändert; Production unangetastet.
+
+## IONOS-Fortsetzung (04.11.2026)
+
+Master-Ausgangspunkt `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.
+Recovery 41791165665 PASSED. CI 41791165623 FAILED ausschlie?lich im
+Desktop-PWA-Test: w?hrend Navigation existierten zwei h1-Elemente. Der konkrete
+Z?hler-Heading-Locator wurde semantisch pr?zisiert; Recovery-Code bleibt erhalten.
+
+IONOS-Bucket/Region/Endpoint und GitHub-Secrets sind jetzt vom Betreiber freigegeben.
+Offsite-Functionality, tats?chliches Versioning, private Bucket-Sicherheit und
+age + SSE-S3: **PENDING realer Acceptance-Run**, kein SSE-KMS f?r IONOS.
+Admin-generierter Schl?ssel: **Least Privilege OPEN**, keine Betriebsfreigabe.
+Staging-Acceptance BLOCKED, kontinuierlicher WAL-Betrieb PARTIAL, operative
+RPO/RTO NOT YET DEMONSTRATED, erster echter Cron-Nachweis ausstehend.
+Der neue Workflow misst den realen synthetischen externen Restore-Pfad;
+Host-Loss-End-to-End und Production-SLA werden daraus nicht abgeleitet.
+
+Phase 3 PARTIAL; READY FOR SOFTWARE COMPLETION PHASE 4: NO.
+Die folgenden Inventare dokumentieren fr?here Zust?nde vor der IONOS-Freigabe.
+
+## Fortsetzungsprüfung vom 04.11.2026
+
+Aktueller Remote-master: `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.
+PR #4 und #5 sind integriert; Code-Kandidat bleibt unverändert
+`21e196762c18bc8ad7b3425a2b49652a0de43acc`.
+[Recovery 41791165665](https://github.com/Florian1518/Meterwerk/actions/runs/41791165665)
+ist PASSED. [CI 41791165623](https://github.com/Florian1518/Meterwerk/actions/runs/41791165623)
+lief bei der Prüfung noch: Fast Checks, Unit und Integration/Migration bestanden,
+Browser/Mobile und Build noch in Ausführung. Kein neuer Run gestartet.
+
+Recovery-Workflow `404557168` ist active, Schedule auf master `23 7 * * 1`.
+Die GitHub-Abfrage mit `event=schedule` liefert 0 Runs. Der erfolgreiche manuelle
+Dispatch bleibt gültig, zählt jedoch nicht als Cron-Evidence; dieses Gate PARTIAL.
+
+Kein autorisierter Offsite-Testpfad oder read-only Staging-Backup-Zugang in den
+geprüften Konfigurationen nachgewiesen. Bucket/Versioning, KMS und IAM/OIDC sind
+nicht bereitgestellt; externer Upload und ausschließlich externer Restore
+wurden nicht durchgeführt. Externe WAL-Übertragung, Retention und Monitoring
+sind nicht vollständig belegt. Die bestandene lokale WAL-/PITR-Softwareprüfung
+bleibt PASSED; kontinuierlicher WAL-Offsite-Betrieb bleibt PARTIAL/BLOCKED.
+Full-Restore-, PITR- und Host-Loss-End-to-End-Dauer: nicht gemessen.
+RPO-/RTO-Zielerreichung technisch und operativ: NOT YET DEMONSTRATED.
+
+Die genaue externe Übergabeliste und begrenzten Rechte stehen in
+[DISASTER-RECOVERY.md](DISASTER-RECOVERY.md#operative-fortsetzung-inventar-vom-04112026).
+Gesamtstatus Phase 3 PARTIAL; Offsite, Staging-Acceptance und operative RPO/RTO
+BLOCKED. READY FOR SOFTWARE COMPLETION PHASE 4: NO.
+Production, echte Staging-Daten und Hardware unangetastet; RC7 unverändert.
+
+## Software Completion Phase 3 – operativer Stand vom 03.11.2026
+
+**Gesamtstatus: PARTIAL / externe Acceptance BLOCKED. Keine Freigabe für Phase 4 oder Production.**
+
+Der finale Code-Kandidat `21e196762c18bc8ad7b3425a2b49652a0de43acc`
+wurde über [PR #4](https://github.com/Florian1518/Meterwerk/pull/4) nach
+`master` integriert. Ausgangs-master:
+`ff7575e63114e651f8e32e0733f5e299b8d7c0bc`; Integrations-Merge:
+`43cee3416778f172fbfd2f05c88bbd491ac5a070`. Der Kandidat ist Ancestor
+dieses Merge-Commits. Der ursprüngliche lokale master-Arbeitsbaum wurde nicht
+verändert; alle Arbeiten erfolgten im separaten Worktree.
+
+| Recovery-Baustein                 | Status                                              | Evidence / Grenze                                                                                                                                             |
+| --------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB Backup / Manifest / SHA-256    | DONE (synthetische CI)                              | PostgreSQL-Custom-Dump, Manifest und Hash im Master-Dispatch bestanden.                                                                                       |
+| Encryption                        | DONE (synthetische CI)                              | age-Verschlüsselung, Entschlüsselung und falscher-Key-Negativtest bestanden. Externe Schlüsselbereitstellung offen.                                           |
+| Full Restore / Restore-Verifier   | DONE (synthetische CI)                              | Neue isolierte DB; Schema, Migrationen, Tenant-Strukturen, FK, Drift NONE und App-Readiness bestanden.                                                        |
+| PITR                              | DONE (synthetische CI)                              | Commit/Switch getrennt; vollständige Segmentmenge und Archiver bestätigt; Target erreicht, Baseline und gewünschter Commit vorhanden, späterer Fehler fehlt.  |
+| Missing WAL / Incomplete Base     | DONE (synthetische CI)                              | Beide `EXPECTED_FAILURE_CONFIRMED`; konkrete Ursache in Evidence gespeichert. Docker-/Infrastrukturfehler bestehen nicht.                                     |
+| Offsite / S3 Versioning / SSE-KMS | BLOCKED (extern)                                    | Softwarepfad vorhanden; kein autorisierter TEST/STAGING-Bucket, Region, KMS-Key und IAM-Principal nachgewiesen. Kein echter Offsite-Restore ausgeführt.       |
+| Migration-Failure / Host-Loss     | DONE (synthetische CI)                              | Rollback, neuer DB-Restore sowie App-/MQTT-/Worker-Rekonstruktion bestanden. Vollständiger unabhängiger Host-/Provider-Drill offen.                           |
+| RPO / RTO                         | PARTIAL                                             | Keine gemessenen End-to-End-Betriebszeiten für Full Restore, PITR und Host Loss. 24 h / 5 min RPO und 4 h / 8 h RTO sind Ziele, keine bestätigten Ergebnisse. |
+| Disaster Recovery                 | PARTIAL                                             | Synthetische Recovery bestanden; Offsite, kontinuierlicher verschlüsselter WAL-Betrieb und Staging-Acceptance offen.                                          |
+| Restore Runbook                   | DONE (Softwareverfahren), PARTIAL (Betriebsabnahme) | `DISASTER-RECOVERY.md` enthält echte CI-Evidence, Befehle, Fehlerfälle, Eskalation, Credential Rotation und minimale externe Konfiguration.                   |
+| Scheduled Restore Validation      | DONE (Konfiguration + Master-Dispatch)              | Workflow auf Default-Branch master `active`; `23 7 * * 1`; manueller Master-Run bestanden. Erster tatsächlicher Cron-Lauf noch ausstehend.                    |
+| Staging Recovery Acceptance       | BLOCKED                                             | Keine echte Staging-DB gesichert oder verändert. Autorisierte read-only Quelle und externer Offsite-Pfad fehlen für die nächste Acceptance.                   |
+
+### Autoritative Nachweise
+
+- Code-Kandidat: Haupt-CI [41636755019](https://github.com/Florian1518/Meterwerk/actions/runs/41636755019)
+  und PR-CI [41636765372](https://github.com/Florian1518/Meterwerk/actions/runs/41636765372)
+  vollständig PASSED, einschließlich Browser/Mobile und Production Build.
+- Recovery auf Kandidat: [41636754986](https://github.com/Florian1518/Meterwerk/actions/runs/41636754986)
+  und PR-Recovery [41636765785](https://github.com/Florian1518/Meterwerk/actions/runs/41636765785)
+  vollständig PASSED. 52 Recovery-Regressionen: 17 Archive-/PITR-, 20 fail-closed
+  und 15 bestehende Recovery-Tests.
+- Integrations-master: Haupt-CI [41638394904](https://github.com/Florian1518/Meterwerk/actions/runs/41638394904)
+  und Push-Recovery [41638394907](https://github.com/Florian1518/Meterwerk/actions/runs/41638394907)
+  vollständig PASSED.
+- Manueller `workflow_dispatch` auf Integrations-master:
+  [41638539926](https://github.com/Florian1518/Meterwerk/actions/runs/41638539926),
+  vollständig PASSED. Artefakt `synthetic-recovery-evidence`,
+  ID `13231319316`, 30 Tage Aufbewahrung; heruntergeladen und mit
+  `verify-recovery-evidence.mjs` erneut geprüft.
+- Master-PITR-Evidence: Commit-Zeit `2026-11-03T12:48:49.581701Z`,
+  Commit-LSN `0/4000190`, Switch-LSN `0/40002C8`;
+  erforderliche Segmente `000000010000000000000003` und
+  `000000010000000000000004`. `ARCHIVE_CONFIRMED` nach gemessenen 78 ms;
+  dies ist nur der Archive-Wait, keine RTO. Target und Replay: `0/40001F8`;
+  Baseline 1, gewünschter Datensatz 1, späterer Fehler 0.
+- Schedule: Workflow-ID `404557168`, Zustand `active`, Default-Branch
+  `master`. Nächster Solltermin, berechnet am 03.11.2026:
+  **09.11.2026 07:23 UTC / 08:23 Europe/Berlin**. Ein zukünftiger Cron-Lauf
+  wird nicht als bereits ausgeführt behauptet.
+
+Die Arbeit an externen Ressourcen stoppt hier gemäß Auftrag. Die minimale
+Bucket-/Region-/Versioning-/KMS-/IAM-Konfiguration einschließlich begrenzter
+Rechte steht in `DISASTER-RECOVERY.md`. Es wurden keine Cloud-Ressourcen
+angelegt, keine Production-Credentials gesucht und keine echten Geräte
+verbunden. RC7 bleibt `v1.0.0-rc.7` auf
+`15fb7c070f3671cce6d19faca1286f6fd2ee1851`; keine neuen Tags, kein Deployment.
+
+## Phase 2 – Abschluss auf dem Default-Branch (02.11.2026)
+
+**Scheduled Vulnerability Process / laufender Image Vulnerability Process: DONE.**
+Der beauftragte Software-Completion-Umfang ist abgeschlossen. Dies ist keine
+Production-Freigabe; Production-Runtime, Upload-Malwareschutz und die übrigen
+separaten Betriebsaufgaben bleiben unverändert offen. Die Inventur vom 29.10.
+und ihre historischen Statusangaben sind zusammen mit den neueren Abnahmen zu lesen.
+
+- Default-Branch: `master`; vorher `6d2add24c64b176f03f2d21bbfe12c702ec4ed0e`.
+- Integration: [PR #1](https://github.com/Florian1518/Meterwerk/pull/1), Merge-Commit
+  `b398c8526e1895457c85870978feb2fded3d60cd`. Kein Squash, Rebase oder History Rewrite.
+  Der Merge-Dateibaum entspricht exakt Phase-2-Endstand
+  `390cf53d5b6e1ac1863df5685c5cabe3a5c61143`.
+- Ancestry bestätigt: Modbus-/Commissioning-Software `305580e`, SaaS Pricing
+  `6727dc4`, RC7 `15fb7c0`, Phase 1 `d945f8b03059bb1ac1238f469166e6ae5e799fcf`
+  und Phase 2 `390cf53` sind enthalten; keine konkurrierenden Default-Branch-Commits.
+- Vor Merge alle fünf Gates grün: [PR-CI 41405832117](https://github.com/Florian1518/Meterwerk/actions/runs/41405832117).
+  Exakte Branch-CI: [41074152924](https://github.com/Florian1518/Meterwerk/actions/runs/41074152924).
+- Manueller [Vulnerability-Run 41406700801](https://github.com/Florian1518/Meterwerk/actions/runs/41406700801):
+  **SUCCESS**, `workflow_dispatch` auf `master` / `b398c8526e1895457c85870978feb2fded3d60cd`.
+  Scan abgeschlossen am 02.11.2026 um 07:32:45 UTC.
+- GitHub-Workflow `404237428` ist `active`;
+  `.github/workflows/image-vulnerabilities.yml` liegt auf dem Default-Branch.
+  Schedule: `23 6 * * *`, täglich 06:23 UTC. Nächster vorgesehener Termin nach
+  Aktivierung: **03.11.2026, 06:23 UTC / 07:23 Europe/Berlin**; GitHub kann den Start verzögern.
+  Der Cron nutzt den Default-Branch-Workflow. Ein zukünftiger Cron-Lauf wird nicht vorweggenommen;
+  der erfolgreiche Dispatch validiert denselben Job vollständig.
+- Unterstützte Release-Lane bleibt `software-completion/phase-2`, Version `1.0.0-rc.7`.
+  Verifiziert wurde Release [41068729605](https://github.com/Florian1518/Meterwerk/actions/runs/41068729605)
+  auf `24944092c9e1cef432fd8316fc10f2c4e594f42b`; kein Image wurde neu gebaut.
+- Evidence: [recurring-image-vulnerabilities](https://github.com/Florian1518/Meterwerk/actions/runs/41406700801/artifacts/13123627579),
+  vier JSON-Dateien (drei Grype-Reports und Source-/Digest-Zuordnung), 90 Tage Retention.
+  Download-SHA-256: `0f9f81b32c99be6abf2d9e20e5a9d5a2d8154f2c8495cd52ebf3946277457c83`.
+- Grype 0.121.0, gültige Vulnerability-Datenbank vom 02.11.2026 06:26:52 UTC.
+  **Je Web-/Worker-/Migration-Image: 0 Critical, 0 High, 3 Medium, 0 Low, 0 Unknown.**
+  Medium: CVE-2025-60876 bei `busybox`, `busybox-binsh`, `ssl_client` (1.37.0-r31).
+  Alle Findings bleiben sichtbar; keine neue Ausnahme, kein globales Ignore,
+  kein `only-fixed`, keine unterdrückten Treffer. Die Tool-Standardregeln für
+  RPM-/Debian-Kernelheader sind keine globale Ausnahme und betreffen diese Alpine-Images nicht.
+  Critical/High/Unknown und ignorierte Treffer blockieren unverändert; negative Policytests bestanden.
+- Release-Verifier prüfte erneut Manifest/Checksummen, drei SBOMs, Malware-Evidence,
+  Source-State `workingTree=clean`, OIDC-Provenance und Signaturen gegen Repository,
+  Workflow, SHA und Digests. Ergebnis `PASSED`, `deployment=NOT_EXECUTED`.
+  Die Malware-Abnahme stammt aus dem akzeptierten Release vom 30.10.; der tägliche Job
+  wiederholt den CVE-Scan und verifiziert die vorhandene signierte Release-Evidence.
+- Logs und alle vier Reports geprüft: Token maskiert, keine Secret-/Private-Key-/Credential-URL-Funde.
+  Keine Production-Verbindung, kein Deployment, keine echte Hardware, kein neuer Release-Tag.
+  RC7-Tagobjekt `b9ea881beab711fc23a352d5d119db076849f4a7` und Zielcommit
+  `15fb7c070f3671cce6d19faca1286f6fd2ee1851` unverändert.
+
+| Image     | Unveränderlicher geprüfter Digest                                         |
+| --------- | ------------------------------------------------------------------------- |
+| Web       | `sha256:bdc0083ea92c73b605eb4d8abe47eec079b5d1c667eaa9ac92381d334b3e0a67` |
+| Worker    | `sha256:58aee4a11e498a054f66b42d50dd98bdb88dbb823b8cbca3098f2b66aa3d4673` |
+| Migration | `sha256:b6bc0be0ec11c5dabfc831375110c36052ad86985350e41350909abac0fc9db5` |
+
+Findings lösen ausschließlich einen fehlgeschlagenen Actions-Lauf mit Evidence und
+Incident-Hinweis aus; Production wird niemals automatisch verändert. Medium/Low
+gehen gemäß bestehender Policy in den nächsten Security-Review. Notification-Abonnement,
+Security-Owner/SLA und dauerhafte Archivierung vor Retentionsablauf bleiben
+organisatorische Betriebsaufgaben; keine neue Ausnahme wurde dafür angelegt.
+
+Immutable digest promotion, workingTree evidence, SBOM Web/Worker/Migration,
+Image-CVE-Gates, Scheduled Vulnerability Monitoring, Release-Malware-Gates,
+Provenance, Signing, Signature Verification und Release Verifier: **PASSED**.
+Keine verbleibenden Blocker im beauftragten Phase-2-Abschlussumfang.
+
+## Phase 2 - Abnahme (30.10.2026, historischer Stand)
+
+Supply-Chain-Inventur und Implementierung: [SUPPLY-CHAIN-PHASE-2.md](SUPPLY-CHAIN-PHASE-2.md).
+Immutable digest promotion, drei digestgebundene Image-SBOMs, Image-CVE- und Release-Malware-Gates, OIDC-Provenance und Signaturpruefung wurden mit CI 41067550884 und Release Candidate 41068729605 auf Commit 24944092c9e1cef432fd8316fc10f2c4e594f42b erfolgreich verifiziert. Das Release-Manifest meldet workingTree=clean. Jedes Image hat 0 Critical, 0 High, 0 Unknown und 3 Medium Findings (BusyBox/CVE-2025-60876); nach dokumentierter Policy blockieren Critical/High/Unknown. ClamAV bestand fuer alle Images und das Release-Archiv. Der taegliche Vulnerability-Workflow ist implementiert, aber sein Schedule wird erst nach Uebernahme auf den Defaultbranch aktiv.
+P0 Production-Runtime-Paritaet bleibt offen. Release-Malwarepruefung ersetzt nicht den separaten P0-Malwareschutz fuer Benutzer-Uploads. Kein P0 wird pauschal DONE.
+RC7, Phase-1-Branch, Production und Hardware unveraendert.
+
+- **Stichtag:** 29.10.2026
+- **Gegenstand:** ausschließlich Software- und Plattformreife; keine Hardwareprüfung
+- **Referenz:** `1.0.0-rc.7`, Tag `v1.0.0-rc.7`, Commit `15fb7c070f3671cce6d19faca1286f6fd2ee1851`
+- **Ergebnis:** RC7 ist ein finalisierter und auf Staging akzeptierter Release Candidate. Vollständige Production Readiness ist noch nicht erreicht. Production wurde nicht gestartet.
+
+## Management-Befund
+
+Die RC7-Linie samt Phase 1 und Phase 2 ist in `master` integriert. Der ursprünglich fehlerhafte Browserlauf wurde auf dem Integrations-PR vollständig grün wiederholt; der Release-Workflow für den unveränderten RC7-Tag bleibt als historischer Lauf dokumentiert. Phase 2 ergänzt signierte, digestgebundene Artefakte und aktiviert den täglichen Vulnerability-Workflow. Diese Ergebnisse erweitern die Software-Readiness, schließen aber nicht die separat ausgewiesenen Production-Runtime-, Mail-, Backup-, Maintenance-, Monitoring-, Kapazitäts- und Malware-Upload-Lücken.
+
+Der GitHub-Status wurde am Stichtag live read-only geprüft. Der normale CI-Workflow `40835587733` auf RC7 war erfolgreich. `Publish Images` (`40691330702`) war erfolgreich. Der durch den Tag gestartete **Release Candidate**-Workflow `40835587738` endete **FAILURE**: Fast checks, Integration/Migration, Unit Tests und Production Build bestanden; `quality / Browser and mobile tests` scheiterte bei `pnpm test:e2e --grep-invert @visual` mit 35 passed, 28 skipped und 1 failed. Die vom Nutzer ausgewerteten Logs und der Failure-Screenshot bestätigen einen Test-Race: Während Client-Side-Navigation standen `Systemstatus` und die vorherige Zählerdetail-H1 gleichzeitig im DOM; die korrekte Zielseite war bereits sichtbar. Der generische Locator war nicht eindeutig. Sechs semantische Assertions sind im Completion-Branch vorbereitet. Der damalige `artifact`-Job wurde übersprungen. Die damalige 403-API-Berechtigung ist durch die bereitgestellte Evidence kein aktueller Root-Cause-Blocker mehr; ausstehend bleibt der vollständige neue GitHub-Run für den Completion-Commit. [Release-Workflow](https://github.com/Florian1518/Meterwerk/actions/runs/40835587738) · [erfolgreicher CI-Workflow](https://github.com/Florian1518/Meterwerk/actions/runs/40835587733) · [erfolgreicher Image-Publish-Workflow](https://github.com/Florian1518/Meterwerk/actions/runs/40691330702)
+
+**Zählweise:** 160 konkrete Prüfpunkte aus den Abschnitten A–P; Status bewertet den jeweils beschriebenen Umfang, nicht die Reife der ganzen Produktfamilie. DONE verlangt einen passenden Test und konkrete Dokumentation; bei Kernfunktionen zusätzlich passende Acceptance-Evidence. PARTIAL bedeutet reale Funktion mit begrenzter Abdeckung, offenem Betriebsanteil oder nur lokalem Nachweis. OPEN bedeutet fehlende Implementierung oder fehlende wesentliche Acceptance. BLOCKED reserviert für externe Abhängigkeit/Zugriff, die den Abschluss verhindert. NOT APPLICABLE gibt es hier nicht: alle geprüften Punkte sind Meterwerk-relevant.
+
+| Status         |  Anzahl |
+| -------------- | ------: |
+| DONE           |      58 |
+| PARTIAL        |      72 |
+| OPEN           |      30 |
+| BLOCKED        |       0 |
+| NOT APPLICABLE |       0 |
+| **Gesamt**     | **160** |
+
+## Evidence-Verzeichnis
+
+Die folgenden Belege werden in der Inventartabelle referenziert. `LOCAL` bezeichnet die RC7-Local-Acceptance vom 28.10.2026, nicht eine erneute Prüfung im Rahmen dieses Audits. `STAGING` bezeichnet die abgeschlossene RC7-Annahme und den finalen Read-only-Check vom 29.10.2026. Staging-Nachweise belegen nur die jeweilige getestete Konfiguration; sie sind kein HA-, Kapazitäts- oder Providerbeleg.
+
+| Kennung                | Tests und gemessene Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Dokumentation / Grenze                                                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1 Core/RBAC           | LOCAL: 560 Unit-Tests, 55 Dateien; Integration, User-Management und vier Browserprofile. STAGING: Tenant Isolation/Cross-Tenant 403, TENANT_ADMIN Login/Read-only Billing, Properties, Meter, User, Devices und Gateway-Routen bestanden.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `SECURITY.md`, `TENANT-ADMIN-GUIDE.md`, `CUSTOMER-PORTAL.md`; belegt keine unabhängige externe Penetration.                                                                                                                                  |
+| E2 Commissioning/Fleet | LOCAL: DB-/Unit- und vier Browserprofile. STAGING: echter synthetischer Loopback-Modbus-TCP-Testpfad; TEST/READ, signierte Ingestion, Review, Assignment, COMPLETE; alle sechs Statusstufen. Negativguard 409 separat bestätigt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `COMMISSIONING.md`, `HARDWARE-COMMISSIONING.md`, `DEVICE-MANAGEMENT.md`; echte Geräte ausdrücklich später.                                                                                                                                   |
+| E3 Ingestion/Protocol  | LOCAL: Protokoll-, Gateway-, MQTT-, Modbus- und Utility-Tests; ältere Phase-3- und Protokoll-Adapterläufe. STAGING: Modbus-/Gateway-Regression sowie positive synthetische RC7-Kette.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `PROTOCOLS.md`; Adaptertests und einzelne E2E-Pfade sind keine gleichwertige Abnahme aller Transportvarianten.                                                                                                                               |
+| E4 Data/Analytics      | LOCAL: Datenqualität, Analytics, Forecast/Anomaly, UTC/DST-, CSV-/Export- und DB-Integrationstests; Seed-/Demo-Acceptance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `DATA-QUALITY.md`, `REPORTING.md`, `SCALING-PERFORMANCE.md`; keine demonstrierte Retention-/Backfill-Produktionspipeline.                                                                                                                    |
+| E5 API/Integration     | LOCAL CI: `test:public-api`, `test:webhooks`, Integrations-/Security-Suiten; OpenAPI-Datei.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `PUBLIC-API.md`, `docs/openapi/public-api-v1.yaml`; API ist dokumentiert lesend, keine externe Partnerzertifizierung.                                                                                                                        |
+| E6 Billing             | LOCAL: SaaS-Pricing Unit/Integration/Browser-Acceptance; STAGING: FIXED, BASE_PLUS_METER, Datenpersistenz, billable-Auswahl, Statuslogik, Replacement 1:1 und TENANT_ADMIN read-only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `SAAS-PLANS.md`, `SAAS-PRICING-IMPLEMENTATION.md`; Tests belegen lokale Vertragslogik, keinen Zahlungs-/Rechnungsprovider.                                                                                                                   |
+| E7 Security            | LOCAL: Dependency-Audit im RC7-Report ohne Advisories (Snapshot 28.10.), Secret Scan ohne Review-Funde, Security regression/hardening/outbound, CI Security. STAGING: signierte Gateway-Ingestion und Tenant-Grenzen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `THREAT-MODEL.md`, `SECURITY.md`, `SECURITY-CHECKLIST.md`; kein Signatur-/Attestierungsnachweis; Audit-Snapshot ersetzt kein laufendes Advisory-Monitoring.                                                                                  |
+| E8 CI/Release          | Phase 1 complete on `software-completion/phase-1`, commit `66fa3b7cc77986b03371411e2662654af3c3cdd0`. CI run 40889030154 and Release Candidate run 40889044502 are fully green: Fast checks, Unit, Integration/Migration, Browser/Mobile and Production build; Browser suite 36 passed, 28 pre-existing skips, 0 failed. Desktop, Mobile, Mobile Landscape and Tablet UX path passed; former Tablet Systemstatus assertion passes. Artifact job passed, including release build, image builds/smokes, verifier and uploads. Artifacts: `release-artifact` (20,016,472 bytes) and `container-runtime-evidence` (3,089 bytes); metadata/SBOM/worker manifest identify exact commit and RC7; eight SHA-256 entries verified; known synthetic credentials absent from Web archive. Docker Scout CLI is unavailable; optional image-SBOM fallback ran, while the lockfile SBOM is included and verified. Artifact metadata reports `workingTree=dirty` because generated CI outputs exist at metadata capture; commit provenance remains exact. | `RELEASES.md`, `RELEASE-CHECKLIST.md`, `docs/RELEASE-RC7.md`; [CI 40889030154](https://github.com/Florian1518/Meterwerk/actions/runs/40889030154), [Release 40889044502](https://github.com/Florian1518/Meterwerk/actions/runs/40889044502). |
+| E9 Recovery            | LOCAL: Backup-/DR-Unittests, isolated migration upgrade und Restore-Test der Pre-RC7-Sicherung mit 49 Migrationen; Dump-Hash bestätigt. STAGING: Vorhandensein/Hash und Rollback-Images bestätigt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `BACKUP-RESTORE.md`, `DISASTER-RECOVERY.md`, `DR-DRILLS.md`; offsite/PITR/regelmäßiger Scheduler/Vollservice-Restore nicht daraus ableitbar.                                                                                                 |
+| E10 Performance        | LOCAL: synthetischer sequentieller HTTP/DB-Lauf (210 Requests) und Adapter-only 1.000-Device-/96.000-Wert-Lauf in älteren Acceptance-Belegen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `SCALING-PERFORMANCE.md` markiert diese Werte ausdrücklich nicht als Kapazitätszusage; kein aktueller paralleler DB/MQTT/Worker-Last- oder Soak-Nachweis.                                                                                    |
+| E11 Frontend           | LOCAL: Browser-Matrix Desktop, Mobile, Mobile Landscape, Tablet; RC7-Report 68/Profil, Accessibility-Axe-Prüfungen und PWA/offline-Journey. GitHub Tag-Release-Browserworkflow scheiterte.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `UX-GUIDELINES.md`, `PWA.md`, `browser-e2e.md`; Remote-Failure muss aufgeklärt werden; Tests beschränken sich auf Chromium/Playwright.                                                                                                       |
+| E12 Operations/Docs    | LOCAL: Docs-Checks/-Validierung, Security-/DR-/Worker-/Release-Policies. STAGING: Web/DB/MQTT healthy, drei Worker stabil, interne Readiness 200 und sechs Container.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Betriebs-/Runbook-Dokumentation vorhanden, aber Teile beschreiben veralteten Stand; Runbooks und konkrete Runtime-Konfiguration müssen konsistent gemacht werden.                                                                            |
+
+## Inventar
+
+In den Evidence-Spalten verweist `E1`–`E12` auf Tests, Dokumentation und gegebenenfalls Staging-Nachweis. Bei PARTIAL/OPEN/BLOCKED nennt der Befund den nicht belegten Anteil. Ein Staging-Evidence-Verweis wird nicht auf fachfremde Features übertragen.
+
+### A. Core Platform
+
+| Punkt                                  | Status  | Evidence | Befund                                                                                                                                                                                     |
+| -------------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Multi-Tenancy                          | DONE    | E1       | Mandantenscopes/Fremdschlüssel, Integrations- und Tenant-Grenztests; Billing-/Tenant-Isolation in Staging bestanden.                                                                       |
+| Benutzer, Rollen, Property Grants      | DONE    | E1       | Auth/User-Management, Security-Integration und Browserrollen; TENANT_ADMIN Staging-Login und Read-only-Abrechnung.                                                                         |
+| Tenant Isolation                       | DONE    | E1       | Fremdtenantzugriff in Tests und Staging 403; gilt für abgenommene Pfade, nicht als externer Penetrationstest.                                                                              |
+| Kunden, Liegenschaften, Gebäude, Units | DONE    | E1       | CRUD-/Integration-/Browserpfade und Staging-Liegenschaftspfad.                                                                                                                             |
+| Meter Management                       | DONE    | E1/E6    | Managementtests plus Staging-Meter, Billable-Logik und Replacement.                                                                                                                        |
+| Gateway Management                     | PARTIAL | E1/E2    | Provisioning- und Browsertests plus synthetische Verbindung; reale Zertifikats-CA-, Rotation-/Revocation- und Betreiberprozesse nicht vollständig Ende-zu-Ende validiert.                  |
+| Device Fleet                           | PARTIAL | E1/E2    | Fleet-/Device-/Managementtests; anwendungsweiter Fleet-Betrieb mit großer Flotte und längerem Staging-Lauf fehlt.                                                                          |
+| Field Service                          | PARTIAL | E1/E11   | Authentifizierte synthetische Zuweisung und mobiler Arbeitsabschluss; breite WorkOrder-Typen, Anhänge/Scanner sowie vollständige operative Akzeptanz fehlen.                               |
+| Support / Operations                   | PARTIAL | E12      | Supportfälle, Diagnostics, Audits und privilegierte Aktionen sind implementiert/getestet; End-to-end Supportrollen, produktive Eskalation, Wartungsdurchsetzung und Incident-Übung fehlen. |
+
+### B. Data Ingestion
+
+| Punkt                                  | Status  | Evidence | Befund                                                                                                                                                                      |
+| -------------------------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MQTT                                   | DONE    | E2/E3    | Signatur-/Security- und Transporttests; positives Staging Commissioning über isolierten MQTT-Testpfad.                                                                      |
+| Modbus TCP (Softwarepfad)              | DONE    | E2/E3    | Simulator, echter TCP-Verbindungstest, READ, Telemetrie, Guard-Statuskette und Regression. Reale Geräte separat unter Hardware.                                             |
+| Modbus RTU / serielle Schnittstelle    | PARTIAL | E3       | Treiber-/Port-/Vertragsbestand vorhanden; physischer Adapter kann per Software simuliert werden, aber End-to-end COM/RS485-Lauf ist hardwareabhängig und zurückgestellt.    |
+| M-Bus Softwarevertrag/Decoder          | PARTIAL | E3       | Decoder, Capability und virtuelle Treiber/Unit-Tests; kein belastbarer produktiver Transport-/Ingestion-Acceptance-Pfad.                                                    |
+| Wireless M-Bus Softwarevertrag/Decoder | PARTIAL | E3       | Frame-/Security-Metadaten und Simulator vorhanden; AES-Entschlüsselung/Receiverpfad in gesamter Laufzeitkette nicht als Staging-Integration belegt.                         |
+| Pulse                                  | PARTIAL | E3       | Zählerfaktor/Rollover/Decoder und virtueller Treiber; Feldhardware bleibt ausgenommen, integrierter Dauer-Ingestionpfad fehlt.                                              |
+| LoRaWAN Webhook/Decoder                | PARTIAL | E3       | Normalisierungs-/Vertragslogik getestet; kein produktiver Netzwerkserveradapter-/Providervertrag im Betrieb.                                                                |
+| Vendor Adapter                         | OPEN    | E3       | Mapping-/Polling-/Event-/Rate-Limit-Schema, aber kein konkreter Herstelleradapter. Wird erst mit ausgewähltem Hersteller/Protokoll umsetzbar.                               |
+| Retry / Backoff                        | PARTIAL | E3/E12   | Mehrere Jobs/Webhooks/Queues nutzen Retry/Backoff; Verhalten ist nicht über alle asynchronen Aktionen vereinheitlicht und als Ausfallmatrix abgenommen.                     |
+| Duplicate Handling / Idempotenz        | DONE    | E3/E5    | Eindeutige Message IDs, Duplicate-/Replay- und Ingestion-Tests, transaktionaler Schutz; nur konkret implementierte Ingestionpfade.                                          |
+| Offline Buffering                      | DONE    | E3       | Persistente Gateway-Queue und bestehender Phase-3-Store-and-forward-Nachweis; RC7 positives Ingestion ergänzt.                                                              |
+| Reconnect                              | PARTIAL | E3       | Reconnect-Code/Transporttests und Simulator; automatisierter Broker-/Gateway-Ausfall, Queue-Replay und wiederholte Langzeit-Reconnect-Matrix auf RC7 fehlt.                 |
+| Clock / Timestamp                      | PARTIAL | E3/E4    | UTC-Speicherung, ISO-/Zeitschwellen und UTC/DST-Unit-Tests; Gerätezeitabweichung, NTP-Drift und verspätete/außer Reihenfolge gelieferte Payloads nicht umfassend validiert. |
+
+### C. Commissioning
+
+| Punkt                                     | Status  | Evidence | Befund                                                                                                                                                                 |
+| ----------------------------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vollständige Software-Statuskette         | DONE    | E2       | Staging DRAFT→CONFIGURED→CONNECTION_VERIFIED→READ_VERIFIED→ASSIGNMENT_CONFIRMED→COMMISSIONED über normale API-Guards.                                                  |
+| Guards / Berechtigungen                   | DONE    | E2       | Negative HTTP 409 und Rollen-/Tenant-Tests; positive Pfad wurde ebenfalls mit echtem Sessionlogin ausgeführt.                                                          |
+| Modbus-Simulator                          | DONE    | E2       | Bestehender Simulator auf Loopback, echter erfolgreicher TCP-Test und Register-Reads, vollständiger Cleanup.                                                           |
+| Fehlerfälle / Timeout / ungültige Evidenz | PARTIAL | E2       | 409 und Browser-Pending/Expired-Status getestet; Staging-E2E-Netzwerkfehler, Signaturfehler, Timeout, veraltete Messung und Operator-Recovery nicht als Matrix belegt. |
+| Wiederaufnahme nach Prozess-/Netzausfall  | PARTIAL | E2/E3    | Persistente Zustände/Queue existieren; Abbruch mitten in Commissioning und Wiederaufnahme ohne Doppelwirkung nicht vollständig abgenommen.                             |
+| Recommissioning / Konfigurationsrevision  | PARTIAL | E2       | Revisions-/Resetlogik und Unit-Tests vorhanden; sichere Staging-Sequenz Commissioned→Config-Änderung→neue Evidenz/Statuskette fehlt.                                   |
+| MeterReplacement Billing-Sicherheit       | DONE    | E2/E6    | 1:1 Replacement und keine Doppelabrechnung in Staging akzeptiert.                                                                                                      |
+
+### D. Measurements / Data
+
+| Punkt                               | Status  | Evidence | Befund                                                                                                                                                                                            |
+| ----------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Messwertspeicherung / Decimal       | DONE    | E3/E4    | PostgreSQL/Prisma-, Ingestion- und Einheiten-/Decimal-Tests; persistente Staging-Telemetrie im Commissioning.                                                                                     |
+| Aggregation                         | PARTIAL | E4/E10   | Dashboard-/Analytics-Aggregate und Zeitbucket-Funktionen vorhanden; große Rohdatenfenster werden teilweise on-demand gelesen, kein vollständig operationalisierter inkrementeller Bucket-Rebuild. |
+| Retention / Löschpolitik            | OPEN    | E4/E12   | Policy sagt selbst, Aufbewahrungsfristen fachlich/vertraglich festzulegen; kein automatischer produktiver Retention-Scheduler.                                                                    |
+| Datenqualität                       | PARTIAL | E4       | Regeln/Findings/Korrekturen sowie 5001-Zeilen-Fenster und Tests; laufender Queue-/Reviewbetrieb und Volumen-/Backfill-Evidence offen.                                                             |
+| Import / Export                     | PARTIAL | E4       | CSV-Import/Validierung und begrenzte Streams/Tests vorhanden; große Dateien, Jobfortschritt, Rollback und vollständige Provider-Storage-Konsistenz nicht abgenommen.                              |
+| Backfill / Reprocessing             | OPEN    | E4       | Kein vollständig operationalisierter, chunk-/leasebasierter Ingestion- und Aggregations-Backfill nach Replay/Regeländerung belegt.                                                                |
+| Gap Detection                       | PARTIAL | E4       | Datenqualitäts- und Offline-/Kontaktzustände vorhanden; ein tenantweiter, skaliert geprüfter dauerhafter Gap-Detection-/Recovery-Prozess fehlt.                                                   |
+| Plausibilitätsprüfungen             | PARTIAL | E4       | Quality-/Protokoll-/Einheitentests vorhanden; fachliche Grenzwerte je Utility/Hersteller sind nicht generell parametriert.                                                                        |
+| UTC, Zeitzonen, DST                 | DONE    | E4       | UTC-Instants und Berlin-DST-Sprung in Unit-Tests; Zeiten/Zone in Analytics-/Formatkontrakten dokumentiert.                                                                                        |
+| Große Datenmengen / Partitionierung | OPEN    | E10      | Indizes, harte Query-/Exportlimits dokumentiert; Reading-Partitionierung explizit nur vorgesehen, kein 10k-Device/Mehrtenant-DB-Leistungsnachweis.                                                |
+
+### E. Analytics
+
+| Punkt             | Status  | Evidence  | Befund                                                                                                                                                         |
+| ----------------- | ------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Forecast          | PARTIAL | E4        | Dezimalbasierter einfacher Trend/gleitender Mittelwert und Mindestdatenchecks; geringe statistische Aussagekraft, keine kalibrierte Produktgüte.               |
+| Anomaly Detection | PARTIAL | E4        | Regelbasierte Peaks/Grundlast/Leck-Indikatoren getestet; kein Qualitäts-/False-positive-Monitoring an größeren oder vielfältigen Datenmengen.                  |
+| Benchmarking      | OPEN    | E4        | Kein test-/dokumentierter tenantübergreifender Benchmarkmechanismus mit Anonymisierung und ausreichender Vergleichsmenge identifiziert.                        |
+| Dashboards        | DONE    | E1/E4/E11 | Authentifizierte Browser-Journeys, Daten- und Rechtepfade; Dashboard in lokaler Acceptance/CI.                                                                 |
+| Reports           | PARTIAL | E4/E12    | Reportmodelle, Export-/Securitytests vorhanden; Scheduler und zuverlässige Bereitstellung/Benachrichtigung hängen am noch fehlenden externen Mail-/Jobbetrieb. |
+| Regelwerk         | PARTIAL | E4        | Regel-/Action-Worker, Integrations- und Unit-Tests; Parallel-/Lease-/Dauerbetrieb sowie Provideraktionen nicht vollständig produktiv validiert.                |
+| Alerts            | PARTIAL | E4/E12    | Alarmmodelle und In-App-/Rule-Pfade vorhanden; kontinuierliche Zustellung, externe Kanäle, Deduplizierung und Routing nicht als Production-E2E belegt.         |
+
+### F. API / Integration
+
+| Punkt                           | Status  | Evidence | Befund                                                                                                                                                                 |
+| ------------------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API (lesend)             | DONE    | E5       | CI-Integration, Scope-/Tenant-/Fehlertests und OpenAPI 3.1; dokumentierte GET-Ressourcen.                                                                              |
+| API Auth / Key Lifecycle        | DONE    | E5/E7    | Gehashte/gescopte Keys, Ablauf/Widerruf, Tests; tatsächliche Partnerintegration nicht getestet.                                                                        |
+| Rate Limiting                   | DONE    | E5       | PostgreSQL-atomare Schlüssel- und Tenantlimits, 429/Retry-After und Integrationsabdeckung.                                                                             |
+| Pagination / Query Limits       | DONE    | E5/E10   | Cursor, max 100, Zeitfenster-/Exportgrenzen und Dokumentation.                                                                                                         |
+| Webhook Retry / Idempotenz      | PARTIAL | E5       | Signatur, Lease, begrenzte Retry-/Dead-Letter-Logik implementiert; Empfänger-Duplikate, Schlüsselrotation und Endpunkt-Ausfall längerfristig nicht Staging-abgenommen. |
+| API Versionierung               | DONE    | E5       | Explizite `/api/public/v1`-Routen und versionierte OpenAPI.                                                                                                            |
+| Fehlerformate / Correlation IDs | DONE    | E5       | Fehler-/Statusverträge, no-store und Correlation IDs getestet/dokumentiert.                                                                                            |
+| API Dokumentation               | DONE    | E5       | OpenAPI 3.1 und `PUBLIC-API.md`; tatsächlicher Schema-/Code-Drift sollte weiter als CI-Gate gepflegt werden.                                                           |
+
+### G. SaaS / Billing
+
+| Punkt                                   | Status  | Evidence | Befund                                                                                                                                                                                                             |
+| --------------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FIXED Pricing                           | DONE    | E6       | Decimal-Berechnung, Legacy-Vertrag, Staging 149 EUR und TENANT_ADMIN Read-only.                                                                                                                                    |
+| BASE_PLUS_METER                         | DONE    | E6       | Decimal-Berechnung, Staging 99 EUR + 25×4 EUR = 199 EUR.                                                                                                                                                           |
+| Billable Meter Auswahl                  | DONE    | E6       | Status-/`billable`-Regeln und Ausschluss in Staging; aktive/inaktive relevante Zustände akzeptiert.                                                                                                                |
+| MeterReplacement                        | DONE    | E6       | Historie und 1:1 Abrechnung in Staging, keine Doppelzählung.                                                                                                                                                       |
+| Plan Limits / Entitlements              | DONE    | E6       | Quota-/Feature-Prüfung in Transaktionen, Tests und tenantgebundene Pfade.                                                                                                                                          |
+| Subscription Lifecycle                  | PARTIAL | E6       | Trial/Active/Past Due/Suspended/Canceled-/Adminfunktionen vorhanden; keine tatsächlichen externen Webhook-/Payment-Lifecycle-Übergänge akzeptiert.                                                                 |
+| Billing Metadata / Tenant Read-only     | DONE    | E6       | Persistenz, Tenant-Isolation und Tenant-Admin-Read-only in RC7 Staging akzeptiert.                                                                                                                                 |
+| Provider Interface                      | PARTIAL | E6       | `BillingProvider`-Vertrag vorhanden, keine konkrete Implementierung.                                                                                                                                               |
+| Tatsächlicher Invoice-/Payment-Provider | OPEN    | E6       | Kein Payment-/Rechnungsanbieter implementiert. Provider-, Steuer-, Mahn- und Vertragsanforderungen müssen vor bezahltem Self-Service festgelegt werden; manuelle Rechnung kann ein bewusster Betriebsprozess sein. |
+
+### H. Security
+
+| Punkt                                 | Status  | Evidence                 | Befund                                                                                                                                                                                                                      |
+| ------------------------------------- | ------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency Audit                      | PARTIAL | E7/E8                    | RC7 Lockfile-Audit-Snapshot 28.10. ohne Advisories, CI `pnpm audit --audit-level high`; kein laufender Alarm-/Patchprozess. GitHub CI 29.10. grün, Release-Browsergate aber fehlgeschlagen.                                 |
+| Secrets / Secret Scan                 | DONE    | E7                       | RC7 Git-scoped secret scan 0 review findings; CI gate. Konfigurationsinventar/Rotation im Deployment bleibt Betriebsaufgabe.                                                                                                |
+| Security Headers / CSP                | DONE    | E7                       | Nonce-CSP, HSTS production, frame/content/referrer/permissions headers und Regressiontests.                                                                                                                                 |
+| Auth / Sessions / MFA                 | DONE    | E1/E7                    | Hashing, Sessionrotation/Revocation und MFA-/Recoverytests; Abdeckung Provider-Mail zurücksetzen eingeschränkt.                                                                                                             |
+| Passwortpolicy                        | PARTIAL | E7                       | Mindestlänge/Maximalgröße und Argon2id; keine belegte Breach-/Common-password-Abwehr oder organisationsweite Policy.                                                                                                        |
+| RBAC / Grants                         | DONE    | E1/E7                    | Role-/PropertyGrant-/Escalationstests und Staging-Tenant-Adminpfade.                                                                                                                                                        |
+| Tenant Isolation                      | DONE    | E1/E7                    | Cross-tenant-403 und Security-Integrationen; keine unabhängige Red-Team-Prüfung.                                                                                                                                            |
+| CSRF                                  | DONE    | E7                       | Origin-/SameSite-/Server-Action-Verhalten und Security Regression; nur getestete Browser/API-Pfade.                                                                                                                         |
+| XSS                                   | PARTIAL | E7/E11                   | React escaping, CSP und UI/Axe; keine unabhängige DOM-XSS-Penetration über alle Import-/Report-/Markdowninhalte.                                                                                                            |
+| SSRF / Outbound                       | DONE    | E7                       | `outbound-http`-Validierung und Security-Outbound-Regression; Deploy-Egresspolicy separat festzulegen.                                                                                                                      |
+| Injection                             | DONE    | E1/E7                    | Prisma parametrisierte Queries, Zod und Security-/Integrationstests; keine externe Penetration.                                                                                                                             |
+| Rate Limiting / Abuse                 | DONE    | E5/E7                    | Login-/Reset-/Public-API Limits und Regression; Infrastruktur-/Bot-Abwehr außerhalb der App nicht belegt.                                                                                                                   |
+| Audit Logs                            | DONE    | E1/E7/E12                | Kritische Mutationen protokolliert, Zugriffstests/Auditumfang; dauerhafte manipulationsgeschützte externe Archivierung nicht nachgewiesen.                                                                                  |
+| Malware Scan                          | PARTIAL | E7/E8                    | Release Candidate 41068729605 passed ClamAV 1.5.4 on web (3,668 files), worker (1,005), migrations (22,463) and archive (9); definitions hash and digest/subject are archived. Attachment uploads may still record SKIPPED. |
+| Image Security / CVE Scanning         | DONE    | E7/E8; Phase-2-Abschluss | Mandatory digest scans und täglicher Default-Branch-Workflow active; manueller Run 41406700801 SUCCESS. Je Image 0 Critical/High/Unknown/Low und 3 Medium; Reports archiviert, keine Policy-Ausnahme.                       |
+| SBOM                                  | DONE    | E7/E8                    | Syft 1.55.0 generated CycloneDX 1.7 JSON for web, worker and migration digests; Sigstore SBOM attestations and matching digest references are in image-security-evidence and release-artifact from run 41068729605.         |
+| Image/Artifact Signing                | DONE    | E7/E8                    | Keyless GitHub OIDC/Sigstore provenance for the three images, SBOMs, archive and manifest passed in release run 41068729605; no repository private key.                                                                     |
+| Signature Verification                | DONE    | E7/E8                    | Release verifier accepted expected repository, workflow, OIDC issuer, commit SHA and exact image digests; immutable promotion verification passed without deploying.                                                        |
+| Supply Chain / Provenance             | DONE    | E7/E8                    | Accepted release artifact binds commit 24944092c9e1cef432fd8316fc10f2c4e594f42b, version 1.0.0-rc.7, clean source state, build/run metadata, three image digests and hashed security evidence.                              |
+| Least Privilege / Container Hardening | PARTIAL | E7                       | RC7 Web-/Worker-/Migration-Images non-root, staging interne Netze/readonly mounts; Production-Compose/Imageparität und Produktions-Egress/OS-Patching nicht abgeschlossen.                                                  |
+
+### I. CI/CD / Release
+
+| Punkt                                      | Status  | Evidence        | Befund                                                                                                                                                                                                             |
+| ------------------------------------------ | ------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit-/Integration-/Build Gates             | DONE    | E8; Phase 2     | PR-CI 41405832117 und master-CI 41406630847: Fast, Unit, Integration/Migration, Browser/Mobile und Production Build vollständig erfolgreich.                                                                       |
+| Remote Browser-/Mobile Gate auf Tag        | DONE    | E8/E11; Phase 2 | Browser/Mobile-Gate auf Integrations-PR vollständig erfolgreich; der frühere Tablet-Heading-Race ist behoben. Der historische Tag-Lauf 40835587738 blieb fehlerhaft und wurde nicht verändert.                     |
+| Release-Artefakt für Tag                   | OPEN    | E8              | Artifact job on run 40835587738 was skipped because Browser and mobile tests failed; artifact acceptance remains pending for the completion commit.                                                                |
+| Docker Build / GHCR Images                 | DONE    | E8              | RC7 Web/Worker/Migration-Images gebaut und über erfolgreichen Publish-Images-Workflow publiziert; staging digests verifiziert.                                                                                     |
+| Immutable Digests                          | DONE    | E8/E9           | Deployment nach digest, RC7-/RC5-Digests in Staging geprüft.                                                                                                                                                       |
+| Release Branch / Tag                       | DONE    | E8              | RC7 Branch und annotierter Tag auf freigegebenem SHA; RC6 unverändert.                                                                                                                                             |
+| Staging Promotion / Acceptance             | DONE    | E2/E6/E8/E9     | Vollständige RC7-Abnahme und Readiness; kein Production-Push.                                                                                                                                                      |
+| Production Pipeline / Approval             | PARTIAL | E8              | Release workflow baut Artefakte, deployt nicht; kein geprüfter, approval-geschützter Promotionpfad in Runtime erkennbar. Manuelle Operatorfreigabe ist möglich, aber Runbook/Environment nicht vollständig belegt. |
+| Promotion desselben Artefakts statt Neubau | PARTIAL | E8              | Digest manifest, promotion Compose and verifier are implemented; no accepted release run yet. Production runtime parity and approval integration remain open.                                                      |
+| Rollback / Forward-only DB                 | PARTIAL | E8/E9           | RC5 Images und Pre-RC7-Dump bestätigt; App-Image-Rollback dokumentiert, aber Produktions-Restore/PITR und vollständiger Rollback-Drill fehlen.                                                                     |
+| Release Evidence / Artifact Provenance     | PARTIAL | E8              | Lokale/Staging JSON Evidence ist umfangreich; Release tag pipeline failte, Artifactjob fehlte, Evidence nicht abschließend als signiertes externes Releasepaket archiviert.                                        |
+
+### J. Backup / Recovery
+
+| Punkt                                          | Status  | Evidence | Befund                                                                                                                                                            |
+| ---------------------------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB Backup Werkzeug                             | DONE    | E9       | pg_dump custom, SHA256, TOC-Verify und isolierter Restoretest; Pre-RC7 Dump hash-/restorebestätigt.                                                               |
+| Offsite-/getrenntes Backup                     | PARTIAL | E9       | Pre-RC7-Dump existiert lokal geschützt; automatisierte getrennte/offsite Speicherung und unabhängiger Zugriff nicht als laufender Service belegt.                 |
+| Backup Verschlüsselung / Schlüsselverwaltung   | OPEN    | E9       | Dokumentiert als erforderlich, konkrete automatisierte Verschlüsselung und Key-Rotation/Restore nicht nachgewiesen.                                               |
+| Full DB Restore                                | DONE    | E9       | Exakter Pre-RC7 Dump in isolierter DB mit 49 Migrationen wiederhergestellt; zukünftige regelmäßige Wiederholung bleibt P1.                                        |
+| Full Service Restore DB+Objektstorage+App+MQTT | PARTIAL | E9       | DR-Szenarien und Recoverytests vorhanden; Ende-zu-Ende Wiederaufbau aller versionierten Objekte, Identitäten, Workern und öffentlichem Endpoint nicht ausgeführt. |
+| PITR / WAL Archive                             | OPEN    | E9       | Anwendung/Runbook beschreibt PITR; kein laufendes WAL-Archiv und kein Point-in-Time-Restore-Beleg.                                                                |
+| RPO / RTO                                      | PARTIAL | E9       | Zielwerte und Messmodelle dokumentiert; keine repräsentative Übung, die reale Zielwerte erreicht und misst.                                                       |
+| DR / regelmäßige Restore-Drills                | PARTIAL | E9       | Sicherheitsbegrenzte DR-Testmodelle vorhanden; wiederkehrender geplanter Full-Stack-Drill mit Findings/Alert ist nicht belegt.                                    |
+
+### K. Availability
+
+| Punkt                                   | Status  | Evidence | Befund                                                                                                                                      |
+| --------------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL HA                           | OPEN    | E9/E10   | Staging zeigt einzelne PostgreSQL-Instanz; keine Primary/Replica-Topologie oder Failover-Abnahme.                                           |
+| Application HA                          | OPEN    | E10/E12  | Ein Webcontainer/Host in Staging; keine redundante Produktionskonfiguration/Load-Balancer-Abnahme.                                          |
+| Worker HA / konkurrierende Worker       | PARTIAL | E8/E10   | Lease-/Claim-Mechanismen und getrennte Workerprozesse; Multi-Instanz-Duplikat-/Failover-Verhalten nicht als Last-/Crashmatrix nachgewiesen. |
+| MQTT HA                                 | OPEN    | E3/E10   | Einzelner Mosquitto in Staging; kein Cluster/managed broker failover getestet.                                                              |
+| Reverse Proxy / Load Balancer Redundanz | OPEN    | E10/E12  | Staging/Production-Beispiel hängt an Hostproxy/Einzelhost; redundante TLS-/Proxy-Pfade fehlen.                                              |
+| Failover Tests                          | OPEN    | E9/E10   | DR-Katalog dokumentiert Fälle, aber keine echte softwareseitige DB/Web/MQTT/Storage-Failoverübung mit messbaren RPO/RTO.                    |
+| Single Points of Failure                | PARTIAL | E9/E10   | In Staging klar: einzelner Host, DB, MQTT, Proxy und Storage. Production-Topologie noch nicht ausgewählt/abgenommen.                        |
+
+### L. Performance / Scaling
+
+| Punkt                                  | Status  | Evidence | Befund                                                                                                                                |
+| -------------------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Web Load                               | PARTIAL | E10      | 210 sequenzielle synthetische Requests; kein paralleler realistischer Session-/Cache-/Tail-latency-Lauf.                              |
+| API Load                               | PARTIAL | E5/E10   | Limits und Endpoint-Microbench vorhanden; keine parallelisierte Scope-/Tenant-/429-/DB-Kapazitätsprüfung.                             |
+| Messwert-DB-Ingestion Load             | OPEN    | E3/E10   | Adapterbenchmark schreibt ausdrücklich 0 DB rows; keine realistische parallele Prisma/PostgreSQL-Schreibrate/Lockmessung.             |
+| MQTT Load                              | OPEN    | E3/E10   | Einzelne Integration/Transporttests, keine Message-rate-, reconnect-storm- oder broker-backpressure-Kapazitätsmessung.                |
+| Worker Load / Queue Throughput         | PARTIAL | E8/E10   | Unit-/Lifecycle-Smokes und Benchmarkhelper; keine Worker-Parallelitäts-/Durchsatz-/Retry-Storm-/Dead-letter-Kapazitätsmessung.        |
+| DB Load / Query Plans                  | OPEN    | E10      | Performance docs sehen EXPLAIN ANALYZE/BUFFERS vor; für kritische RC7 Staging-Volumenpfade nicht gesammelt.                           |
+| Large Tenant                           | OPEN    | E10      | Kein repräsentativer größter Tenant mit Millionen Reading-/Meter-/Auditdaten getestet.                                                |
+| Many Tenants                           | OPEN    | E10      | Kein 100-Tenant/10k-Device kombiniertes Daten- und Lastprofil belegt.                                                                 |
+| Large Meter Fleet                      | OPEN    | E10      | Kein kombinierter großflottiger Fleet-/command-/heartbeat-/offline Betrieb abgenommen.                                                |
+| Long-running Soak / Queue Backpressure | OPEN    | E3/E10   | Kein 24–72h Soak, kontrollierte Rückstau-/Drain-/Retrybeleg.                                                                          |
+| Connection Pool Limits                 | PARTIAL | E10      | URL-/Poolkonfiguration dokumentiert; gemeinsam budgetierte Web-/Worker-/Admininstanzen unter Postgres max_connections nicht gemessen. |
+
+### M. Observability
+
+| Punkt                       | Status  | Evidence   | Befund                                                                                                                                            |
+| --------------------------- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Metrics                     | PARTIAL | E10/E12    | App besitzt lokale Zähler/Snapshots; in-memory, pro Prozess, nicht dauerhaft/exportiert.                                                          |
+| Logs / Correlation IDs      | PARTIAL | E7/E12     | Strukturierte redigierte Logs und Correlation IDs; zentrale Korrelation, Aufbewahrung und Alarmregel nicht belegt.                                |
+| Distributed tracing         | OPEN    | E12        | Kein Tracing-Backend/Trace-Propagation über Web→Queue→Worker→DB/MQTT identifiziert.                                                               |
+| Externes Alerting / Routing | OPEN    | E12        | Alert-/Recoverymodelle vorhanden; kein bestätigter Pager/E-Mail/Ops-Kanal, Routing oder Empfangsprobe.                                            |
+| Liveness / Readiness        | DONE    | E12        | RC7 staging interne Readiness 200, DB true, Web healthy; Liveness 200 nach Tag-Push. Ready deckt nur Webkonfiguration/DB ab.                      |
+| Worker Monitoring           | PARTIAL | E12        | DB Heartbeat/Logs und stabile drei Stagingworker; Docker healthcheck/externes stale-heartbeat-Alerting und funktionaler Fortschrittsalarm fehlen. |
+| DB Monitoring               | PARTIAL | E12        | Verbindungs-/Readiness-Probe vorhanden; DB saturation, slow queries, replication/backup lag Alerts fehlen.                                        |
+| MQTT Monitoring             | PARTIAL | E12        | Container healthcheck und Brokerstatus; Verbindungs-/Queue-/certificate-expiry-Alert routing nicht bestätigt.                                     |
+| Disk / CPU / RAM            | OPEN    | E12        | Kein überprüfter Host-/Container-Resource-Exporter samt disk-watermark/Capacity alerting.                                                         |
+| Queue Depth / Error Rate    | PARTIAL | E3/E10/E12 | Statusmodelle/Backpressure und Workerfehlerzähler; dauerhafter Dashboard-/Alertpfad und Schwellenabnahme fehlen.                                  |
+| SLA / SLO / Alert Routing   | OPEN    | E12        | DR-Zielwerte sind Engineeringziele, kein vereinbartes SLO/SLA; Burn-rate/Verfügbarkeitsmessung/Route fehlt.                                       |
+
+### N. Operations
+
+| Punkt                         | Status  | Evidence  | Befund                                                                                                                                                             |
+| ----------------------------- | ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Runbooks                      | PARTIAL | E9/E12    | Deployment, staging, rollback, security und DR-Handbücher existieren; teilweise historisch/konfigurationsabweichend und nicht als Operatorübung durchlaufen.       |
+| Incident Response             | PARTIAL | E12       | Incident-/Security-Runbooks vorhanden; keine geübte Rollen-/Eskalationssimulation und kein tatsächlicher Alert-Auslösepfad.                                        |
+| On-call / Support             | OPEN    | E12       | Keine operative Bereitschafts-/Eskalationsplanung oder Providerempfänger in Repo belegt. Organisatorische Entscheidung des Betreibers erforderlich.                |
+| Tenant Support Tools          | PARTIAL | E1/E12    | Diagnostics/Supportfälle und SUPER_ADMIN-Kontextgrenzen; freigegebene zeitbegrenzte impersonation/access workflow nicht als vollständige Funktion belegt.          |
+| Maintenance Mode              | OPEN    | E12       | `setMaintenanceMode` schreibt Datensatz/Audit; Nutzung/Enforcement in Request-Proxy oder APIs nicht gefunden. Emergency maintenance könnte somit wirkungslos sein. |
+| Data Repair / Manual Recovery | PARTIAL | E9/E12    | sichere Restoreziel-/Forward-only-Regeln und Admin-Aktionen vorhanden; geprüfte, auditable Reparaturverfahren für Tenantdaten/Queue/API-Fehler unvollständig.      |
+| Audit Evidence                | PARTIAL | E7/E8/E12 | App-AuditEvents und lokale Acceptance-Artefakte; unveränderlicher externer Evidence-Speicher/Retention und signierter Releasebeleg fehlen.                         |
+
+### O. Frontend
+
+| Punkt                   | Status  | Evidence | Befund                                                                                                                                      |
+| ----------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop                 | DONE    | E11      | Chromium Desktop browser journeys und visuelle/UX acceptance lokal.                                                                         |
+| Mobile / Tablet         | DONE    | E11      | Pixel-/Tablet-/Landscape Playwright-Projekte lokal und responsive browser cases.                                                            |
+| PWA / offline           | DONE    | E11      | Service worker, statische Offline-Assets, offline banner/reconnect journey getestet; keine Offline-Mutationen/Sync behauptet.               |
+| Error states            | PARTIAL | E11      | UI-/UX-/HTTP-Fehlerbelege vorhanden; vollständige API-/Netzwerk-/Expired-session Oberflächenabdeckung nicht gegeben.                        |
+| Empty states            | PARTIAL | E11      | UI hat definierte leere Ansichten; systematische Screenmatrix nach Rolle/Objekt/Datenlage fehlt.                                            |
+| Loading states          | PARTIAL | E11      | Interaktionsseiten haben Loadingzustände; langsame/abgebrochene Requests und Race-Conditions nicht umfassend getestet.                      |
+| Accessibility           | DONE    | E11      | Axe wcag2a/aa/21aa auf abgedeckten Browserseiten ohne Findings. Manuelle Screenreaderprüfung nicht belegt.                                  |
+| Browser compatibility   | PARTIAL | E11      | Playwright Chromium in mehreren Viewports; reale Safari/Firefox/Edge-Versionen nicht systematisch in CI validiert.                          |
+| Session expiry / revoke | PARTIAL | E1/E11   | Session lifecycle Unit/Security tests; alle offenen Browser-/Form-/MFA-/Refresh-Journeys bei Ablauf/Widerruf nicht abgenommen.              |
+| Poor network behavior   | PARTIAL | E3/E11   | PWA offline statische Inhalte und Edge offline queue; Browseraktion retry/idempotent UI sowie mobile Netzwechsel nicht end-to-end getestet. |
+
+### P. Documentation
+
+| Punkt            | Status  | Evidence | Befund                                                                                                                                              |
+| ---------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture     | PARTIAL | E12      | `ARCHITECTURE.md` vorhanden; aktueller RC7-Abgleich nötig, da mehrere Acceptance-/Known-Limitations-Dokumente noch ältere Revisionen behaupten.     |
+| Deployment       | PARTIAL | E8/E12   | Deployment-/Staging-/Production Beispiele; Production Compose verwendet noch Legacy-App+tsx-Worker statt finaler RC7 Web-/Worker-/Migration-Images. |
+| Operations       | PARTIAL | E12      | Operations- und Supportrunbooks vorhanden; Restart-/Health-/Mail-/Monitoringbeschreibung teils nicht runtimeaktuell.                                |
+| Backup / Restore | PARTIAL | E9       | Restore-Prozedur und lokale Dump-Verifikation; verschlüsselter Providerbetrieb/Scheduler/Full-stack Restore fehlen.                                 |
+| DR               | PARTIAL | E9       | RPO/RTO-/Scenario-Katalog; tatsächliche produktionsähnliche Übung fehlt.                                                                            |
+| Security         | DONE    | E7       | Security, threat model, runbooks/checklist und CI policy vorhanden; einzelne Artefaktsignierung/Production Controls separat offen.                  |
+| API              | DONE    | E5       | Public API/OpenAPI/Versionierung/Scopes/limits dokumentiert.                                                                                        |
+| Commissioning    | DONE    | E2       | Softwaresequenz und Hardwaregrenzen in Commissioning-/Field-/Device-Dokumentation; Staging-Cycle acceptance.                                        |
+| Customer Admin   | DONE    | E1       | Tenant-Admin-Guide und getestete Tenant-Admin-Journeys.                                                                                             |
+| Platform Admin   | PARTIAL | E1/E12   | SUPER_ADMIN-Guide und Staging-Funktionen; Support/Maintenance/Provideraktionen nicht alle durchgängig.                                              |
+| Support          | PARTIAL | E12      | Support guide/cases/diagnostics existieren; konkrete On-call-/Provider-/incident runbook integration offen.                                         |
+| Release process  | PARTIAL | E8       | Release checklist/workflows/RC7 tag und digest documented; Tag-CI failing und historische Statusbehauptungen nicht vollständig konsolidiert.        |
+
+## Priorisierte Software-Restliste
+
+Aufwandsschätzung beschreibt ein erfahrenes Team, grob inklusive Implementierung und eigener Acceptance: **S** 1–3 Tage, **M** 4–8 Tage, **L** 2–4 Wochen, **XL** mehr als 4 Wochen. Diese Werte sind Richtwerte, keine Zusage. Provider-/Betriebsentscheidungen können Kalenderzeit ergänzen.
+
+### P0 – vor Production/Pilot-Softwarefreigabe
+
+| ID    | Restpunkt / Risiko                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Aufwand | Abhängigkeit                                                                                       | Reihenfolge und Abschlusskriterium                                                                                                                                                                                      |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------: | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0-1  | DONE — Release Browser/Mobile Gate and Artifactjob bestehen auf Commit `66fa3b7cc77986b03371411e2662654af3c3cdd0`; CI 40889030154 und Release Candidate 40889044502 vollständig grün. Linux unit- sowie Integration/Migration suites passed. Browser: 36 passed / 28 pre-existing skipped / 0 failed in full non-visual suite; Desktop, Mobile, Mobile Landscape and Tablet, einschließlich former Tablet-Systemstatus test, passed. Production Build passed. Artifactjob ran and passed; `release-artifact` (20,016,472 bytes) plus `container-runtime-evidence` (3,089 bytes), exact version/SHA, 8/8 checksums, release verifier passed, no known CI credentials in Web archive. No product defect; six semantic H1 assertions and exact Dashboard/Portfolio accessible names fixed. |       M | GitHub Linux CI and Release Candidate workflow; completion branch.                                 | Acceptance evidence is tied to the tested commit. Phase 1 acceptance complete; local Windows Embedded-Postgres ENOMEM remains an environment-only limitation (Linux suites passed).                                     |
+| P0-2  | RC7-kompatible Production Runtime konfigurieren. `compose.production.yaml` startet altes Single-App-Image plus `tsx` Worker, nicht die publizierten drei RC7 Worker/gehärteten Images. Falscher Entrypoint/Runtime und Betriebsabweichung.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |       L | Zielinfrastruktur-/Secretentscheidung; bestehende RC7 Images.                                      | 2. Production Compose/Deploymentmanifeste auf gepinnte Web-, rules-, rollout-, MQTT-worker- und Migration-Images ausrichten; Health, grace period, network, non-root und Startreihenfolge in isolierter Runtime prüfen. |
+| P0-3  | Production Deployment/Promotion und manueller Approval-Pfad. Workflow baut/publiziert, automatisierte geschützte Promotion des gleichen geprüften Digest ist nicht belegt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |       L | Betreiber wählt Host/Orchestrator, Domain, Secret store, Operator/Approver.                        | 3. Freigegebene Umgebung, getrennte Secrets/DB/Broker, staging-digest reuse, explicit approval/deny, migrations one-shot und Rollback documented/tested; kein Image-Neubau bei Promotion.                               |
+| P0-4  | E-Mail Zustellung für Einladung, Passwortreset und betriebliche Benachrichtigungen. Local provider ist nur RAM-Outbox; auf non-local provider liefert `sendMail` ebenfalls accepted=false ohne Adapter. Nutzer können sich nicht zuverlässig erholen/onboarden.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |       M | SMTP/API Providerwahl, Domain/DKIM/SPF/return path, Datenschutz/Operator.                          | 4. Provideradapter + dauerhafte Outbox/lease/retry/dead-letter + status/monitoring und reset/invitation delivery tests. Keine echten Nachrichten im Test.                                                               |
+| P0-5  | Backup Automatisierung und Recovery-Bereitschaft: konkreter Schedule-Claim existiert, aber angeschlossener ausführender Backup-Worker nicht gefunden; Offsite/KMS-Encryption/PITR nicht belegt. Verlust/Cybervorfall kann RPO/RTO verfehlen.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |      XL | PostgreSQL-Angebot, unabhängiger Object Storage, Verschlüsselungsschlüssel/Retention.              | 5. Geplante Full+WAL/PITR-Sicherung verschlüsselt/offsite, checksum, Alerting, restore in clean isolated environment; regelmäßiger getesteter DB+Objekt+Konfigurations-Drill misst reale RPO/RTO.                       |
+| P0-6  | Production-Monitoring/Alert Routing. Readiness prüft Web+DB, nicht Worker/MQTT/Storage; App counters sind in-memory. Störung kann ohne Betreiberalarm unbemerkt bleiben.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |       L | Metrics/log backend und verantwortlicher Empfänger/On-call.                                        | 6. Exportierbare Web/DB/MQTT/Worker/queue/storage/backup/disk metrics, stale heartbeat/error/backlog alerts und Ende-zu-Ende synthetischer Alarmempfang; dokumentierte Alert ownership.                                 |
+| P0-7  | Maintenance Mode/Incident Action enforcement. Ein Admin-Mutation/Audit schreibt MaintenanceMode, aber Enforcement-Verbraucher nicht gefunden. Wartungs-/Notstopp kann wirkungslos sein.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |       M | Produktentscheidung, was genau gesperrt bleibt (Login/readiness/admin/ingest).                     | 7. Semantik definieren; global-/tenantgezielte Grenzen in UI/API/job dispatcher umsetzen; Bypass/Recovery für berechtigten Admin, audit, multi-instance tests und operator drill.                                       |
+| P0-8  | Große Datenmengen begrenzen: Forecast lädt bis zu 90 Tage Reading-Rohdaten aller Tenant-Meter mit `findMany` ohne erkennbare `take`/Aggregation. Hohe Speicher-/DB-Last bei großem Tenant.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |       M | Kapazitäts-/Produktfenster und SQL-Buckets festlegen.                                              | 8. Aggregierte/batchweise Query mit klaren Größenlimits/Timeouts, tenant-scope, graceful errors; großer synthetischer Tenant und EXPLAIN/heap/latency Gate.                                                             |
+| P0-9  | Produktiver Malware-Scan erzwingen. Attachment upload erlaubt konfigurationsabhängig Scanstatus `SKIPPED`; ungeprüfte Dateien können gespeichert werden.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |       M | ClamAV oder zugelassener Scanner als Runtime-Service und Fail-closed policy.                       | 9. Production erzwingt Scannerverfügbarkeit/Quarantäne, infected/failed/skipped deny-or-hold policy, retry/rescan, metrics und EICAR-test in isolierter Testumgebung.                                                   |
+| P0-10 | DONE — laufender Image Vulnerability Process: Workflow active auf master; manueller Run 41406700801 SUCCESS, täglicher Schedule 06:23 UTC, drei unveränderliche Release-Digests mit vollständigen Reports.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |       M | Organisatorisch weiter: Security owner, remediation SLA, Notification-Abonnement und Archivierung. | Bestehende Critical/High/Unknown-Policy unverändert; Medium/Low im nächsten Review; keine automatische Production-Änderung.                                                                                             |
+
+### P1 – sehr wichtig vor Pilot
+
+| ID    | Restpunkt / Risiko                                                                                                                                                                                                                                                                    | Aufwand | Abhängigkeit                                                                                           | Reihenfolge und Abschlusskriterium                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------: | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1-1  | Software failure matrix für Commissioning (timeout, expired, bad signature, retry, process restart, config revision/recommission) auf aktuellem deployed path.                                                                                                                        |       M | P0-1 release CI stability; isolated simulator.                                                         | Danach reguläre API-Pfade + fault simulator, audit/state assertions, cleanup; each failure cannot commission and recover deterministically.             |
+| P1-2  | Protocol integration breadth: M-Bus/wM-Bus/Pulse/LoRaWAN contractual decoders müssen jeweils durch authenticated transport→tenant mapping→persisted readings/duplicate/error tests laufen.                                                                                            |       L | Schemas/adapters exist; choose one concrete software envelope per enabled protocol. Hardware excluded. | Per adapter isolated sender fixture, strict auth/signatures, replay, units, gaps, failures, integration Acceptance.                                     |
+| P1-3  | Data retention/legal hold and audit retention operational policy. Unbounded growth or premature deletion.                                                                                                                                                                             |       M | Data controller/customer contracts and jurisdiction retention decisions.                               | Agree per-data-class schedule, legal hold, export/delete, dry-run, approval/audit and expiry tests.                                                     |
+| P1-4  | Readings aggregation/backfill/GAP repair jobs at scale. Current in-memory/on-demand calculations can become expensive and corrections need deterministic replay.                                                                                                                      |       L | P0-8 query budgets; P1-3 retention.                                                                    | Chunked idempotent lease jobs, pause/resume, progress/retry, fixed UTC anchors, compare source totals, tenant isolation.                                |
+| P1-5  | HA target architecture and failover. Current Staging is six containers on a single host, not availability evidence.                                                                                                                                                                   |      XL | Provider, budget, RPO/RTO targets.                                                                     | Decide managed PostgreSQL HA, broker availability, multiple app/worker replicas and proxy; run DB/broker/host failover drills with measured objectives. |
+| P1-6  | Parallel capacity, database, MQTT and 24–72h soak. Existing performance checks are sequential/adapter-only.                                                                                                                                                                           |       L | P0-8 query control; P1-4 job behavior; representative synthetic load.                                  | Reproducible tenant/reading/device dataset, concurrent traffic, latency/error budgets, worker lag, DB plans, no-growth memory, bounded queues.          |
+| P1-7  | Worker/webhook/report/notification lease races and retry matrix across multiple instances.                                                                                                                                                                                            |       M | P0-4 durable outbox; environment for isolated multi-container tests.                                   | Duplicate-safe processing, stale lease reclaim, bounded retry, dead letter, graceful shutdown and exact one external side effect tests.                 |
+| P1-8  | Public data repair/support controls and time-limited privileged support access. Risk of hard-to-audit changes or overly broad support scope.                                                                                                                                          |       M | Support operating model.                                                                               | Explicit temporary access grant, tenant reason/ticket, expiry, read/write scope, audit and cross-tenant denial tests.                                   |
+| P1-9  | External image/artifact signing and enforcement before promotion. Release Candidate 41068729605 produced and verified keyless GitHub OIDC/Sigstore attestations for all image digests, image SBOMs, release archive and manifest. No private signing key is stored in the repository. |       M | Promotion operator must continue to run the supplied verifier before use.                              | Verifier rejects missing/wrong repository, workflow, issuer, source SHA, digest, signature or evidence.                                                 |
+| P1-10 | Central log/metric/alert dashboards and worker/DB/MQTT functional freshness. Current process health does not imply work is progressing.                                                                                                                                               |       L | P0-6 instrumentation/alert backend.                                                                    | Alert on last success age, queue lag, retries, DB pool, broker cert expiry, backup age and disk; simulate alerts and prove routing.                     |
+| P1-11 | Browser compatibility and manual accessibility follow-up. Local Chrome/axe does not cover Safari/Firefox or screen reader interaction; CI E2E failed.                                                                                                                                 |       M | P0-1.                                                                                                  | Repair remote suite, add explicit supported browsers, axe pages and keyboard/screen-reader checklist; define supported matrix.                          |
+| P1-12 | Align operational docs/config with RC7. `KNOWN-LIMITATIONS.md`, `CAPABILITIES.md`, `OPERATIONS.md`, `compose.production.yaml` contain stale/history-era statements. Operators may follow wrong image/backup/health instructions.                                                      |       M | P0-2 and P0-5 decisions.                                                                               | Reconcile version/date/status/evidence; docs CI links and config examples match actual image+worker+backup commands.                                    |
+| P1-13 | Broker/credential rotation, revocation, mTLS test issuer, and MQTT outage/reconnect soak.                                                                                                                                                                                             |       L | Broker/PKI operations chosen.                                                                          | Synthetic gateway cert lifecycle, revocation, reconnect, retained data, ACL regression without real equipment; measure downtime/queue replay.           |
+| P1-14 | Application/browser poor-network form behavior and session expiry. Static PWA offline is tested but mutating action reconciliation isn't.                                                                                                                                             |       M | P1-7 idempotency keys and auth flow.                                                                   | Expired session, abort/retry, double-submit, offline navigation and explicit user feedback tests across mobile/browser.                                 |
+
+### P2 – kann nach erstem eng begrenztem Pilot folgen
+
+- Benchmarking ist offen. Nur nach Freigabe eines sicheren anonymisierten Vergleichsmodells implementieren; bis dahin keine tenantübergreifenden Zahlen versprechen. (L; benötigt Datenschutz-/Aggregationentscheidung.)
+- Forecast-Güte und Anomaly-Schwellen an echten, freigegebenen anonymisierten Betriebskurven kalibrieren. (L; nach Telemetrie-/Quality-Baseline, keine echte Hardware für Algorithmustests nötig.)
+- Object Storage versioning/region replication und Attachment consistency repair automatisieren, sobald Anbieter gewählt wurde. (M/L; Providervertrag.)
+- Report-/Export-Jobs für sehr große Ergebnisse in stabile asynchrone Downloads überführen, sofern Pilotdaten den heutigen Chunk/Limitpfad überschreiten. (M.)
+- Mobile Offline WorkOrder-Entwürfe/konfliktbehaftete Synchronisation erst nach beobachtetem Feldbedarf bauen; aktuelle PWA cached bewusst keine API-/kundenspezifischen Antworten. (L.)
+- Kapazitätsmodell und SLOs anhand Pilotmessung aktualisieren; keine derzeit nicht belegte SLA veröffentlichen. (M.)
+
+### P3 – Komfort/spätere Verbesserung
+
+- Mehrbrowser-visuelle Snapshot-Pipeline nach dem P1-Supportmatrix-Gate; nur stabile Kernseiten. (M.)
+- Analytics-Cache/Preaggregation für messbar heiße, durch Profile bestätigte Abfragen; erst nach P1 Performance baseline. (M.)
+- Zentralisierte Self-Service-Statusseite für Kunden erst nach etablierter externer Incident-/SLO-Quelle. (M/L.)
+
+## Hardware Validation Later
+
+Diese Punkte sind ausdrücklich **kein Software-Readiness-Blocker** und wurden nicht ausgeführt:
+
+- Physischer Gateway, reale Modbus TCP/RTU-Zähler, RS485-Verkabelung und herstellerspezifische Registerprofile.
+- Reales M-Bus-Gerät/Bus, Pegelwandler und serielle Langzeit-/Störbedingungen.
+- Wireless M-Bus Empfänger/Funkreichweite, reale OMS-Schlüssel/Entschlüsselung und Funkframes.
+- Pulseingang, elektrische Pegel/Entprellung und physischer Zählerrollover.
+- Echte LoRaWAN-Gateways/Network Server, Funkabdeckung und Providerbetrieb.
+- Vendor Devices/APIs, sofern konkrete Hersteller und Verträge ausgewählt werden.
+- Physischer Offline-/Reconnect-/Stromausfall und Netzwechsel mit Geräteflotte.
+- OTA/Firmware-Update auf echten Gateways; in dieser Readiness nicht durch Software-Simulator-Evidence gedeckt.
+
+Softwareseitige Decoder, Contracts, Simulatoren und isolierte Transporttests bleiben in B/P1, wo sie unabhängig von Hardware sinnvoll automatisiert werden können.
+
+## Master Roadmap
+
+Die Phasen sind nach Abhängigkeit geordnet und jeweils in isolierten Testumgebungen ohne reale Hardware abnehmbar. P0-1 muss vor weiteren Completion-Phasen mit dem neuen GitHub-CI-/Artifact-Nachweis abgeschlossen werden. Kein Produktionszugriff ist erforderlich.
+
+### SOFTWARE COMPLETION PHASE 1 – RC7 Remote Release-Gate schließen
+
+**Scope:** P0-1; bestätigten Tablet-Test-Race durch eindeutige semantische Heading-Locators beheben und den vollständigen GitHub Quality-/Browser-/Integration-/Build-/Artifactpfad für denselben Completion-Commit grün nachweisen.
+
+**Acceptance:** CI und Tag-Release Quality/Browser/Integration/Build/Artifact alle grün auf freigegebenem SHA; Artifact enthält nachvollziehbare Checksummen/SBOM/Provenance; kein Deploy ausgelöst.
+
+### SOFTWARE COMPLETION PHASE 2 – Production Runtime Parität und Promotion
+
+**Scope:** P0-2, P0-3, P1-12. Compose/Orchestrierung auf RC7 Images; Secret-/Network-/TLS-/Volume-/DB-/Broker-Umgebungswerte; approval-geschützte Promotion des bereits gestagten Digest und App-only rollback.
+
+**Acceptance:** isolated production-like stack startet aus ausschließlich versionierten Images; alle Rollen/Health/Graceful Shutdown geprüft; absichtliche Fehlkonfiguration wird sichtbar verweigert; promotion nutzt nachweislich gleichen Digest; keine Migration im Webstart.
+
+### SOFTWARE COMPLETION PHASE 3 – kritische externe Dienste und Maintenance
+
+**Scope:** P0-4, P0-7, P0-9; E-Mail-Outbox, Malware fail-closed, Maintenance-Enforcement; passende UI/Support-/Audit-Aktionen.
+
+**Acceptance:** lokale fake SMTP/API + ClamAV container tests; reset/invite delivery, provider outage retry, infected file quarantine, scanner absent/failure denied; maintenance behavior in Web/API/worker und Breakglass getestet; keine echten Nachrichten.
+
+### SOFTWARE COMPLETION PHASE 4 – Recovery/Retention
+
+**Scope:** P0-5, P1-3, P1-4. Verschlüsselung, unabhängiger Storage, Backup-Scheduler-Worker, retention/legal hold, WAL/PITR, idempotent backfill/rebuild.
+
+**Acceptance:** scheduled synthetic backup, offsite object checksum, isolated full DB+object+config restore, PITR to selected timestamp, stale schedule lease recovery, retain/legal-hold tests, measured RPO/RTO record and alert. Kein produktiver DB-Zugriff während der Tests.
+
+### SOFTWARE COMPLETION PHASE 5 – Observability/Operations
+
+**Scope:** P0-6, P1-8, P1-10 und verbleibender P1-12. Metrics/traces/log export, functional worker freshness, broker/DB/backup/disk alerts, support case/access workflows, incident/runbook exercise.
+
+**Acceptance:** isolierte telemetry backend/alert receiver; bewusst erzeugte Worker-, Broker-, Disk-/Backup- und Webhook-Störungen lösen korrekt geroutete/deduplizierte Alerts aus; operator folgt aktualisiertem Runbook; audit record prüfbar.
+
+### SOFTWARE COMPLETION PHASE 6 – Capacity und HA
+
+**Scope:** P0-8, P1-5, P1-6, P1-7. Bounded forecast and analytic queries; realistic DB/MQTT/HTTP/worker load; multi-instance races, soak, queue backpressure, HA/failover.
+
+**Acceptance:** versioned synthetic workload and documented hardware resources; no unbounded tenant query; p50/p95/p99/error/query/pool/queue metrics meet approved budgets; load > target yields controlled backpressure; worker/process/broker/DB failover recovers inside approved RPO/RTO.
+
+### SOFTWARE COMPLETION PHASE 7 – protocol/software recovery breadth
+
+**Scope:** P1-1, P1-2, P1-13, P1-14. Simulator-based negative/restart/recommissioning matrix, authenticated software envelopes for enabled non-Modbus protocols, certificate/reconnect lifecycle, browser retries/session expiry.
+
+**Acceptance:** deterministic signed simulator fixtures; failure cannot bypass commissioning; duplicate/replay is idempotent; test each enabled adapter through transport and DB; no hardware required; client action retry never duplicates mutation.
+
+### SOFTWARE COMPLETION PHASE 8 – provenance, security and release hardening
+
+**Scope:** P1-9 and outstanding E7/E8/P1-11. Signed images/SBOM/provenance verification, image CVE policy, current dependency monitoring, browser compatibility/accessibility matrix, external app-security review.
+
+**Acceptance:** deliberately unsigned/wrong-SHA artifacts are rejected; published digest provenance matches tested commit; supported image findings meet policy; all browser CI lanes pass; documented security findings have disposition and tests.
+
+### SOFTWARE COMPLETION PHASE 9 – pilot feedback and product refinements
+
+**Scope:** P2/P3 only where measured use justifies it (forecast calibration, benchmarking privacy design, large exports, cache, offline workorder draft).
+
+**Acceptance:** each item has pilot-derived need, privacy/tenant review, performance baseline and isolated regression; explicitly maintain hardware validation as separate later schedule.
+
+**Estimated remaining software phases to “Software Complete”: 8 foundational phases (1–8), then one pilot-informed improvement phase if required.** The P0/P1 work has materially more uncertainty than the RC7 feature acceptance; effort cannot be estimated more tightly until Phase 1 failure logs and provider/hosting decisions are available.
+
+## Empfohlener nächster Implementierungsblock
+
+Phase 1 completed on `software-completion/phase-1` at `66fa3b7cc77986b03371411e2662654af3c3cdd0`. CI run 40889030154 and official Release Candidate run 40889044502 are fully green. Browser/Mobile completed 36 passed, 28 pre-existing skipped, 0 failed across Desktop, Mobile, Mobile Landscape and Tablet; the former Tablet Systemstatus test passed. Fast checks, Unit, Integration/Migration, Production Build, artifact build/verification and both uploads passed. Artifacts `release-artifact` (20,016,472 bytes) and `container-runtime-evidence` (3,089 bytes) record the exact RC7 version and tested commit; 8/8 checksums passed and known synthetic CI credentials were absent from the Web archive. Optional image SBOM used the documented fallback because Docker Scout CLI is unavailable; the release lockfile SBOM is present. Artifact metadata reports `workingTree=dirty` because CI-generated outputs existed at capture; its recorded commit/SBOM/manifest match the tested SHA. Root cause was the strict generic H1 match during navigation; no product error. Six semantic heading assertions were made unique, including exact visible names `Dashboard Demo` and `Portfolioübersicht Demo`. The local Windows Embedded-Postgres `ENOMEM` limitation is documented and non-blocking because GitHub Linux Unit and Integration/Migration passed. P0-1 DONE; no further Phase 1 blocker.
+
+Nach erfolgreichem Phase-1-Gate zuerst P0-2/P0-3 Production Runtime und Promotionmodell festlegen, bevor externe Anbieter oder Produktionswerte konfiguriert werden. P0-4/5/6/7/8/9/10 schließen dann die kritischen Produktbetriebsfunktionen und Betreiberkontrollen.
+
+## Quellen und Grenzen
+
+- RC7 Final Acceptance Evidence: Die in der Acceptance-Übergabe referenzierten Ergebnisse umfassen 560 Unit-Tests, 68 Browserfälle je Profil sowie isolierte Integration-/Migration-/Build-/Pricing-/Securityprüfungen (28.10.2026). Das temporäre JSON-Rohartefakt wird nicht in Projektdokumentation übernommen.
+- RC7 Staging Acceptance: In der Acceptance-Übergabe bestätigt: final 50/0/0, driftfrei, synthetische Statuskette, Cleanup und Health. Temporäre lokale Evidence-Dateien sind nicht Bestandteil dieser versionierten Master-Roadmap.
+- GitHub CI/Release-/Images-Workflows oben: Remote CI success und Image Publish success, Tag-Release workflow failure und artifact skipped vom 29.10.2026.
+- Hauptdokumente: `KNOWN-LIMITATIONS.md`, `CAPABILITIES.md`, `PROTOCOLS.md`, `SCALING-PERFORMANCE.md`, `MONITORING.md`, `OPERATIONS.md`, `BACKUP-RESTORE.md`, `DISASTER-RECOVERY.md`, `DR-DRILLS.md`, `SECURITY.md`, `SECURITY-CHECKLIST.md`, `RELEASES.md`, `PUBLIC-API.md`, `DATA-RETENTION.md`, `COMMISSIONING.md`.
+- Repräsentative Implementierungsprüfungen: `compose.production.yaml`, `src/server/mail.ts`, `src/server/billing/provider.ts`, `src/server/observability.ts`, `src/server/disaster-recovery.ts`, `src/server/support-operations.ts`, `src/server/analytics-forecast.ts`, `src/server/malware.ts`, `src/server/attachments.ts`, `scripts/release-artifact.mjs`, `src/server/storage.ts`.
+
+### Aussagegrenzen
+
+Dies ist eine Repository-/Evidence-basierte Readinessanalyse, keine Produktionsfreigabe, kein unabhängiger Penetrationstest, kein Rechts-/Steuergutachten, keine SLA-Zusage und kein Hardwaretest. Der Secret Scan erfasste den RC7-Git-Working-Scope, nicht beliebige externe Deployments oder gesamte Git-Historie. Der 0-Advisory-Audit ist zeitgebundener Snapshot. „DONE“ gilt nur für den in der Inventartabelle beschriebenen Softwareumfang und die referenzierte Testtiefe.
+
+## WAL continuation, 2026-11-09
+
+Continuous WAL Offsite: **PASSED** in real-IONOS synthetic run `42595934065`;
+three incremental cycles and positive/negative monitoring checks verified.
+See [commands, evidence limits and next task](WAL-OFFSITE-MONITORING.md).
+IAM Least Privilege **BLOCKED** (ContractUserId pending); Staging Recovery
+**BLOCKED** (approved read-only source/principal pending). Existing accepted
+Phase-3 results remain valid; readiness for Phase 4 remains NO.

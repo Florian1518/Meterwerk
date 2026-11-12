@@ -1,5 +1,9 @@
 # Independent watchdog integration
 
+## Statusfortschreibung: 12.11.2026
+
+Aktuell gilt die [finale Phase-3-Abnahmematrix](PHASE-3-FINAL-ACCEPTANCE.md). Echte Watchdog-Schedule-Läufe 43094361275 und 43137624178 sowie die menschliche Drill-ACK vom 11.11. sind inzwischen belegt. Die nachfolgenden ursprünglichen Ergebnisse und damaligen PENDING/PARTIAL-Aussagen bleiben historische Evidence ihres jeweiligen Drills. Sie werden nicht rückwirkend umetikettiert. Operative Zustellung, garantierte Taktung und SLA-Reaktion bleiben unbewiesen.
+
 Base verified by fetch on 2026-11-11: `9c04c2ebaf39227189ff586d5fd8df6f249054fe`.
 Branch: `integration/phase-3-independent-watchdog`.
 
